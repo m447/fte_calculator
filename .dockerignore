@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+*.md
+src/
+results/
+notebooks/
+data/*.xlsx
+data/*.csv
+!data/ml_ready_v3.csv

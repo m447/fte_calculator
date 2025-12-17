@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTE Kalkulačka | Dr.Max</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Open Sans',sans-serif;background:#f3f4f6;margin:0;padding:16px;color:#313131;} .container{max-width:480px;margin:0 auto;} h1{text-align:center;margin-top:10px;font-size:1.4rem;} .brand{color:#78be20;} .card{background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:14px;} .card-title{text-transform:uppercase;font-size:0.8rem;color:#6b7280;margin-bottom:10px;font-weight:700;} label{font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;color:#374151;} input,select{width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.95rem;color:#313131;box-sizing:border-box;transition:border-color 0.15s;} input:hover,select:hover{border-color:#9ca3af;} input:focus,select:focus{outline:none;border-color:#78be20;} input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;} input[type=number]{-moz-appearance:textfield;} .decimal{font-size:50%;vertical-align:baseline;} .btn{width:100%;background:#78be20;color:white;padding:16px;border-radius:12px;font-weight:700;font-size:1.1rem;border:none;cursor:pointer;margin-top:10px;} .btn:disabled{opacity:0.6;} .result-main{text-align:center;background:#78be20;color:white;padding:28px;border-radius:12px;margin-bottom:16px;} .result-main .val{font-size:4rem;font-weight:700;} .explain-card .bullet{margin-bottom:8px;padding-left:18px;position:relative;} .bullet:before{content:"•";position:absolute;left:4px;color:#78be20;font-weight:bold;} .trust-box{background:#f9fafb;border-left:4px solid #9ca3af;padding:14px;border-radius:6px;margin-bottom:14px;} .trust-title{font-weight:700;margin-bottom:6px;color:#374151;} .trust-content{font-size:0.85rem;color:#6b7280;margin-top:4px;} .breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;margin-bottom:16px;} .breakdown-item{background:#f3f4f6;padding:12px 8px;border-radius:10px;} .breakdown-val{font-size:1.4rem;font-weight:700;color:#78be20;} .breakdown-lbl{font-size:0.75rem;color:#6b7280;font-weight:600;margin-top:4px;}
+/* Specific font increases */
+#typ, #bloky, #trzby { font-weight: 600; }
+/* Productivity buttons */
+.prod-btn{flex:1;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;background:white;cursor:pointer;font-weight:600;font-size:0.85rem;color:#374151;transition:all 0.15s;} .prod-btn:hover{border-color:#78be20;} .prod-btn.active{background:#78be20;color:white;border-color:#78be20;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1><span class="brand">Dr.Max</span> FTE Kalkulačka</h1>
+<p style="text-align:center;color:#6b7280;margin-bottom:24px;">Optimálne personálne obsadenie lekárne</p>
+
+<!-- FACTS -->
+<div class="card">
+<div class="card-title">Parametre lekárne</div>
+<label>Typ prevádzky</label>
+<select id="typ">
+<option>A - shopping premium</option>
+<option>B - shopping</option>
+<option>C - street +</option>
+<option>D - street</option>
+<option>E - poliklinika</option>
+</select>
+
+<div style="display:flex;gap:16px;margin-top:16px;">
+<div style="flex:1;"><label>Bloky / rok (tis.)</label><input id="bloky" type="number" value="60" step="1"></div>
+<div style="flex:1;"><label>Tržby / rok (mil. €)</label><input id="trzby" type="number" value="1.2" step="0.1"></div>
+</div>
+
+<label style="margin-top:16px;">Podiel RX</label>
+<div style="display:flex;align-items:center;gap:10px;">
+<input id="rx" type="range" min="20" max="90" value="50" style="flex:1;" oninput="document.getElementById('rx-input').value=this.value">
+<input id="rx-input" type="number" min="20" max="90" value="50" style="width:60px;text-align:center;font-weight:700;color:#78be20;padding:6px 8px;" oninput="document.getElementById('rx').value=Math.max(20,Math.min(90,this.value))">
+<span style="color:#78be20;font-weight:600;">%</span>
+</div>
+
+<label style="margin-top:16px;">Produktivita</label>
+<div style="display:flex;gap:8px;">
+<button type="button" class="prod-btn" data-val="-1">Nízka</button>
+<button type="button" class="prod-btn active" data-val="0">Normálna</button>
+<button type="button" class="prod-btn" data-val="1">Vysoká</button>
+</div>
+</div>
+
+<button class="btn" id="calc">Vypočítať</button>
+
+<!-- RESULT -->
+<div id="result" style="display:none;margin-top:28px;padding-top:20px;border-top:2px dashed #e5e7eb;">
+<div class="result-main">
+<div class="val" id="fte-total">-</div>
+<div>Odporúčané FTE</div>
+<div id="fte-range" style="margin-top:10px;font-size:0.95rem;opacity:0.9;"></div>
+</div>
+
+<div class="breakdown">
+<div class="breakdown-item"><div class="breakdown-val" id="fte-f">-</div><div class="breakdown-lbl">Farmaceut</div></div>
+<div class="breakdown-item"><div class="breakdown-val" id="fte-l">-</div><div class="breakdown-lbl">Laborant</div></div>
+<div class="breakdown-item"><div class="breakdown-val" id="fte-zf">-</div><div class="breakdown-lbl">Zodp. farm.</div></div>
+</div>
+
+<div class="trust-box" id="trust-box">
+<div class="trust-title">Overené proti podobným lekárňam</div>
+<div class="trust-content">Nájdené prevádzky: <span id="trust-count"></span></div>
+<div class="trust-content">ID: <span id="trust-ids"></span><span id="trust-expand" style="color:#78be20;cursor:pointer;font-weight:600;display:none;" onclick="expandIds()"> zobraziť všetky</span></div>
+<div id="trust-all-ids" style="display:none;margin-top:8px;font-size:0.8rem;color:#6b7280;word-break:break-word;"></div>
+</div>
+</div>
+</div>
+
+<script>
+const bloky=document.getElementById("bloky"),trzby=document.getElementById("trzby"),rxInput=document.getElementById("rx-input"),rxSlider=document.getElementById("rx"),typSelect=document.getElementById("typ");
+let allIds = [];
+let productivityZ = 0;
+
+// Type-specific defaults (median values from data)
+const TYPE_DEFAULTS = {
+  'A - shopping premium': {bloky: 93, trzby: 1.3, rx: 26},
+  'B - shopping':         {bloky: 97, trzby: 1.5, rx: 49},
+  'C - street +':         {bloky: 40, trzby: 0.8, rx: 67},
+  'D - street':           {bloky: 29, trzby: 0.6, rx: 62},
+  'E - poliklinika':      {bloky: 38, trzby: 1.0, rx: 78},
+};
+
+// Update defaults when store type changes
+function updateDefaults() {
+  const defaults = TYPE_DEFAULTS[typSelect.value];
+  if (defaults) {
+    bloky.value = defaults.bloky;
+    trzby.value = defaults.trzby;
+    rxInput.value = defaults.rx;
+    rxSlider.value = defaults.rx;
+  }
+}
+
+// Listen for store type changes and initialize
+typSelect.onchange = updateDefaults;
+updateDefaults();
+
+// Productivity button handler
+document.querySelectorAll('.prod-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.prod-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    productivityZ = +btn.dataset.val;
+  };
+});
+
+function expandIds() {
+    document.getElementById("trust-ids").textContent = allIds.join(', ');
+    document.getElementById("trust-expand").style.display = "none";
+}
+
+document.getElementById("calc").onclick=async()=>{
+const data={
+ typ:document.getElementById("typ").value,
+ bloky:+bloky.value * 1000,
+ trzby:+trzby.value * 1000000,
+ podiel_rx:+rxInput.value/100,
+ productivity_z: productivityZ,
+ variability_z:0   // Default Stable
+};
+const r=await fetch('/api/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(r=>r.json());
+
+// main result
+document.getElementById("result").style.display="block";
+const fteParts = r.fte.total.toFixed(1).split('.');
+document.getElementById("fte-total").innerHTML = fteParts[0] + '<span class="decimal">.' + fteParts[1] + '</span>';
+document.getElementById("fte-range").textContent=`Rozsah: ${r.fte.min.toFixed(1)} – ${r.fte.max.toFixed(1)} FTE`;
+
+// Breakdown
+document.getElementById("fte-f").textContent=r.breakdown.F.toFixed(1);
+document.getElementById("fte-l").textContent=r.breakdown.L.toFixed(1);
+document.getElementById("fte-zf").textContent=r.breakdown.ZF.toFixed(1);
+
+// trust box
+if(r.comparable.count>0){
+ document.getElementById("trust-count").textContent=r.comparable.count;
+ allIds = r.comparable.ids;
+ if(allIds.length > 5) {
+   document.getElementById("trust-ids").textContent = allIds.slice(0, 5).join(', ') + ', ...';
+   document.getElementById("trust-expand").style.display = "inline";
+ } else {
+   document.getElementById("trust-ids").textContent = allIds.join(', ');
+   document.getElementById("trust-expand").style.display = "none";
+ }
+ document.getElementById("trust-box").style.display="block";
+}else document.getElementById("trust-box").style.display="none";
+};
+</script>
+</body>
+</html>

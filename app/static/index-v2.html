@@ -1,0 +1,3349 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTE Kalkulačka | Dr.Max</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DR.MAX FTE CALCULATOR - CORPORATE STYLING
+   ============================================ */
+
+:root {
+  --brand-green: #78be20;
+  --brand-green-dark: #6aab1a;
+  --btn-green: #8ed12e;
+  --btn-green-dark: #78be20;
+  --brand-green-light: rgba(120, 190, 32, 0.1);
+  --brand-green-glow: rgba(120, 190, 32, 0.25);
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f3f4f6;
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+  --shadow-brand: 0 4px 14px rgba(120, 190, 32, 0.3);
+  --transition-fast: 0.15s ease;
+  --transition-smooth: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-page);
+  margin: 0;
+  padding: 20px 16px 40px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.header {
+  text-align: center;
+  margin-bottom: 28px;
+  padding-top: 8px;
+}
+
+.header::before {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--brand-green), var(--brand-green-dark));
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.brand {
+  color: var(--brand-green);
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  margin-bottom: 16px;
+  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-title {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  display: block;
+  color: var(--text-secondary);
+}
+
+input, select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-medium);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:hover, select:hover {
+  border-color: #9ca3af;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px var(--brand-green-light), inset 0 1px 2px rgba(0,0,0,0.04);
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.form-row > div {
+  flex: 1;
+}
+
+.form-row-3 {
+  gap: 12px;
+}
+
+.calculated-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.basket-readonly {
+  background: var(--bg-subtle);
+  color: var(--brand-green);
+  cursor: default;
+}
+
+/* Tooltip styles */
+.tooltip-wrapper {
+  position: relative;
+}
+
+.tooltip-wrapper .tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 100;
+  transition: opacity 0.2s, visibility 0.2s;
+  box-shadow: var(--shadow-md);
+}
+
+.tooltip-wrapper .tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--text-primary);
+}
+
+.tooltip-wrapper:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.form-group {
+  margin-top: 20px;
+}
+
+/* ============================================
+   SLIDER (Range Input)
+   ============================================ */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 8px;
+  background: linear-gradient(to right, var(--brand-green) 0%, var(--brand-green) var(--slider-progress, 50%), var(--border-light) var(--slider-progress, 50%), var(--border-light) 100%);
+  border-radius: 4px;
+  border: none;
+  padding: 0;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: var(--bg-card);
+  border: 3px solid var(--brand-green);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 10px rgba(120, 190, 32, 0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-card);
+  border: 3px solid var(--brand-green);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.slider-value {
+  width: 65px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--brand-green);
+  padding: 8px 10px;
+  font-size: 0.95rem;
+}
+
+.slider-unit {
+  color: var(--brand-green);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ============================================
+   PRODUCTIVITY TOGGLE
+   ============================================ */
+.productivity-group {
+  margin-top: 16px;
+}
+
+.productivity-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.toggle-label-high {
+  color: var(--text-muted);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-light);
+  transition: var(--transition-fast);
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: var(--transition-fast);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--brand-green);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-effect {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 55px;
+  transition: color var(--transition-fast);
+}
+
+.toggle-effect.active {
+  color: var(--brand-green);
+}
+
+.prod-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: help;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ============================================
+   CALCULATE BUTTON
+   ============================================ */
+.btn {
+  width: 100%;
+  background: white;
+  color: var(--brand-green);
+  padding: 18px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: 2px solid var(--brand-green);
+  cursor: pointer;
+  margin: 0 0 16px 0;
+  font-family: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.btn:hover {
+  background: var(--brand-green);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(120, 190, 32, 0.35);
+}
+
+.btn:hover::before {
+  opacity: 1;
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn.loading {
+  pointer-events: none;
+  color: transparent;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  top: 50%;
+  left: 50%;
+  margin: -12px 0 0 -12px;
+  border: 3px solid rgba(120, 190, 32, 0.3);
+  border-top-color: var(--brand-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   RESULTS SECTION
+   ============================================ */
+#result {
+  margin-top: 0;
+  transition: opacity 0.2s ease;
+}
+
+.result-divider {
+  display: none;
+}
+
+/* Main Result Card */
+.result-main {
+  text-align: center;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  padding: 32px 24px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px var(--brand-green-glow);
+  animation: fadeUp 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.result-main::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.val-row {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.result-main .val {
+  font-size: 4.5rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.result-main .val .decimal {
+  font-size: 55%;
+  opacity: 0.9;
+}
+
+.val-vs {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.val-vs .val {
+  color: rgba(0,0,0,0.5);
+  text-shadow: none;
+}
+
+.val-vs-text {
+  font-size: 1.5rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.result-main .label {
+  font-size: 1rem;
+  margin-top: 8px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.result-main .range {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  background: rgba(255,255,255,0.15);
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+}
+
+/* Distribution Comparison */
+.distribution-box {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-light);
+  animation: fadeUp 0.5s ease-out 0.15s backwards;
+}
+
+.dist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dist-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+
+.dist-bar-container {
+  position: relative;
+  height: 8px;
+  margin-bottom: 8px;
+}
+
+.dist-bar-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: var(--border-light);
+  border-radius: 4px;
+}
+
+.dist-bar-range {
+  position: absolute;
+  top: 0;
+  height: 8px;
+  background: linear-gradient(90deg, var(--brand-green-light), var(--brand-green));
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.dist-marker {
+  position: absolute;
+  top: -4px;
+  width: 16px;
+  height: 16px;
+  background: var(--brand-green);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transform: translateX(-50%);
+  z-index: 2;
+  cursor: pointer;
+}
+
+.dist-marker::after {
+  content: attr(data-fte);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  margin-bottom: 6px;
+}
+
+.dist-marker:hover::after {
+  opacity: 1;
+}
+
+.dist-marker-actual {
+  position: absolute;
+  top: -2px;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 2px solid var(--brand-green);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  opacity: 0.5;
+}
+
+.dist-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Breakdown Cards */
+.breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.breakdown-item {
+  background: var(--bg-card);
+  padding: 18px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  animation: fadeUp 0.5s ease-out backwards;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.breakdown-item:nth-child(1) { animation-delay: 0.1s; }
+.breakdown-item:nth-child(2) { animation-delay: 0.2s; }
+.breakdown-item:nth-child(3) { animation-delay: 0.3s; }
+
+.breakdown-item:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.breakdown-val {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--brand-green);
+}
+
+.breakdown-lbl {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Trust Box */
+.trust-box {
+  background: var(--bg-subtle);
+  border-left: 4px solid var(--brand-green);
+  padding: 18px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  animation: fadeUp 0.5s ease-out 0.4s backwards;
+}
+
+.trust-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trust-title::before {
+  content: '✓';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--brand-green);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.trust-content {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.trust-link {
+  color: var(--brand-green);
+  cursor: pointer;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.trust-link:hover {
+  color: var(--brand-green-dark);
+  text-decoration: underline;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 400px) {
+  .result-main .val {
+    font-size: 3.5rem;
+  }
+  
+  .breakdown {
+    gap: 10px;
+  }
+  
+  .breakdown-item {
+    padding: 14px 8px;
+  }
+
+  .breakdown-val {
+    font-size: 1.3rem;
+  }
+}
+
+/* ============================================
+   TAB NAVIGATION
+   ============================================ */
+.tab-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--bg-card);
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.tab-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  background: var(--brand-green);
+  color: white;
+  box-shadow: var(--shadow-brand);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+  animation: fadeUp 0.3s ease-out;
+}
+
+/* ============================================
+   NETWORK DASHBOARD
+   ============================================ */
+.summary-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-stat {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+}
+
+.summary-stat .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--brand-green);
+}
+
+.summary-stat .label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-stat.balanced .value {
+  color: var(--brand-green);
+}
+
+.segment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.segment-table th {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 2px solid var(--border-light);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.segment-table th:not(:first-child) {
+  text-align: right;
+}
+
+.segment-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.segment-table td:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.segment-table tr:last-child td {
+  border-bottom: none;
+}
+
+.segment-table .segment-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.segment-table .total-row {
+  background: var(--bg-subtle);
+  font-weight: 700;
+}
+
+.segment-table .total-row td {
+  border-bottom: none;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.ok {
+  background: rgba(120, 190, 32, 0.15);
+  color: var(--brand-green-dark);
+}
+
+.status-badge.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.outlier-section {
+  margin-top: 8px;
+}
+
+.outlier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.outlier-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outlier-count {
+  background: var(--bg-subtle);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.outlier-arrow {
+  transition: transform 0.2s;
+}
+
+.outlier-header.expanded .outlier-arrow {
+  transform: rotate(180deg);
+}
+
+.outlier-list {
+  display: none;
+  padding: 8px 0;
+}
+
+.outlier-list.expanded {
+  display: block;
+}
+
+.outlier-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.outlier-item:last-child {
+  margin-bottom: 0;
+}
+
+.outlier-info {
+  flex: 1;
+}
+
+.outlier-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.outlier-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.outlier-diff {
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.outlier-diff.positive {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.outlier-diff.negative {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.outlier-item {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.outlier-item:hover {
+  background: var(--brand-green-light);
+}
+
+.outlier-chat-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--brand-green);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.loading-spinner::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--brand-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+}
+
+/* ============================================
+   AI CHAT ASSISTANT
+   ============================================ */
+.chat-trigger {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(120, 190, 32, 0.4);
+  font-size: 1.5rem;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 1000;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chat-trigger:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(120, 190, 32, 0.5);
+}
+
+.chat-trigger.visible {
+  display: flex;
+}
+
+.chat-panel {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 360px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 120px);
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  border: 1px solid var(--border-light);
+  display: none;
+  flex-direction: column;
+  z-index: 1001;
+  overflow: hidden;
+  animation: chatSlideUp 0.3s ease-out;
+}
+
+.chat-panel.open {
+  display: flex;
+}
+
+@keyframes chatSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-header {
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.chat-close {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.chat-close:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 400px;
+  min-height: 150px;
+}
+
+.chat-message {
+  margin-bottom: 12px;
+  animation: fadeUp 0.3s ease-out;
+}
+
+.chat-message.user {
+  text-align: right;
+}
+
+.chat-message .bubble {
+  display: inline-block;
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.chat-message.user .bubble {
+  background: var(--brand-green);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.assistant .bubble {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-message.assistant .bubble strong {
+  color: var(--brand-green-dark);
+}
+
+.chat-input-area {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-medium);
+  border-radius: 24px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: var(--brand-green);
+}
+
+.chat-send {
+  width: 40px;
+  height: 40px;
+  background: var(--brand-green);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.chat-send:hover {
+  background: var(--brand-green-dark);
+}
+
+.chat-send:disabled {
+  background: var(--border-medium);
+  cursor: not-allowed;
+}
+
+.chat-typing {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px;
+}
+
+.chat-typing span {
+  width: 8px;
+  height: 8px;
+  background: var(--border-medium);
+  border-radius: 50%;
+  animation: typingDot 1.4s infinite ease-in-out;
+}
+
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDot {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+.chat-suggestions {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chat-suggestion {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chat-suggestion:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
+}
+
+/* ============================================
+   SENSITIVITY ANALYSIS (Sliders)
+   ============================================ */
+.sensitivity-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sens-slider-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 55px 85px;
+  align-items: center;
+  gap: 12px;
+}
+
+.sens-slider-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sens-slider-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sens-range-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 32px;
+  text-align: center;
+}
+
+.sens-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sens-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--brand-green);
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.sens-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--brand-green);
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.sens-slider-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.sens-slider-fte {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--brand-green);
+  transition: color 0.2s;
+}
+
+.sens-slider-fte.negative {
+  color: #dc2626;
+}
+
+/* Productivity slider - asymmetric styling */
+.sens-slider-productivity {
+  border-top: 1px dashed var(--border-light);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+.sens-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: help;
+  margin-left: 4px;
+}
+
+.sens-slider-asymmetric {
+  background: linear-gradient(to right,
+    var(--border-light) 0%,
+    var(--border-light) 50%,
+    var(--brand-green) 50%,
+    var(--brand-green) 100%) !important;
+}
+
+.sens-clipped-indicator {
+  font-size: 0.7rem;
+  color: #f59e0b;
+  margin-left: 4px;
+}
+
+.sens-clipped-indicator.active {
+  color: #f59e0b;
+}
+
+.sens-slider-fte.zero {
+  color: var(--text-muted);
+}
+
+.sens-total {
+  margin-top: 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+}
+
+.sens-total-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.sens-total-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.sens-total-result {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+@media (max-width: 400px) {
+  .sens-slider-row {
+    grid-template-columns: 60px 1fr 45px 70px;
+    gap: 8px;
+  }
+  .sens-range-label {
+    display: none;
+  }
+}
+
+/* ============================================
+   FTE IMPACT SIMULATION
+   ============================================ */
+.impact-card {
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.impact-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.impact-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.impact-row.highlight {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+}
+
+.impact-row .positive { color: var(--brand-green); }
+.impact-row .negative { color: #dc2626; }
+.impact-row .warning { color: #f59e0b; }
+
+.info-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  border-radius: 6px;
+}
+
+/* ============================================
+   SEGMENT POSITION CHARTS
+   ============================================ */
+.position-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.position-row {
+  display: grid;
+  grid-template-columns: 50px 38px 1fr 38px 95px;
+  align-items: center;
+  gap: 6px;
+}
+
+.position-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.position-min,
+.position-max {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.position-min {
+  text-align: right;
+}
+
+.position-max {
+  text-align: left;
+}
+
+.position-track {
+  position: relative;
+  height: 10px;
+  background: var(--bg-subtle);
+  border-radius: 5px;
+  overflow: visible;
+}
+
+.position-range {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--border-light) 0%, var(--brand-green-light) 50%, var(--border-light) 100%);
+  border-radius: 5px;
+}
+
+/* Histogram overlay - visible on hover */
+.position-histogram {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.position-track:hover .position-histogram {
+  opacity: 1;
+}
+
+.position-track:hover {
+  height: 28px;
+  margin-top: -9px;
+  margin-bottom: -9px;
+  background: white;
+}
+
+.position-track:hover .position-range {
+  opacity: 0.3;
+}
+
+.histogram-bar {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.position-marker {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s;
+  z-index: 2;
+}
+
+.position-marker.avg {
+  background: white;
+  border: 2px solid var(--text-muted);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.position-marker.you {
+  background: var(--brand-green);
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(120, 190, 32, 0.4);
+  z-index: 3;
+}
+
+.position-marker.actual {
+  background: #3b82f6;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.4);
+  z-index: 2;
+}
+
+.position-marker.comparable {
+  background: #f59e0b;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.4);
+  z-index: 2;
+}
+
+.position-your-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--brand-green);
+  text-align: right;
+  cursor: help;
+}
+
+.position-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-dot.avg {
+  background: white;
+  border: 2px solid var(--text-muted);
+}
+
+.legend-dot.you {
+  background: var(--brand-green);
+  border: 2px solid white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.legend-dot.actual {
+  background: #3b82f6;
+  border: 2px solid white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.legend-dot.comparable {
+  background: #f59e0b;
+  border: 2px solid white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 400px) {
+  .position-row {
+    grid-template-columns: 45px 30px 1fr 30px 70px;
+    gap: 4px;
+  }
+  .position-your-value .your-val {
+    font-size: 0.8rem;
+  }
+}
+
+/* ============================================
+   PHARMACY SELECTOR
+   ============================================ */
+.pharmacy-selector label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  display: block;
+  color: var(--text-secondary);
+}
+
+.pharmacy-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.pharmacy-id-row input {
+  width: 100px;
+}
+
+.btn-load {
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border-medium);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-load:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+  color: var(--brand-green);
+}
+
+.pharmacy-hint {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-left: 12px;
+}
+
+.pharmacy-hint.loaded {
+  color: var(--brand-green);
+  font-weight: 600;
+}
+
+.pharmacy-hint.error {
+  color: #dc2626;
+}
+
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span class="brand">Dr.Max</span> FTE Kalkulačka</h1>
+    <p class="subtitle">Overte, či je personálne obsadenie lekárne optimálne</p>
+  </div>
+
+  <!-- TAB NAVIGATION -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="calculator">Kalkulačka</button>
+    <button class="tab-btn" data-tab="analyza">Porovnanie</button>
+    <button class="tab-btn" data-tab="network">Sieť</button>
+  </div>
+
+  <!-- CALCULATOR TAB -->
+  <div id="tab-calculator" class="tab-content active">
+
+  <!-- FACTS -->
+  <div class="card">
+    <div class="card-title">Parametre lekárne</div>
+
+    <label>Lekáreň ID</label>
+    <div class="pharmacy-id-row">
+      <input type="number" id="pharmacy-id-input" placeholder="ID" min="1">
+      <button type="button" id="pharmacy-load-btn" class="btn-load">Načítať</button>
+      <span class="pharmacy-hint" id="pharmacy-hint"></span>
+    </div>
+
+    <label>Typ lekárne</label>
+    <select id="typ">
+      <option>A - shopping premium</option>
+      <option>B - shopping</option>
+      <option>C - street +</option>
+      <option>D - street</option>
+      <option>E - poliklinika</option>
+    </select>
+
+    <div class="form-row form-row-3">
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text" id="bloky-tooltip">Bloky za rok (v tisícoch)</span>
+        <label>Bloky (tis.)</label>
+        <input id="bloky" type="number" value="60" step="1">
+      </div>
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text" id="trzby-tooltip">Tržby za rok (v miliónoch €)</span>
+        <label>Tržby (mil. €)</label>
+        <input id="trzby" type="number" value="1.2" step="0.1">
+      </div>
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text" id="comparable-tooltip">Podobné lekárne (±10% bloky a tržby)</span>
+        <label>Podobné</label>
+        <input id="comparable-count" type="text" value="-" readonly class="basket-readonly">
+      </div>
+    </div>
+
+    <div class="form-row form-row-3 calculated-row">
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text">Priemerná hodnota nákupu (tržby ÷ bloky)</span>
+        <label>Košík (€)</label>
+        <input id="basket" type="text" value="-" readonly class="basket-readonly">
+      </div>
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text" id="bloky-hour-tooltip">Bloky za hodinu pri odporúčanom FTE</span>
+        <label>Bloky/hod</label>
+        <input id="bloky-hour" type="text" value="-" readonly class="basket-readonly">
+      </div>
+      <div class="tooltip-wrapper">
+        <span class="tooltip-text" id="trzby-hour-tooltip">Tržby za hodinu pri odporúčanom FTE</span>
+        <label>Tržby/hod</label>
+        <input id="trzby-hour" type="text" value="-" readonly class="basket-readonly">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Podiel RX</label>
+      <div class="slider-container">
+        <input id="rx" type="range" min="20" max="90" value="50">
+        <input id="rx-input" class="slider-value" type="number" min="20" max="90" value="50">
+        <span class="slider-unit">%</span>
+      </div>
+    </div>
+
+    <div class="form-group productivity-group">
+      <label>
+        Produktivita
+        <span class="prod-info-icon" title="Nadpriemerná produktivita = odmena nižším FTE.">?</span>
+      </label>
+      <div class="productivity-toggle">
+        <span class="toggle-label" id="toggle-label-avg">Priemerná</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="prod-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label toggle-label-high" id="toggle-label-high">Nadpriemerná</span>
+        <span class="toggle-effect" id="toggle-effect">0 FTE</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="calc">Vypočítať</button>
+
+  <!-- RESULT -->
+  <div id="result" style="display:none;">
+    <div class="result-divider"></div>
+    
+    <div class="result-main">
+      <div class="val-row">
+        <div class="val" id="fte-total">-</div>
+        <div class="val-vs" id="val-vs" style="display:none;">
+          <span class="val-vs-text">vs</span>
+          <span class="val" id="fte-actual">-</span>
+        </div>
+      </div>
+      <div class="label" id="fte-label">Odporúčané FTE</div>
+      <div class="range" id="fte-range"></div>
+    </div>
+
+    <!-- Distribution comparison -->
+    <div class="distribution-box" id="distribution-box" style="display:none;">
+      <div class="dist-header">
+        <span class="dist-label">Podobné lekárne (<span id="dist-count">0</span>)</span>
+      </div>
+      <div class="dist-bar-container" id="dist-bar-container">
+        <div class="dist-bar-bg"></div>
+        <div class="dist-bar-range" id="dist-range"></div>
+        <div id="dist-actuals"></div>
+        <div class="dist-marker" id="dist-marker"></div>
+      </div>
+      <div class="dist-labels">
+        <span id="dist-min">-</span>
+        <span id="dist-max">-</span>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-item">
+        <div class="breakdown-val" id="fte-zf">-</div>
+        <div class="breakdown-lbl">Zodp. farm.</div>
+      </div>
+      <div class="breakdown-item">
+        <div class="breakdown-val" id="fte-f">-</div>
+        <div class="breakdown-lbl">Farmaceut</div>
+      </div>
+      <div class="breakdown-item">
+        <div class="breakdown-val" id="fte-l">-</div>
+        <div class="breakdown-lbl">Laborant</div>
+      </div>
+    </div>
+
+    <div class="trust-box" id="trust-box">
+      <div class="trust-title">Overené proti podobným lekárňam</div>
+      <div class="trust-content">Nájdené prevádzky: <span id="trust-count"></span></div>
+      <div class="trust-content">ID: <span id="trust-ids"></span><span id="trust-expand" class="trust-link" style="display:none;" onclick="expandIds()"> zobraziť všetky</span></div>
+      <div id="trust-all-ids" style="display:none;margin-top:8px;font-size:0.8rem;color:#6b7280;word-break:break-word;"></div>
+    </div>
+  </div>
+  </div>
+  <!-- END CALCULATOR TAB -->
+
+  <!-- NETWORK TAB -->
+  <div id="tab-network" class="tab-content">
+    <div id="network-loading" class="loading-spinner">Načítavam dáta...</div>
+
+    <div id="network-content" style="display:none;">
+      <!-- Summary Stats -->
+      <div class="summary-bar">
+        <div class="summary-stat balanced">
+          <div class="value" id="net-pharmacies">-</div>
+          <div class="label">Lekární</div>
+        </div>
+        <div class="summary-stat">
+          <div class="value" id="net-fte">-</div>
+          <div class="label">FTE Celkom</div>
+        </div>
+        <div class="summary-stat">
+          <div class="value" id="net-status">-</div>
+          <div class="label">Stav</div>
+        </div>
+      </div>
+
+      <!-- Segment Table -->
+      <div class="card">
+        <div class="card-title">FTE podľa segmentu</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">
+          Skutočné FTE (2020-21) vs. optimálne FTE vypočítané modelom
+          <br>1 FTE = 176 hodín/mesiac
+        </div>
+        <table class="segment-table">
+          <thead>
+            <tr>
+              <th>Segment</th>
+              <th>Počet</th>
+              <th>Skutočné</th>
+              <th>Optimálne</th>
+              <th>Rozdiel</th>
+            </tr>
+          </thead>
+          <tbody id="segment-tbody">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Outliers -->
+      <div class="card">
+        <div class="card-title">Vyžadujú pozornosť</div>
+
+        <!-- Understaffed -->
+        <div class="outlier-section">
+          <div class="outlier-header" onclick="toggleOutliers('understaffed')">
+            <h4>
+              <span style="color:#dc2626;">▲</span> Poddimenzované
+              <span class="outlier-count" id="understaffed-count">0</span>
+            </h4>
+            <span class="outlier-arrow" id="understaffed-arrow">▼</span>
+          </div>
+          <div class="outlier-list" id="understaffed-list"></div>
+        </div>
+
+        <!-- Overstaffed -->
+        <div class="outlier-section">
+          <div class="outlier-header" onclick="toggleOutliers('overstaffed')">
+            <h4>
+              <span style="color:#2563eb;">▼</span> Predimenzované
+              <span class="outlier-count" id="overstaffed-count">0</span>
+            </h4>
+            <span class="outlier-arrow" id="overstaffed-arrow">▼</span>
+          </div>
+          <div class="outlier-list" id="overstaffed-list"></div>
+        </div>
+      </div>
+
+      <!-- Model Info -->
+      <div class="card" style="background:var(--bg-subtle);border:1px dashed var(--border-medium);">
+        <div class="card-title">O modeli</div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px;">
+          <strong>Skutočné</strong> = reálne FTE (2020-2021) &nbsp;|&nbsp; <strong>Optimálne</strong> = FTE vypočítané modelom
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.85rem;">
+          <div>
+            <div style="color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;margin-bottom:2px;">Typ modelu</div>
+            <div style="font-weight:600;">Ridge Regression</div>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;margin-bottom:2px;">Tréningové dáta</div>
+            <div style="font-weight:600;">Sep 2020 – Aug 2021</div>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;margin-bottom:2px;">Presnosť (R²)</div>
+            <div style="font-weight:600;">87.3%</div>
+          </div>
+          <div>
+            <div style="color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;margin-bottom:2px;">Priem. chyba</div>
+            <div style="font-weight:600;">±0.52 FTE</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-light);font-size:0.8rem;color:var(--text-muted);">
+          Model vypočíta optimálne FTE na základe blokov, tržieb, typu prevádzky a podielu RX.
+          Kladný rozdiel = potrebuje viac personálu, záporný = má prebytok.
+          <br><br>
+          <strong>1 FTE = 176 hodín/mesiac</strong> (2 112 hodín/rok)
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- END NETWORK TAB -->
+
+  <!-- ANALYZA TAB -->
+  <div id="tab-analyza" class="tab-content">
+    <div id="analyza-empty" class="card" style="text-align:center;padding:40px;">
+      <div style="font-size:2rem;margin-bottom:12px;opacity:0.5;">📊</div>
+      <div style="color:var(--text-muted);">Najprv vypočítajte FTE v záložke Kalkulačka</div>
+    </div>
+
+    <div id="analyza-content" style="display:none;">
+      <!-- Segment Position Charts -->
+      <div class="card">
+        <div class="card-title">Pozícia v segmente</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+          Kde sa nachádza vaša lekáreň v rámci segmentu <strong id="segment-name">-</strong>
+        </p>
+
+        <div class="position-charts">
+          <!-- Bloky position -->
+          <div class="position-row">
+            <div class="position-label">Bloky</div>
+            <div class="position-min" id="pos-bloky-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-bloky"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-bloky-avg" title=""></div>
+              <div class="position-marker you" id="pos-bloky-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-bloky-max">0</div>
+            <div class="position-your-value" id="pos-bloky-value" title="">-</div>
+          </div>
+
+          <!-- Tržby position -->
+          <div class="position-row">
+            <div class="position-label">Tržby</div>
+            <div class="position-min" id="pos-trzby-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-trzby"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-trzby-avg" title=""></div>
+              <div class="position-marker you" id="pos-trzby-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-trzby-max">0</div>
+            <div class="position-your-value" id="pos-trzby-value" title="">-</div>
+          </div>
+
+          <!-- Rx position -->
+          <div class="position-row">
+            <div class="position-label">Rx %</div>
+            <div class="position-min" id="pos-rx-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-rx"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-rx-avg" title=""></div>
+              <div class="position-marker you" id="pos-rx-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-rx-max">0</div>
+            <div class="position-your-value" id="pos-rx-value" title="">-</div>
+          </div>
+
+          <!-- FTE position -->
+          <div class="position-row">
+            <div class="position-label">FTE</div>
+            <div class="position-min" id="pos-fte-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-fte"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-fte-avg" title=""></div>
+              <div class="position-marker you" id="pos-fte-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-fte-max">0</div>
+            <div class="position-your-value" id="pos-fte-value" title="">-</div>
+          </div>
+
+          <!-- Separator -->
+          <div style="height:12px;border-top:1px solid var(--border-light);margin:8px 0;"></div>
+
+          <!-- Košík position -->
+          <div class="position-row">
+            <div class="position-label">Košík</div>
+            <div class="position-min" id="pos-basket-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-basket"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-basket-avg" title=""></div>
+              <div class="position-marker you" id="pos-basket-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-basket-max">0</div>
+            <div class="position-your-value" id="pos-basket-value" title="">-</div>
+          </div>
+
+          <!-- Bloky/hod position -->
+          <div class="position-row">
+            <div class="position-label">Bloky/h</div>
+            <div class="position-min" id="pos-blokyhod-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-blokyhod"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-blokyhod-avg" title=""></div>
+              <div class="position-marker you" id="pos-blokyhod-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-blokyhod-max">0</div>
+            <div class="position-your-value" id="pos-blokyhod-value" title="">-</div>
+          </div>
+
+          <!-- Tržby/hod position -->
+          <div class="position-row">
+            <div class="position-label">Tržby/h</div>
+            <div class="position-min" id="pos-trzbyhod-min">0</div>
+            <div class="position-track">
+              <div class="position-histogram" id="hist-trzbyhod"></div>
+              <div class="position-range"></div>
+              <div class="position-marker avg" id="pos-trzbyhod-avg" title=""></div>
+              <div class="position-marker you" id="pos-trzbyhod-you" title=""></div>
+            </div>
+            <div class="position-max" id="pos-trzbyhod-max">0</div>
+            <div class="position-your-value" id="pos-trzbyhod-value" title="">-</div>
+          </div>
+        </div>
+
+        <div class="position-legend">
+          <span class="legend-item"><span class="legend-dot avg"></span> Priemer</span>
+          <span class="legend-item"><span class="legend-dot you"></span> Vybraná lekáreň</span>
+        </div>
+      </div>
+
+      <!-- Sensitivity Sliders -->
+      <div class="card">
+        <div class="card-title">Simulácia zmien</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+          Posúvajte slider a sledujte vplyv na FTE
+        </p>
+
+        <div class="sensitivity-sliders">
+          <!-- Bloky slider -->
+          <div class="sens-slider-row">
+            <div class="sens-slider-label">Bloky</div>
+            <div class="sens-slider-control">
+              <span class="sens-range-label">-20%</span>
+              <input type="range" id="sens-bloky" class="sens-slider" min="-20" max="20" value="10">
+              <span class="sens-range-label">+20%</span>
+            </div>
+            <div class="sens-slider-value" id="sens-bloky-val">+10%</div>
+            <div class="sens-slider-fte" id="sens-bloky-fte">+0.00 FTE</div>
+          </div>
+
+          <!-- Tržby slider -->
+          <div class="sens-slider-row">
+            <div class="sens-slider-label">Tržby</div>
+            <div class="sens-slider-control">
+              <span class="sens-range-label">-20%</span>
+              <input type="range" id="sens-trzby" class="sens-slider" min="-20" max="20" value="10">
+              <span class="sens-range-label">+20%</span>
+            </div>
+            <div class="sens-slider-value" id="sens-trzby-val">+10%</div>
+            <div class="sens-slider-fte" id="sens-trzby-fte">+0.00 FTE</div>
+          </div>
+
+          <!-- Rx slider -->
+          <div class="sens-slider-row">
+            <div class="sens-slider-label">Rx podiel</div>
+            <div class="sens-slider-control">
+              <span class="sens-range-label">-20pp</span>
+              <input type="range" id="sens-rx" class="sens-slider" min="-20" max="20" value="10">
+              <span class="sens-range-label">+20pp</span>
+            </div>
+            <div class="sens-slider-value" id="sens-rx-val">+10pp</div>
+            <div class="sens-slider-fte" id="sens-rx-fte">+0.00 FTE</div>
+          </div>
+
+          <!-- Productivity slider (asymmetric) -->
+          <div class="sens-slider-row sens-slider-productivity">
+            <div class="sens-slider-label">
+              Produktivita
+              <span class="sens-info-icon" title="Relatívna produktivita vs. segment. Efektívne lekárne (kladné hodnoty) sú odmenené nižším FTE. Neefektívne lekárne (záporné hodnoty) nedostávajú bonus - motivácia zlepšiť sa.">?</span>
+            </div>
+            <div class="sens-slider-control">
+              <span class="sens-range-label">-2</span>
+              <input type="range" id="sens-prod" class="sens-slider sens-slider-asymmetric" min="-20" max="20" value="0" step="1">
+              <span class="sens-range-label">+2</span>
+            </div>
+            <div class="sens-slider-value">
+              <span id="sens-prod-val">0.0</span>
+              <span id="sens-prod-clipped" class="sens-clipped-indicator"></span>
+            </div>
+            <div class="sens-slider-fte" id="sens-prod-fte">0.00 FTE</div>
+          </div>
+        </div>
+
+        <!-- Total impact -->
+        <div class="sens-total">
+          <div class="sens-total-label">Celkový vplyv</div>
+          <div class="sens-total-value" id="sens-total-fte">+0.00 FTE</div>
+          <div class="sens-total-result">
+            <span id="sens-base-fte">0.0</span> → <span id="sens-new-fte">0.0</span> FTE
+          </div>
+        </div>
+      </div>
+
+      <!-- FTE Impact Simulation -->
+      <div class="card" id="fte-impact-card" style="display:none;">
+        <div class="card-title">Dopad zmeny FTE</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+          Ako zmena personálu ovplyvní obsluhu a tržby
+        </p>
+
+        <!-- FTE Slider -->
+        <div class="sens-slider-row">
+          <div class="sens-slider-label">Zmena FTE</div>
+          <div class="sens-slider-control">
+            <span class="sens-range-label">-2</span>
+            <input type="range" id="fte-impact-slider" class="sens-slider" min="-20" max="20" value="0" step="1">
+            <span class="sens-range-label">+2</span>
+          </div>
+          <div class="sens-slider-value" id="fte-impact-val">0 FTE</div>
+        </div>
+
+        <!-- Load Impact -->
+        <div class="impact-card">
+          <div class="impact-title">Záťaž na zamestnanca</div>
+          <div class="impact-row">
+            <span>Aktuálne:</span>
+            <span id="load-current">-</span>
+          </div>
+          <div class="impact-row">
+            <span>Po zmene:</span>
+            <span id="load-new">-</span>
+          </div>
+        </div>
+
+        <!-- Revenue Impact -->
+        <div class="impact-card">
+          <div class="impact-title">Odhadovaný dopad na tržby</div>
+          <div class="impact-row">
+            <span>Stratení zákazníci:</span>
+            <span id="lost-customers">-</span>
+          </div>
+          <div class="impact-row">
+            <span>Dopad na tržby:</span>
+            <span id="revenue-impact-pct">-</span>
+          </div>
+          <div class="impact-row highlight">
+            <span>Ročný dopad:</span>
+            <span id="revenue-impact">-</span>
+          </div>
+        </div>
+
+        <div class="info-note">
+          Pri záťaži nad 13.5 txn/hod zákazníci začínajú odchádzať kvôli dlhšej čakacej dobe
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- END ANALYZA TAB -->
+
+</div>
+
+<!-- AI Chat Assistant -->
+<button class="chat-trigger" id="chat-trigger" title="Opýtať sa AI">?</button>
+
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-header">
+    <h3>FTE Asistent</h3>
+    <button class="chat-close" id="chat-close">&times;</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-message assistant">
+      <div class="bubble">Ahoj! Som váš FTE asistent. Môžem vysvetliť výpočet alebo odpovedať na otázky o personálnom odporúčaní.</div>
+    </div>
+  </div>
+  <div class="chat-suggestions" id="chat-suggestions">
+    <button class="chat-suggestion" data-q="Prečo práve toto FTE?">Prečo toto FTE?</button>
+    <button class="chat-suggestion" data-q="Ako sa porovnávam so sieťou?">Porovnanie</button>
+    <button class="chat-suggestion" data-q="Vysvetli rozdelenie F/L/ZF">Rozdelenie</button>
+  </div>
+  <div class="chat-input-area">
+    <input type="text" class="chat-input" id="chat-input" placeholder="Napíšte otázku...">
+    <button class="chat-send" id="chat-send">&#10148;</button>
+  </div>
+</div>
+
+<script>
+const bloky = document.getElementById("bloky");
+const trzby = document.getElementById("trzby");
+const rxInput = document.getElementById("rx-input");
+const rxSlider = document.getElementById("rx");
+const calcBtn = document.getElementById("calc");
+const typSelect = document.getElementById("typ");
+const pharmacyIdInput = document.getElementById("pharmacy-id-input");
+const pharmacyLoadBtn = document.getElementById("pharmacy-load-btn");
+
+// Productivity toggle
+let selectedProductivityZ = 0;  // Default: average
+const prodToggle = document.getElementById('prod-toggle');
+const toggleEffect = document.getElementById('toggle-effect');
+
+prodToggle.addEventListener('change', () => {
+  if (prodToggle.checked) {
+    selectedProductivityZ = 1;  // Above average
+    toggleEffect.textContent = '-0.4 FTE';
+    toggleEffect.classList.add('active');
+  } else {
+    selectedProductivityZ = 0;  // Average
+    toggleEffect.textContent = '0 FTE';
+    toggleEffect.classList.remove('active');
+  }
+});
+
+let allIds = [];
+let selectedPharmacyId = null;
+
+// Type-specific defaults (optimized for densest peer cluster)
+const TYPE_DEFAULTS = {
+  'A - shopping premium': {bloky: 93, trzby: 1.3, rx: 26},
+  'B - shopping':         {bloky: 101, trzby: 1.7, rx: 49},
+  'C - street +':         {bloky: 30, trzby: 0.6, rx: 67},
+  'D - street':           {bloky: 28, trzby: 0.6, rx: 62},
+  'E - poliklinika':      {bloky: 38, trzby: 1.0, rx: 78},
+};
+
+// ============================================
+// PHARMACY SELECTOR
+// ============================================
+async function loadPharmacyById(pharmacyId) {
+  const hint = document.getElementById('pharmacy-hint');
+  hint.classList.remove('loaded', 'error');
+  hint.textContent = 'Načítavam...';
+
+  try {
+    const response = await fetch(`/api/pharmacy/${pharmacyId}`);
+    if (!response.ok) {
+      throw new Error('Pharmacy not found');
+    }
+    const data = await response.json();
+
+    // Auto-fill form fields (display rounded values)
+    typSelect.value = data.typ;
+    bloky.value = Math.round(data.bloky / 1000); // Convert to thousands
+    trzby.value = (data.trzby / 1000000).toFixed(1); // Convert to millions
+    rxInput.value = Math.round(data.podiel_rx * 100);
+    rxSlider.value = Math.round(data.podiel_rx * 100);
+    updateSliderFill();
+    updateBasket();
+
+    // Store pharmacy data including pre-calculated prediction (same as network)
+    selectedPharmacyId = pharmacyId;
+    window.selectedPharmacyActualFte = data.actual_fte;
+    window.selectedPharmacyData = {
+      bloky: data.bloky,
+      trzby: data.trzby,
+      podiel_rx: data.podiel_rx,
+      predicted_fte: data.predicted_fte,
+      predicted_fte_F: data.predicted_fte_F,
+      predicted_fte_L: data.predicted_fte_L,
+      predicted_fte_ZF: data.predicted_fte_ZF,
+      actual_fte: data.actual_fte,
+      fte_diff: data.fte_diff
+    };
+    window.selectedPharmacyExact = {
+      bloky: data.bloky,
+      trzby: data.trzby,
+      podiel_rx: data.podiel_rx
+    };
+
+    // Update hint with success
+    hint.textContent = `${data.mesto}`;
+    hint.classList.add('loaded');
+
+    // Auto-calculate
+    calcBtn.click();
+
+  } catch (error) {
+    console.error('Error loading pharmacy:', error);
+    hint.textContent = `ID ${pharmacyId} nenájdené`;
+    hint.classList.add('error');
+    selectedPharmacyId = null;
+    window.selectedPharmacyActualFte = null;
+    window.selectedPharmacyData = null;
+  }
+}
+
+pharmacyLoadBtn.onclick = () => {
+  const id = parseInt(pharmacyIdInput.value);
+  if (id && id > 0) {
+    loadPharmacyById(id);
+  }
+};
+
+// Allow Enter key to trigger load
+pharmacyIdInput.onkeypress = (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    pharmacyLoadBtn.click();
+  }
+};
+
+// Update actual FTE comparison in calculator tab
+function updateActualFteCompare(recommendedFte) {
+  const vsEl = document.getElementById('val-vs');
+  const labelEl = document.getElementById('fte-label');
+  const actualFte = window.selectedPharmacyActualFte;
+
+  if (!actualFte) {
+    vsEl.style.display = 'none';
+    labelEl.textContent = 'Odporúčané FTE';
+    return;
+  }
+
+  // Show actual FTE inline with recommended
+  vsEl.style.display = 'flex';
+  const actualParts = actualFte.toFixed(1).split('.');
+  document.getElementById('fte-actual').innerHTML = actualParts[0] + '<span class="decimal">.' + actualParts[1] + '</span>';
+  labelEl.innerHTML = 'Odporúčané vs <span style="color:rgba(0,0,0,0.5)">skutočné</span> FTE';
+}
+
+// Mark result as stale when inputs change (but keep visible)
+function markResultStale() {
+  const resultDiv = document.getElementById("result");
+  if (resultDiv.style.display !== "none") {
+    resultDiv.style.opacity = "0.6";
+  }
+}
+
+// Reset result opacity when recalculated
+function markResultFresh() {
+  document.getElementById("result").style.opacity = "1";
+}
+
+// Update basket value
+function updateBasket() {
+  const b = parseFloat(bloky.value) || 0;
+  const t = parseFloat(trzby.value) || 0;
+  const basket = b > 0 ? (t * 1000000) / (b * 1000) : 0;
+  document.getElementById("basket").value = basket.toFixed(1);
+}
+
+// Update defaults when store type changes
+function updateDefaults() {
+  const defaults = TYPE_DEFAULTS[typSelect.value];
+  if (defaults) {
+    bloky.value = defaults.bloky;
+    trzby.value = defaults.trzby;
+    rxInput.value = defaults.rx;
+    rxSlider.value = defaults.rx;
+    updateSliderFill();
+    updateBasket();
+  }
+  markResultStale();
+}
+
+// Listen for store type changes (also clear pharmacy data)
+typSelect.onchange = () => { window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; updateDefaults(); };
+
+// Mark result stale and update basket when inputs change
+// Also clear pharmacy data so manual input uses type-based factors
+bloky.oninput = () => { markResultStale(); updateBasket(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; };
+trzby.oninput = () => { markResultStale(); updateBasket(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; };
+rxInput.oninput = () => { window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; };
+
+// Update slider fill
+function updateSliderFill() {
+  const min = rxSlider.min;
+  const max = rxSlider.max;
+  const val = rxSlider.value;
+  const percentage = ((val - min) / (max - min)) * 100;
+  rxSlider.style.setProperty('--slider-progress', percentage + '%');
+}
+
+// Initialize with type-specific defaults
+updateDefaults();
+updateSliderFill();
+updateBasket();
+
+// Slider synchronization
+rxSlider.oninput = () => {
+  rxInput.value = rxSlider.value;
+  updateSliderFill();
+  markResultStale();
+};
+
+rxInput.oninput = () => {
+  const val = Math.max(20, Math.min(90, rxInput.value));
+  rxSlider.value = val;
+  updateSliderFill();
+  markResultStale();
+};
+
+function expandIds() {
+  document.getElementById("trust-ids").textContent = allIds.join(', ');
+  document.getElementById("trust-expand").style.display = "none";
+}
+
+calcBtn.onclick = async () => {
+  // Add loading state
+  calcBtn.classList.add('loading');
+  calcBtn.disabled = true;
+
+  // Use exact values if pharmacy loaded, otherwise use form values
+  const exact = window.selectedPharmacyExact;
+  const pharmacyData = window.selectedPharmacyData;  // Pre-calculated FTE from pharmacy API
+  const data = {
+    typ: document.getElementById("typ").value,
+    bloky: exact ? exact.bloky : +bloky.value * 1000,
+    trzby: exact ? exact.trzby : +trzby.value * 1000000,
+    podiel_rx: exact ? exact.podiel_rx : +rxInput.value / 100,
+    productivity_z: selectedProductivityZ,  // From productivity buttons
+    variability_z: 0,
+    pharmacy_id: selectedPharmacyId
+  };
+
+  try {
+    const r = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json());
+
+    // Show result and mark as fresh
+    document.getElementById("result").style.display = "block";
+    markResultFresh();
+
+    // Use pre-calculated FTE if pharmacy loaded (consistent with network), otherwise use prediction
+    const fteTotal = pharmacyData ? pharmacyData.predicted_fte : r.fte.total;
+    const fteF = pharmacyData ? pharmacyData.predicted_fte_F : r.breakdown.F;
+    const fteL = pharmacyData ? pharmacyData.predicted_fte_L : r.breakdown.L;
+    const fteZF = pharmacyData ? pharmacyData.predicted_fte_ZF : r.breakdown.ZF;
+
+    const fteParts = fteTotal.toFixed(1).split('.');
+    document.getElementById("fte-total").innerHTML = fteParts[0] + '<span class="decimal">.' + fteParts[1] + '</span>';
+
+    // Show range for all predictions
+    document.getElementById("fte-range").textContent = `Rozsah: ${r.fte.min.toFixed(1)} – ${r.fte.max.toFixed(1)} FTE`;
+
+    // Breakdown
+    document.getElementById("fte-f").textContent = fteF.toFixed(1);
+    document.getElementById("fte-l").textContent = fteL.toFixed(1);
+    document.getElementById("fte-zf").textContent = fteZF.toFixed(1);
+
+    // Comparable count (show as "X / Y" where Y is total segment)
+    if (r.comparable && r.benchmark) {
+      document.getElementById("comparable-count").value =
+        `${r.comparable.count} / ${r.benchmark.count}`;
+    }
+    if (r.segment && r.benchmark) {
+      document.getElementById("bloky-tooltip").textContent =
+        `Segment (${r.benchmark.count}): ${r.segment.bloky_min} – ${r.segment.bloky_max} tis.`;
+      document.getElementById("trzby-tooltip").textContent =
+        `Segment (${r.benchmark.count}): ${r.segment.trzby_min} – ${r.segment.trzby_max} mil. €`;
+    }
+
+    // Hourly metrics in parameters
+    if (r.hourly) {
+      // Bloky/hod
+      document.getElementById("bloky-hour").value = r.hourly.bloky_per_hour;
+      document.getElementById("bloky-hour-tooltip").textContent =
+        `Segment: ${r.hourly.segment_bloky_hour_min} – ${r.hourly.segment_bloky_hour_max} bloky/hod`;
+
+      // Tržby/hod
+      document.getElementById("trzby-hour").value = r.hourly.trzby_per_hour + " €";
+      document.getElementById("trzby-hour-tooltip").textContent =
+        `Segment: ${r.hourly.segment_trzby_hour_min} – ${r.hourly.segment_trzby_hour_max} €/hod`;
+    } else {
+      document.getElementById("bloky-hour").value = "-";
+      document.getElementById("trzby-hour").value = "-";
+    }
+
+    // Trust box
+    if (r.comparable.count > 0) {
+      document.getElementById("trust-count").textContent = r.comparable.count;
+      allIds = r.comparable.ids;
+      if (allIds.length > 5) {
+        document.getElementById("trust-ids").textContent = allIds.slice(0, 5).join(', ') + ', ...';
+        document.getElementById("trust-expand").style.display = "inline";
+      } else {
+        document.getElementById("trust-ids").textContent = allIds.join(', ');
+        document.getElementById("trust-expand").style.display = "none";
+      }
+      document.getElementById("trust-box").style.display = "block";
+    } else {
+      document.getElementById("trust-box").style.display = "none";
+    }
+
+    // Distribution visualization
+    if (r.comparable.count > 0 && r.comparable.min_fte && r.comparable.max_fte) {
+      const distBox = document.getElementById("distribution-box");
+      const minFte = r.comparable.min_fte;
+      const maxFte = r.comparable.max_fte;
+      const recFte = r.fte.total;
+
+      // Update labels
+      document.getElementById("dist-count").textContent = r.comparable.count;
+      document.getElementById("dist-min").textContent = minFte.toFixed(1) + " FTE";
+      document.getElementById("dist-max").textContent = maxFte.toFixed(1) + " FTE";
+
+
+      // Calculate marker position (0-100%)
+      const range = maxFte - minFte;
+      let markerPos;
+      if (range > 0) {
+        markerPos = ((recFte - minFte) / range) * 100;
+        markerPos = Math.max(0, Math.min(100, markerPos)); // Clamp to 0-100%
+      } else {
+        markerPos = 50; // If all same, center it
+      }
+
+      // Set range bar to full width (min to max)
+      document.getElementById("dist-range").style.left = "0%";
+      document.getElementById("dist-range").style.width = "100%";
+
+      // Render actual pharmacy markers (empty circles)
+      const actualsContainer = document.getElementById("dist-actuals");
+      actualsContainer.innerHTML = ''; // Clear previous
+      if (r.comparable.fte_values && r.comparable.fte_values.length > 0) {
+        r.comparable.fte_values.forEach(fte => {
+          let pos = range > 0 ? ((fte - minFte) / range) * 100 : 50;
+          pos = Math.max(0, Math.min(100, pos));
+          const marker = document.createElement('div');
+          marker.className = 'dist-marker-actual';
+          marker.style.left = pos + '%';
+          actualsContainer.appendChild(marker);
+        });
+      }
+
+      // Set recommendation marker position (filled circle) with tooltip
+      const recMarker = document.getElementById("dist-marker");
+      recMarker.style.left = markerPos + "%";
+      recMarker.setAttribute("data-fte", recFte.toFixed(1) + " FTE");
+
+      distBox.style.display = "block";
+    } else {
+      document.getElementById("distribution-box").style.display = "none";
+    }
+
+    // Store result for AI chat (pass displayed fteTotal for consistency)
+    storeCalculationResult(r, data, fteTotal);
+
+    // Update actual FTE comparison (if pharmacy loaded)
+    updateActualFteCompare(fteTotal);
+
+    // Render sensitivity analysis
+    if (r.sensitivity) {
+      renderSensitivity(r.sensitivity);
+    }
+
+    // Initialize FTE impact simulation (inverse - show revenue impact of FTE changes)
+    const currentFteForImpact = pharmacyData ? pharmacyData.actual_fte : fteTotal;
+    initFteImpactSlider(data.bloky, data.trzby, currentFteForImpact, data.rx_pct / 100);
+
+    // Render segment position charts
+    if (r.segment) {
+      renderPositionCharts(r.segment, r.hourly, data, data.typ);
+    }
+
+    // Render FTE position in segment (show actual FTE when pharmacy loaded, recommended otherwise)
+    if (r.fte && r.benchmark) {
+      const actualFte = pharmacyData ? pharmacyData.actual_fte : null;
+      renderFteComparison(actualFte || fteTotal, r.benchmark, r.comparable, !!actualFte);
+    }
+
+    // Scroll to result smoothly
+    document.getElementById("result").scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    // Remove loading state
+    calcBtn.classList.remove('loading');
+    calcBtn.disabled = false;
+  }
+};
+
+// ============================================
+// TAB NAVIGATION
+// ============================================
+let networkDataLoaded = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    // Update active tab button
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Show corresponding content
+    const tabId = btn.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+
+    // Load network data on first view
+    if (tabId === 'network' && !networkDataLoaded) {
+      loadNetworkData();
+    }
+  };
+});
+
+// ============================================
+// NETWORK DASHBOARD
+// ============================================
+async function loadNetworkData() {
+  try {
+    const response = await fetch('/api/network');
+    const data = await response.json();
+
+    // Summary stats
+    document.getElementById('net-pharmacies').textContent = data.summary.total_pharmacies;
+    document.getElementById('net-fte').textContent = data.summary.total_actual_fte.toFixed(0);
+
+    const statusText = data.summary.status === 'balanced' ? '✓ OK' :
+                       data.summary.status === 'understaffed' ? '▲ Poddim.' : '▼ Predim.';
+    document.getElementById('net-status').textContent = statusText;
+
+    // Segment table
+    const tbody = document.getElementById('segment-tbody');
+    tbody.innerHTML = '';
+
+    data.segments.forEach(seg => {
+      const shortType = seg.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
+      const diffClass = Math.abs(seg.diff) < 3 ? 'ok' : 'warning';
+      const diffSign = seg.diff >= 0 ? '+' : '';
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="segment-name">${shortType}</td>
+          <td>${seg.count}</td>
+          <td>${seg.actual_fte.toFixed(1)}</td>
+          <td>${seg.predicted_fte.toFixed(1)}</td>
+          <td><span class="status-badge ${diffClass}">${diffSign}${seg.diff.toFixed(1)}</span></td>
+        </tr>
+      `;
+    });
+
+    // Total row
+    tbody.innerHTML += `
+      <tr class="total-row">
+        <td class="segment-name">Celkom</td>
+        <td>${data.summary.total_pharmacies}</td>
+        <td>${data.summary.total_actual_fte.toFixed(1)}</td>
+        <td>${data.summary.total_predicted_fte.toFixed(1)}</td>
+        <td><span class="status-badge ok">${data.summary.diff >= 0 ? '+' : ''}${data.summary.diff.toFixed(1)}</span></td>
+      </tr>
+    `;
+
+    // Outliers
+    document.getElementById('understaffed-count').textContent = data.outliers.understaffed_count;
+    document.getElementById('overstaffed-count').textContent = data.outliers.overstaffed_count;
+
+    renderOutlierList('understaffed', data.outliers.understaffed);
+    renderOutlierList('overstaffed', data.outliers.overstaffed);
+
+    // Show content, hide loading
+    document.getElementById('network-loading').style.display = 'none';
+    document.getElementById('network-content').style.display = 'block';
+
+    networkDataLoaded = true;
+
+  } catch (error) {
+    console.error('Error loading network data:', error);
+    document.getElementById('network-loading').innerHTML = 'Chyba pri načítaní dát';
+  }
+}
+
+function renderOutlierList(type, outliers) {
+  const list = document.getElementById(type + '-list');
+  list.innerHTML = '';
+
+  if (outliers.length === 0) {
+    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">Žiadne lekárne</div>';
+    return;
+  }
+
+  outliers.forEach(p => {
+    const diffClass = p.diff > 0 ? 'positive' : 'negative';
+    const diffSign = p.diff > 0 ? '+' : '';
+    const shortType = p.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
+    const pData = encodeURIComponent(JSON.stringify(p));
+
+    list.innerHTML += `
+      <div class="outlier-item" onclick="analyzeOutlier(decodeURIComponent('${pData}'))">
+        <div class="outlier-chat-icon">?</div>
+        <div class="outlier-info">
+          <div class="outlier-name">${p.mesto} <span style="color:var(--text-muted);font-weight:400;">#${p.id}</span></div>
+          <div class="outlier-type">${shortType} | ${(p.bloky/1000).toFixed(0)}k bloky | ${(p.trzby/1000000).toFixed(1)}M € | ${p.podiel_rx}% Rx</div>
+        </div>
+        <div class="outlier-diff ${diffClass}">${diffSign}${p.diff.toFixed(1)}</div>
+      </div>
+    `;
+  });
+}
+
+function toggleOutliers(type) {
+  const header = document.querySelector(`#${type}-list`).previousElementSibling;
+  const list = document.getElementById(type + '-list');
+  const arrow = document.getElementById(type + '-arrow');
+
+  header.classList.toggle('expanded');
+  list.classList.toggle('expanded');
+  arrow.textContent = list.classList.contains('expanded') ? '▲' : '▼';
+}
+
+// ============================================
+// AI CHAT ASSISTANT
+// ============================================
+let lastCalculationResult = null;
+let chatOpen = false;
+
+const chatTrigger = document.getElementById('chat-trigger');
+const chatPanel = document.getElementById('chat-panel');
+const chatClose = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const chatSuggestions = document.getElementById('chat-suggestions');
+
+// Store segment histograms for FTE chart
+let segmentHistograms = null;
+
+// FTE Comparison
+function renderFteComparison(fteValue, benchmark, comparable, isActual) {
+  // Render FTE position in segment (as 4th row in position charts)
+  // Shows actual FTE when pharmacy loaded, recommended otherwise
+  const fteHist = segmentHistograms ? segmentHistograms.fte : null;
+  renderPositionChart('fte', benchmark.min, benchmark.max, benchmark.avg, fteValue, '', 1, fteHist);
+}
+
+// Segment position chart
+function renderPositionCharts(segment, hourly, inputs, typ) {
+  // Update segment name
+  document.getElementById('segment-name').textContent = typ;
+
+  // Convert inputs to display units
+  const yourBloky = inputs.bloky / 1000;  // to thousands
+  const yourTrzby = inputs.trzby / 1000000;  // to millions
+  const yourRx = inputs.podiel_rx * 100;  // to percentage
+
+  // Get histograms (if available) and store for FTE chart
+  const hist = segment.histograms || {};
+  segmentHistograms = hist;
+
+  // Render each chart with histogram
+  renderPositionChart('bloky', segment.bloky_min, segment.bloky_max, segment.bloky_avg, yourBloky, 'k', 0, hist.bloky);
+  renderPositionChart('trzby', segment.trzby_min, segment.trzby_max, segment.trzby_avg, yourTrzby, 'M', 1, hist.trzby);
+  renderPositionChart('rx', segment.rx_min, segment.rx_max, segment.rx_avg, yourRx, '%', 0, hist.rx);
+
+  // Render additional metrics if hourly data available
+  if (hourly) {
+    renderPositionChart('basket', hourly.segment_basket_min, hourly.segment_basket_max, hourly.segment_basket_avg, hourly.basket_value, '€', 1, hist.basket);
+    renderPositionChart('blokyhod', hourly.segment_bloky_hour_min, hourly.segment_bloky_hour_max, hourly.segment_bloky_hour_avg, hourly.bloky_per_hour, '', 1, hist.blokyhod);
+    renderPositionChart('trzbyhod', hourly.segment_trzby_hour_min, hourly.segment_trzby_hour_max, hourly.segment_trzby_hour_avg, hourly.trzby_per_hour, '€', 0, hist.trzbyhod);
+  }
+}
+
+function renderPositionChart(name, min, max, avg, you, unit, decimals, histogram) {
+  const range = max - min;
+
+  // Calculate positions (0-100%)
+  const avgPos = range > 0 ? ((avg - min) / range) * 100 : 50;
+  const youPos = range > 0 ? Math.max(0, Math.min(100, ((you - min) / range) * 100)) : 50;
+
+  // Position markers
+  const avgMarker = document.getElementById(`pos-${name}-avg`);
+  const youMarker = document.getElementById(`pos-${name}-you`);
+  avgMarker.style.left = avgPos + '%';
+  youMarker.style.left = youPos + '%';
+
+  // Update min/max labels
+  document.getElementById(`pos-${name}-min`).textContent = min + unit;
+  document.getElementById(`pos-${name}-max`).textContent = max + unit;
+
+  // Update your value display
+  const valueEl = document.getElementById(`pos-${name}-value`);
+  valueEl.textContent = you.toFixed(decimals) + unit;
+
+  // Calculate difference from average
+  const diff = you - avg;
+  const diffPct = avg > 0 ? (diff / avg) * 100 : 0;
+  const isAbove = diff >= 0;
+
+  // Set tooltips
+  const avgTooltip = `Priemer: ${avg.toFixed(decimals)}${unit}`;
+  const diffText = Math.abs(diffPct) < 1 ? '≈ priemer' : (isAbove ? '+' : '') + diffPct.toFixed(0) + '% vs priemer';
+  const youTooltip = `${you.toFixed(decimals)}${unit} (${diffText})`;
+
+  avgMarker.title = avgTooltip;
+  youMarker.title = youTooltip;
+  valueEl.title = youTooltip;
+
+  // Render histogram if available
+  if (histogram && histogram.length > 0) {
+    const histEl = document.getElementById(`hist-${name}`);
+    if (histEl) {
+      histEl.innerHTML = histogram.map(h =>
+        `<div class="histogram-bar" style="height:${Math.max(2, h * 20)}px"></div>`
+      ).join('');
+    }
+  }
+}
+
+// Sensitivity analysis with interactive sliders
+let sensitivityCoeffs = null;
+let baseFteTotal = null;
+
+function initSensitivitySliders(sensitivity, baseFte) {
+  // Store coefficients (FTE change per 10% / 10pp)
+  sensitivityCoeffs = {
+    bloky: sensitivity.bloky_10pct / 10,  // FTE per 1%
+    trzby: sensitivity.trzby_10pct / 10,  // FTE per 1%
+    rx: sensitivity.rx_10pp / 10,         // FTE per 1pp
+    prod: -0.39                           // FTE per 1 txn/hr above avg (v5 coefficient, negative = fewer FTE)
+  };
+  baseFteTotal = baseFte;
+
+  // Get slider elements
+  const blokySlider = document.getElementById('sens-bloky');
+  const trzbySlider = document.getElementById('sens-trzby');
+  const rxSlider = document.getElementById('sens-rx');
+  const prodSlider = document.getElementById('sens-prod');
+
+  // Reset sliders to +10% (or 0 for productivity)
+  blokySlider.value = 10;
+  trzbySlider.value = 10;
+  rxSlider.value = 10;
+  prodSlider.value = 0;
+
+  // Add event listeners
+  blokySlider.oninput = updateSensitivityDisplay;
+  trzbySlider.oninput = updateSensitivityDisplay;
+  rxSlider.oninput = updateSensitivityDisplay;
+  prodSlider.oninput = updateSensitivityDisplay;
+
+  // Initial display
+  updateSensitivityDisplay();
+
+  // Show content, hide empty state
+  document.getElementById('analyza-empty').style.display = 'none';
+  document.getElementById('analyza-content').style.display = 'block';
+}
+
+function updateSensitivityDisplay() {
+  const blokyVal = parseInt(document.getElementById('sens-bloky').value);
+  const trzbyVal = parseInt(document.getElementById('sens-trzby').value);
+  const rxVal = parseInt(document.getElementById('sens-rx').value);
+  const prodVal = parseInt(document.getElementById('sens-prod').value) / 10;  // Scale: -20 to +20 -> -2.0 to +2.0
+
+  // Calculate FTE impacts
+  const blokyFte = blokyVal * sensitivityCoeffs.bloky;
+  const trzbyFte = trzbyVal * sensitivityCoeffs.trzby;
+  const rxFte = rxVal * sensitivityCoeffs.rx;
+
+  // ASYMMETRIC productivity: only positive values affect FTE (clipped at 0)
+  const prodValClipped = Math.max(0, prodVal);
+  const prodFte = prodValClipped * sensitivityCoeffs.prod;  // Negative coeff = fewer FTE for higher productivity
+  const isClipped = prodVal < 0;
+
+  const totalFte = blokyFte + trzbyFte + rxFte + prodFte;
+
+  // Update percentage labels
+  document.getElementById('sens-bloky-val').textContent = (blokyVal >= 0 ? '+' : '') + blokyVal + '%';
+  document.getElementById('sens-trzby-val').textContent = (trzbyVal >= 0 ? '+' : '') + trzbyVal + '%';
+  document.getElementById('sens-rx-val').textContent = (rxVal >= 0 ? '+' : '') + rxVal + 'pp';
+
+  // Productivity: show raw value and clipping indicator
+  document.getElementById('sens-prod-val').textContent = (prodVal >= 0 ? '+' : '') + prodVal.toFixed(1);
+  const clippedIndicator = document.getElementById('sens-prod-clipped');
+  if (isClipped) {
+    clippedIndicator.textContent = '→ 0';
+    clippedIndicator.classList.add('active');
+  } else {
+    clippedIndicator.textContent = '';
+    clippedIndicator.classList.remove('active');
+  }
+
+  // Update FTE values
+  updateFteDisplay('sens-bloky-fte', blokyFte);
+  updateFteDisplay('sens-trzby-fte', trzbyFte);
+  updateFteDisplay('sens-rx-fte', rxFte);
+
+  // Productivity FTE display
+  const prodFteEl = document.getElementById('sens-prod-fte');
+  if (isClipped) {
+    prodFteEl.textContent = '0.00 FTE';
+    prodFteEl.className = 'sens-slider-fte zero';
+  } else if (prodFte < 0) {
+    prodFteEl.textContent = prodFte.toFixed(2) + ' FTE';
+    prodFteEl.className = 'sens-slider-fte negative';  // Negative FTE = reward (green would be confusing)
+  } else {
+    prodFteEl.textContent = '+' + prodFte.toFixed(2) + ' FTE';
+    prodFteEl.className = 'sens-slider-fte';
+  }
+
+  // Update total
+  document.getElementById('sens-total-fte').textContent = (totalFte >= 0 ? '+' : '') + totalFte.toFixed(2) + ' FTE';
+  document.getElementById('sens-base-fte').textContent = baseFteTotal.toFixed(1);
+  document.getElementById('sens-new-fte').textContent = (baseFteTotal + totalFte).toFixed(1);
+}
+
+function updateFteDisplay(elementId, value) {
+  const el = document.getElementById(elementId);
+  el.textContent = (value >= 0 ? '+' : '') + value.toFixed(2) + ' FTE';
+  el.classList.toggle('negative', value < 0);
+}
+
+// ============================================
+// FTE IMPACT SIMULATION (Inverse - show revenue impact of FTE changes)
+// ============================================
+const BASELINE_LOAD = 11.7;  // txn/employee/hour (optimal)
+const CRITICAL_LOAD = 13.5;  // txn/employee/hour (customers start leaving)
+const HOURS_PER_FTE_YEAR = 2112;  // 176h × 12 months
+const RX_TIME_FACTOR = 0.41;  // Rx transactions take 41% longer
+
+let fteImpactData = null;
+
+function initFteImpactSlider(blokyVal, trzbyVal, currentFte, rxPct) {
+  fteImpactData = { bloky: blokyVal, trzby: trzbyVal, currentFte, rxPct };
+
+  const slider = document.getElementById('fte-impact-slider');
+  slider.value = 0;
+  slider.oninput = updateFteImpact;
+
+  // Show the card
+  document.getElementById('fte-impact-card').style.display = 'block';
+
+  updateFteImpact();
+}
+
+function updateFteImpact() {
+  if (!fteImpactData) return;
+
+  const deltaFte = parseInt(document.getElementById('fte-impact-slider').value) / 10;
+  const { bloky, trzby, currentFte, rxPct } = fteImpactData;
+
+  // Effective bloky accounts for Rx complexity (Rx takes 41% more time)
+  const effectiveBloky = bloky * (1 + RX_TIME_FACTOR * rxPct);
+
+  // Calculate loads using effective bloky
+  const currentHours = currentFte * HOURS_PER_FTE_YEAR;
+  const newFte = Math.max(0.5, currentFte + deltaFte);
+  const newHours = newFte * HOURS_PER_FTE_YEAR;
+
+  const currentLoad = effectiveBloky / currentHours;
+  const newLoad = effectiveBloky / newHours;
+
+  // Calculate revenue impact using queue theory
+  let lostCustomersPct = 0;
+  let revenueImpact = 0;
+
+  if (newLoad > BASELINE_LOAD) {
+    const overloadPct = (newLoad / BASELINE_LOAD - 1);
+    lostCustomersPct = overloadPct * 0.5;  // 50% conversion drop at overload
+    revenueImpact = -trzby * lostCustomersPct;
+  } else if (currentLoad > BASELINE_LOAD && newLoad <= BASELINE_LOAD) {
+    // Recovering from overload - gaining back customers
+    const currentOverload = (currentLoad / BASELINE_LOAD - 1) * 0.5;
+    revenueImpact = trzby * currentOverload;
+  }
+
+  // Update UI
+  document.getElementById('fte-impact-val').textContent =
+    (deltaFte >= 0 ? '+' : '') + deltaFte.toFixed(1) + ' FTE';
+
+  document.getElementById('load-current').textContent =
+    currentLoad.toFixed(1) + ' txn/hod';
+
+  const loadNewEl = document.getElementById('load-new');
+  const loadChange = ((newLoad / currentLoad - 1) * 100).toFixed(0);
+  const loadClass = newLoad > CRITICAL_LOAD ? 'negative' : newLoad > BASELINE_LOAD ? 'warning' : 'positive';
+  loadNewEl.innerHTML = `${newLoad.toFixed(1)} txn/hod <span class="${loadClass}">${loadChange >= 0 ? '+' : ''}${loadChange}%</span>`;
+
+  document.getElementById('lost-customers').textContent =
+    lostCustomersPct > 0 ? `~${(lostCustomersPct * 100).toFixed(0)}%` : '0%';
+
+  // Revenue impact as percentage
+  const impactPct = (revenueImpact / trzby) * 100;
+  const impactPctEl = document.getElementById('revenue-impact-pct');
+  if (impactPct < 0) {
+    impactPctEl.innerHTML = `<span class="negative">${impactPct.toFixed(1)}%</span>`;
+  } else if (impactPct > 0) {
+    impactPctEl.innerHTML = `<span class="positive">+${impactPct.toFixed(1)}%</span>`;
+  } else {
+    impactPctEl.innerHTML = `<span class="positive">0%</span>`;
+  }
+
+  // Revenue impact as absolute value
+  const impactEl = document.getElementById('revenue-impact');
+  if (revenueImpact < 0) {
+    impactEl.innerHTML = `<span class="negative">${formatCurrencyEur(revenueImpact)}/rok</span>`;
+  } else if (revenueImpact > 0) {
+    impactEl.innerHTML = `<span class="positive">+${formatCurrencyEur(revenueImpact)}/rok</span>`;
+  } else {
+    impactEl.innerHTML = `<span class="positive">0 € (optimálne)</span>`;
+  }
+}
+
+function formatCurrencyEur(amount) {
+  return new Intl.NumberFormat('sk-SK', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+// Backwards compatibility wrapper
+function renderSensitivity(sensitivity) {
+  // Called from calcBtn.onclick - get base FTE from lastCalculationResult
+  if (lastCalculationResult && lastCalculationResult.fte_total) {
+    initSensitivitySliders(sensitivity, lastCalculationResult.fte_total);
+  }
+}
+
+// Store calculation result for chat context
+function storeCalculationResult(result, inputs, displayedFteTotal = null) {
+  lastCalculationResult = {
+    typ: inputs.typ,
+    bloky: inputs.bloky,
+    trzby: inputs.trzby,
+    podiel_rx: inputs.podiel_rx,
+    effective_bloky: result.inputs?.effective_bloky || 0,
+    fte_total: displayedFteTotal || result.fte.total,
+    fte_min: result.fte.min,
+    fte_max: result.fte.max,
+    fte_F: result.breakdown.F,
+    fte_L: result.breakdown.L,
+    fte_ZF: result.breakdown.ZF,
+    comparable_count: result.comparable?.count || 0,
+    comparable_avg: result.comparable?.avg_fte || null,
+    comparable_min: result.comparable?.min_fte || null,
+    comparable_max: result.comparable?.max_fte || null,
+    benchmark_avg: result.benchmark?.avg || null,
+    benchmark_count: result.benchmark?.count || 0,
+    bloky_per_hour: result.hourly?.bloky_per_hour || null,
+    trzby_per_hour: result.hourly?.trzby_per_hour || null,
+    segment_bloky_hour_avg: result.hourly?.segment_bloky_hour_avg || null,
+    segment_bloky_hour_min: result.hourly?.segment_bloky_hour_min || null,
+    segment_bloky_hour_max: result.hourly?.segment_bloky_hour_max || null,
+    segment_rx_avg: result.segment?.rx_avg || null,
+    segment_bloky_avg: result.segment?.bloky_avg || null,
+    segment_trzby_avg: result.segment?.trzby_avg || null
+  };
+  // Show chat trigger when we have calculation result
+  chatTrigger.classList.add('visible');
+}
+
+// Toggle chat panel
+chatTrigger.onclick = () => {
+  chatOpen = !chatOpen;
+  chatPanel.classList.toggle('open', chatOpen);
+  if (chatOpen) {
+    chatInput.focus();
+  }
+};
+
+chatClose.onclick = () => {
+  chatOpen = false;
+  chatPanel.classList.remove('open');
+};
+
+// Send message
+async function sendChatMessage(question) {
+  if (!question.trim() || !lastCalculationResult) return;
+
+  // Add user message
+  addChatMessage(question, 'user');
+  chatInput.value = '';
+  chatSend.disabled = true;
+
+  // Hide suggestions after first question
+  chatSuggestions.style.display = 'none';
+
+  // Show typing indicator
+  const typingId = showTypingIndicator();
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        context: lastCalculationResult
+      })
+    });
+
+    const data = await response.json();
+    removeTypingIndicator(typingId);
+
+    if (data.error) {
+      addChatMessage('Prepáčte, nastala chyba: ' + data.error, 'assistant');
+    } else {
+      addChatMessage(formatAnswer(data.answer), 'assistant');
+    }
+  } catch (error) {
+    removeTypingIndicator(typingId);
+    addChatMessage('Prepáčte, nepodarilo sa spojiť so serverom.', 'assistant');
+  }
+
+  chatSend.disabled = false;
+}
+
+function addChatMessage(text, role) {
+  const msg = document.createElement('div');
+  msg.className = 'chat-message ' + role;
+  msg.innerHTML = '<div class="bubble">' + text + '</div>';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function formatAnswer(text) {
+  // Convert markdown-like formatting to HTML
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
+function showTypingIndicator() {
+  const id = 'typing-' + Date.now();
+  const typing = document.createElement('div');
+  typing.id = id;
+  typing.className = 'chat-message assistant';
+  typing.innerHTML = '<div class="bubble"><div class="chat-typing"><span></span><span></span><span></span></div></div>';
+  chatMessages.appendChild(typing);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// Event listeners
+chatSend.onclick = () => sendChatMessage(chatInput.value);
+chatInput.onkeypress = (e) => {
+  if (e.key === 'Enter') sendChatMessage(chatInput.value);
+};
+
+// Suggestion buttons
+document.querySelectorAll('.chat-suggestion').forEach(btn => {
+  btn.onclick = () => sendChatMessage(btn.dataset.q);
+});
+
+// Analyze outlier from Network tab
+function analyzeOutlier(jsonStr) {
+  const p = JSON.parse(jsonStr);
+  const rxFactor = 0.41;
+  const effectiveBloky = p.bloky * (1 + rxFactor * (p.podiel_rx / 100));
+
+  // Set chat context with outlier data
+  lastCalculationResult = {
+    typ: p.typ,
+    bloky: p.bloky,
+    trzby: p.trzby,
+    podiel_rx: p.podiel_rx / 100,
+    effective_bloky: effectiveBloky,
+    fte_total: p.predicted_fte,
+    fte_actual: p.actual_fte,
+    fte_diff: p.diff,
+    fte_min: null,
+    fte_max: null,
+    fte_F: null,
+    fte_L: null,
+    fte_ZF: null,
+    comparable_count: 0,
+    comparable_avg: null,
+    benchmark_avg: null,
+    benchmark_count: null,
+    bloky_per_hour: null,
+    trzby_per_hour: null,
+    pharmacy_name: p.mesto
+  };
+
+  // Show chat trigger and open panel
+  chatTrigger.classList.add('visible');
+  chatPanel.classList.add('open');
+  chatOpen = true;
+
+  // Reset chat messages
+  chatMessages.innerHTML = `
+    <div class="chat-message assistant">
+      <div class="bubble"><strong>${p.mesto}</strong> (${p.typ})<br><br>Model odporúča ${p.predicted_fte.toFixed(1)} FTE, aktuálne má ${p.actual_fte.toFixed(1)} FTE (${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)}). Opýtajte sa prečo.</div>
+    </div>
+  `;
+
+  // Show suggestions
+  chatSuggestions.style.display = 'flex';
+  chatSuggestions.innerHTML = `
+    <button class="chat-suggestion" onclick="sendChatMessage('Prečo ${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)} FTE?')">Prečo ${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)} FTE?</button>
+    <button class="chat-suggestion" onclick="sendChatMessage('Vysvetli odporúčanie')">Vysvetli</button>
+  `;
+
+  chatInput.focus();
+}
+</script>
+</body>
+</html>

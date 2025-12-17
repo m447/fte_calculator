@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Využitie personálu | Dr.Max</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand-green: #78be20;
+  --brand-green-dark: #6aab1a;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --border-light: #e5e7eb;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --red: #dc2626;
+  --red-light: #fecaca;
+  --orange: #f59e0b;
+  --orange-light: #fde68a;
+  --green: #10b981;
+  --green-light: #d1fae5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  background: var(--bg-page);
+  margin: 0;
+  padding: 20px 16px;
+  color: var(--text-primary);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+}
+
+.brand { color: var(--brand-green); }
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+/* Summary Stats */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--brand-green);
+}
+
+.stat-value.warning { color: var(--orange); }
+.stat-value.danger { color: var(--red); }
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* Heatmap */
+.heatmap-container {
+  overflow-x: auto;
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: 50px repeat(12, 1fr);
+  gap: 4px;
+  font-size: 0.75rem;
+}
+
+.heatmap-header {
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.heatmap-row-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.heatmap-cell {
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  min-height: 52px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  padding: 4px;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+
+.heatmap-cell .loss-value {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.heatmap-cell .staff-info {
+  font-size: 0.65rem;
+  opacity: 0.8;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* Color scale based on lost revenue */
+.heatmap-cell.loss-0 {
+  background: var(--green-light);
+  color: #065f46;
+}
+.heatmap-cell.loss-low {
+  background: #fef3c7;
+  color: #92400e;
+}
+.heatmap-cell.loss-medium {
+  background: #fed7aa;
+  color: #c2410c;
+}
+.heatmap-cell.loss-high {
+  background: #fecaca;
+  color: #b91c1c;
+}
+.heatmap-cell.loss-critical {
+  background: #f87171;
+  color: white;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+/* Daily Summary */
+.daily-summary {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.daily-box {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg-page);
+  border-radius: 8px;
+}
+
+.daily-box .day-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.daily-box .day-loss {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--red);
+  margin-top: 4px;
+}
+
+.daily-box .day-loss.zero {
+  color: var(--green);
+}
+
+/* Recommendation */
+.recommendation {
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.recommendation h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.recommendation ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.recommendation li {
+  margin-bottom: 8px;
+}
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: var(--text-primary);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 1000;
+  display: none;
+  box-shadow: var(--shadow-md);
+  max-width: 220px;
+}
+
+.tooltip .tip-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+.tooltip .tip-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.tooltip .tip-label {
+  opacity: 0.8;
+}
+
+.tooltip .tip-loss {
+  color: #fca5a5;
+  font-weight: 700;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Optimization Section */
+.optimization-section {
+  margin-top: 24px;
+}
+
+.schedule-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.schedule-box {
+  background: var(--bg-page);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.schedule-box.current {
+  border-left: 4px solid var(--red);
+}
+
+.schedule-box.optimized {
+  border-left: 4px solid var(--brand-green);
+}
+
+.schedule-box h4 {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.schedule-table {
+  width: 100%;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+}
+
+.schedule-table th, .schedule-table td {
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.schedule-table th {
+  background: var(--border-light);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.schedule-table td {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.schedule-table .understaffed {
+  background: #fecaca;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.schedule-table .improved {
+  background: var(--green-light);
+  color: #065f46;
+  font-weight: 600;
+}
+
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.impact-box {
+  background: var(--bg-page);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.impact-box .label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.impact-box .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.impact-box .value.negative { color: var(--red); }
+.impact-box .value.positive { color: var(--brand-green); }
+
+.changes-list {
+  margin-top: 20px;
+}
+
+.change-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-page);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.change-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.change-content h5 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.change-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .heatmap-cell {
+    min-height: 44px;
+  }
+  .heatmap-cell .loss-value {
+    font-size: 0.85rem;
+  }
+  .daily-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .schedule-compare {
+    grid-template-columns: 1fr;
+  }
+  .impact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span class="brand">Dr.Max</span> Využitie personálu</h1>
+    <p class="subtitle">Kaufland Michalovce | Sep-Okt 2021</p>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="summary-grid">
+    <div class="stat-box">
+      <div class="stat-value">151,600</div>
+      <div class="stat-label">Tržby/mesiac €</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value warning">29</div>
+      <div class="stat-label">Kritické hodiny</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value danger">7,972</div>
+      <div class="stat-label">Stratené tržby/mesiac €</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value danger">5.3%</div>
+      <div class="stat-label">% Neobslúžené</div>
+    </div>
+  </div>
+
+  <!-- Heatmap - Lost Revenue -->
+  <div class="card">
+    <div class="card-title">Stratené tržby podľa hodiny (€/mesiac)</div>
+    <div class="heatmap-container">
+      <div class="heatmap" id="heatmap">
+        <!-- Header row -->
+        <div class="heatmap-header"></div>
+        <div class="heatmap-header">8</div>
+        <div class="heatmap-header">9</div>
+        <div class="heatmap-header">10</div>
+        <div class="heatmap-header">11</div>
+        <div class="heatmap-header">12</div>
+        <div class="heatmap-header">13</div>
+        <div class="heatmap-header">14</div>
+        <div class="heatmap-header">15</div>
+        <div class="heatmap-header">16</div>
+        <div class="heatmap-header">17</div>
+        <div class="heatmap-header">18</div>
+        <div class="heatmap-header">19</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background:#d1fae5"></div>
+        <span>0€ (OK)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:#fef3c7"></div>
+        <span>1-170€</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:#fed7aa"></div>
+        <span>171-300€</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:#fecaca"></div>
+        <span>301-430€</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:#f87171"></div>
+        <span>&gt;430€</span>
+      </div>
+    </div>
+
+    <!-- Daily totals -->
+    <div class="daily-summary" id="daily-summary"></div>
+  </div>
+
+  <!-- Optimization Section -->
+  <div class="optimization-section">
+    <div class="card">
+      <div class="card-title">Aktuálny rozvrh (286h/týždeň)</div>
+      <div class="schedule-box current" style="margin-bottom:0;">
+        <table class="schedule-table">
+          <tr><th>Deň</th><th>8-11</th><th>11-16</th><th>16-19</th><th>Hodiny</th></tr>
+          <tr><td>Po-Pi</td><td>4</td><td>4</td><td class="understaffed">3</td><td>41h × 5</td></tr>
+          <tr><td>So</td><td>3</td><td>3</td><td class="understaffed">2</td><td>30h</td></tr>
+          <tr><td>Ne</td><td class="understaffed">2</td><td class="understaffed">2</td><td class="understaffed">2</td><td>22h</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Employee Analysis -->
+    <div class="card">
+      <div class="card-title">Analýza zamestnancov (1,236h/mesiac)</div>
+      <div style="overflow-x:auto;">
+        <table class="schedule-table" style="min-width:750px;">
+          <tr>
+            <th style="text-align:left;">Meno</th>
+            <th>Pozícia</th>
+            <th>h/mes</th>
+            <th>Zmena</th>
+            <th>Víkend</th>
+            <th style="color:var(--red);">Strata*</th>
+            <th style="color:var(--orange);">Potenciál**</th>
+            <th style="text-align:left;">Odporúčanie</th>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Šantová</td>
+            <td style="background:#dbeafe;color:#1e40af;font-weight:600;">ZF</td>
+            <td>164</td>
+            <td>8h</td>
+            <td class="understaffed">Nikdy</td>
+            <td>2,367€</td>
+            <td class="understaffed" style="font-weight:700;">5,604€</td>
+            <td style="text-align:left;" class="improved">+1 Ne/mesiac</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Čukanová</td>
+            <td style="background:#fef3c7;color:#92400e;">L</td>
+            <td>128</td>
+            <td>8-9h</td>
+            <td>So+Ne (málo)</td>
+            <td>4,846€</td>
+            <td class="understaffed" style="font-weight:700;">3,125€</td>
+            <td style="text-align:left;" class="improved">Posun na 11-19</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Bartošová</td>
+            <td style="background:#e0e7ff;color:#3730a3;">F</td>
+            <td>172</td>
+            <td>12h</td>
+            <td>So+Ne</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;color:#6b7280;">—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Domanič</td>
+            <td style="background:#e0e7ff;color:#3730a3;">F</td>
+            <td>154</td>
+            <td>12h</td>
+            <td>So (Ne málo)</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;" class="improved">+Ne rotácia</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Maščeníková</td>
+            <td style="background:#e0e7ff;color:#3730a3;">F</td>
+            <td>154</td>
+            <td>12h</td>
+            <td>So+Ne</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;color:#6b7280;">—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Tulenková</td>
+            <td style="background:#e0e7ff;color:#3730a3;">F</td>
+            <td>145</td>
+            <td>12h</td>
+            <td>So+Ne</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;color:#6b7280;">—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Dančiková</td>
+            <td style="background:#fef3c7;color:#92400e;">L</td>
+            <td>163</td>
+            <td>12h</td>
+            <td>So+Ne</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;color:#6b7280;">—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;">Lipovská</td>
+            <td style="background:#fef3c7;color:#92400e;">L</td>
+            <td>157</td>
+            <td>12h</td>
+            <td>So+Ne</td>
+            <td>7,971€</td>
+            <td style="color:#6b7280;">0€</td>
+            <td style="text-align:left;color:#6b7280;">—</td>
+          </tr>
+          <tr style="font-weight:700;background:#f3f4f6;">
+            <td style="text-align:left;">SPOLU</td>
+            <td>1 ZF, 4 F, 3 L</td>
+            <td>1,236</td>
+            <td>—</td>
+            <td>—</td>
+            <td colspan="2" style="color:var(--red);">7,971€/mes celkom</td>
+            <td></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px;font-size:0.75rem;color:var(--text-muted);">
+        <strong>ZF</strong> = Zodpovedný farmaceut &nbsp;|&nbsp; <strong>F</strong> = Farmaceut &nbsp;|&nbsp; <strong>L</strong> = Laborant<br>
+        <strong>*Strata</strong> = stratené tržby počas hodín, keď zamestnanec pracoval<br>
+        <strong>**Potenciál</strong> = strata v hodinách, keď zamestnanec nepracoval (možnosť pomôcť)
+      </div>
+      <div style="margin-top:12px;padding:12px;background:var(--bg-page);border-radius:8px;font-size:0.85rem;">
+        <strong>Kľúčové zistenia:</strong><br>
+        • <strong>Šantová (ZF)</strong> má najväčší nevyužitý potenciál <span style="color:var(--red);font-weight:600;">5,604€</span> - nikdy nepracuje víkendy<br>
+        • <strong>Čukanová (L)</strong> potenciál <span style="color:var(--red);font-weight:600;">3,125€</span> - pracuje ráno, chýba večer<br>
+        • Ostatní pokrývajú všetky problémové hodiny, ale kapacita nestačí
+      </div>
+    </div>
+
+    <!-- Option A -->
+    <div class="card">
+      <div class="card-title">Možnosť A: Rovnaké hodiny (286h/týždeň)</div>
+
+      <div class="schedule-box optimized" style="margin-bottom:16px;">
+        <table class="schedule-table">
+          <tr><th>Deň</th><th>8-11</th><th>11-16</th><th>16-19</th><th>Zmena</th></tr>
+          <tr><td>Po-Pi</td><td>3</td><td>4</td><td class="improved">4</td><td>-1 ráno, +1 večer</td></tr>
+          <tr><td>So</td><td>3</td><td>3</td><td>2</td><td>bez zmeny</td></tr>
+          <tr><td>Ne</td><td>2</td><td class="improved">3</td><td>2</td><td>+1 cez deň</td></tr>
+        </table>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-box">
+          <div class="label">Extra náklady</div>
+          <div class="value positive">0€</div>
+        </div>
+        <div class="impact-box">
+          <div class="label">Zvýšenie tržieb</div>
+          <div class="value positive">+3,000€</div>
+        </div>
+        <div class="impact-box">
+          <div class="label">Čistý zisk</div>
+          <div class="value positive">+3,000€</div>
+          <div style="font-size:0.85rem;color:var(--brand-green);font-weight:600;margin-top:4px;">+2.0% tržieb</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:var(--bg-page);border-radius:8px;font-size:0.85rem;">
+        <strong>Čo rieši:</strong> Po-Pi večery (16-19), čiastočne Ne<br>
+        <strong>Čo nerieši:</strong> So 9-12, Ne ráno/večer
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div class="card">
+      <div class="card-title">Možnosť B: Plné riešenie (+13h/týždeň = 299h)</div>
+
+      <div class="schedule-box optimized" style="margin-bottom:16px;">
+        <table class="schedule-table">
+          <tr><th>Deň</th><th>8-11</th><th>11-16</th><th>16-19</th><th>Zmena</th></tr>
+          <tr><td>Po-Pi</td><td>3</td><td>4</td><td class="improved">4</td><td>-1 ráno, +1 večer</td></tr>
+          <tr><td>So</td><td>3</td><td class="improved">4</td><td>2</td><td>+1 cez deň</td></tr>
+          <tr><td>Ne</td><td class="improved">3</td><td class="improved">3</td><td>2</td><td>+1 ráno, +1 cez deň</td></tr>
+        </table>
+      </div>
+
+      <div class="impact-grid">
+        <div class="impact-box">
+          <div class="label">Extra náklady</div>
+          <div class="value negative">+675€</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">13h × 12€ × 4.33</div>
+        </div>
+        <div class="impact-box">
+          <div class="label">Zvýšenie tržieb</div>
+          <div class="value positive">+4,800€</div>
+        </div>
+        <div class="impact-box">
+          <div class="label">Čistý zisk</div>
+          <div class="value positive">+4,125€</div>
+          <div style="font-size:0.85rem;color:var(--brand-green);font-weight:600;margin-top:4px;">+2.7% tržieb</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:var(--green-light);border-radius:8px;font-size:0.85rem;color:#065f46;">
+        <strong>ROI:</strong> 675€ náklad → 4,800€ výnos = <strong>7× návratnosť</strong>
+      </div>
+    </div>
+
+    <!-- Implementation -->
+    <div class="card">
+      <div class="card-title">Implementácia</div>
+      <div class="changes-list" style="margin-top:0;">
+        <div class="change-item">
+          <div class="change-icon">1</div>
+          <div class="change-content">
+            <h5>Posunuté zmeny (Po-Pi)</h5>
+            <p>1 zamestnanec začína o 11:00 namiesto 8:00 → pokrytie večernej špičky 16-19</p>
+          </div>
+        </div>
+        <div class="change-item">
+          <div class="change-icon">2</div>
+          <div class="change-content">
+            <h5>Nedeľa - Šantová</h5>
+            <p>Práca 1× Ne namiesto 1× Po → Ne cez deň má 3 namiesto 2</p>
+          </div>
+        </div>
+        <div class="change-item">
+          <div class="change-icon">3</div>
+          <div class="change-content">
+            <h5>Možnosť B: Extra zmeny</h5>
+            <p>+1 osoba So 11-16, +1 osoba Ne 8-11 (brigádnik alebo nadčas)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Info -->
+  <div class="card" style="background:#f9fafb;margin-top:16px;">
+    <div class="card-title">Metodika</div>
+    <div style="font-size:0.85rem;color:var(--text-secondary);">
+      <p style="margin:0 0 8px;"><strong>Baseline záťaž:</strong> 11.7 transakcií/zamestnanec/hodina (ranné hodiny 8-10)</p>
+      <p style="margin:0 0 8px;"><strong>Kritická záťaž:</strong> &gt;13.5 txn/zam/hod (15% nad baseline)</p>
+      <p style="margin:0;"><strong>Odhad straty:</strong> Pri vysokej záťaži klesá konverzia. Strata = (Záťaž/Baseline - 1) × 50% × Tržby</p>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// Data from analysis (monthly = weekly × 4.33)
+const monthlyLoss = {
+  'Po': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 364, 17: 463, 18: 134, 19: 0},
+  'Ut': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 160, 17: 234, 18: 173, 19: 0},
+  'St': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 255, 17: 251, 18: 0, 19: 0},
+  'Št': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 225, 17: 394, 18: 0, 19: 0},
+  'Pi': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 372, 17: 372, 18: 234, 19: 0},
+  'So': {8: 0, 9: 355, 10: 662, 11: 615, 12: 165, 13: 0, 14: 0, 15: 0, 16: 169, 17: 204, 18: 264, 19: 0},
+  'Ne': {8: 0, 9: 238, 10: 394, 11: 277, 12: 121, 13: 152, 14: 247, 15: 156, 16: 178, 17: 0, 18: 143, 19: 0}
+};
+
+const weeklyLoad = {
+  'Po': {8: 8.1, 9: 10.1, 10: 11.3, 11: 12.4, 12: 12.8, 13: 12.2, 14: 12.4, 15: 11.8, 16: 15.3, 17: 16.4, 18: 13.6, 19: 10.4},
+  'Ut': {8: 8.4, 9: 10.5, 10: 12.6, 11: 10.9, 12: 13.3, 13: 10.6, 14: 11.2, 15: 11.7, 16: 13.5, 17: 15.0, 18: 14.2, 19: 11.7},
+  'St': {8: 7.8, 9: 9.2, 10: 10.1, 11: 11.2, 12: 10.3, 13: 9.7, 14: 11.5, 15: 9.8, 16: 14.6, 17: 14.9, 18: 10.5, 19: 8.5},
+  'Št': {8: 8.8, 9: 11.8, 10: 13.4, 11: 11.9, 12: 11.0, 13: 11.6, 14: 11.1, 15: 11.9, 16: 14.2, 17: 16.1, 18: 12.3, 19: 9.4},
+  'Pi': {8: 9.0, 9: 10.8, 10: 13.0, 11: 13.2, 12: 12.6, 13: 11.3, 14: 12.7, 15: 12.1, 16: 15.6, 17: 16.3, 18: 14.6, 19: 11.8},
+  'So': {8: 12.9, 9: 15.6, 10: 18.1, 11: 17.8, 12: 13.9, 13: 11.8, 14: 10.0, 15: 11.5, 16: 14.6, 17: 15.3, 18: 16.2, 19: 13.4},
+  'Ne': {8: 11.3, 9: 15.9, 10: 17.2, 11: 16.0, 12: 14.1, 13: 14.8, 14: 16.0, 15: 14.7, 16: 14.5, 17: 13.3, 18: 14.4, 19: 11.2}
+};
+
+const weeklyStaff = {
+  'Po': {8: 3.9, 9: 3.9, 10: 4.1, 11: 4.0, 12: 4.0, 13: 3.9, 14: 4.0, 15: 3.9, 16: 3.1, 17: 3.0, 18: 3.0, 19: 2.7},
+  'Ut': {8: 4.4, 9: 4.4, 10: 4.2, 11: 3.8, 12: 4.2, 13: 4.3, 14: 4.2, 15: 4.0, 16: 3.5, 17: 3.0, 18: 3.0, 19: 2.8},
+  'St': {8: 4.4, 9: 4.2, 10: 4.4, 11: 4.4, 12: 4.0, 13: 4.0, 14: 3.6, 15: 4.2, 16: 3.2, 17: 3.0, 18: 3.0, 19: 3.0},
+  'Št': {8: 4.6, 9: 4.4, 10: 4.6, 11: 4.4, 12: 4.1, 13: 4.1, 14: 4.1, 15: 4.1, 16: 3.3, 17: 3.0, 18: 3.0, 19: 2.9},
+  'Pi': {8: 4.3, 9: 4.1, 10: 4.4, 11: 4.4, 12: 4.4, 13: 4.1, 14: 4.1, 15: 4.4, 16: 3.4, 17: 3.0, 18: 3.0, 19: 3.0},
+  'So': {8: 3.0, 9: 3.0, 10: 3.0, 11: 3.0, 12: 3.0, 13: 3.0, 14: 3.0, 15: 2.9, 16: 2.1, 17: 2.0, 18: 2.0, 19: 2.0},
+  'Ne': {8: 2.0, 9: 2.0, 10: 2.0, 11: 2.0, 12: 2.0, 13: 2.0, 14: 2.0, 15: 2.0, 16: 2.0, 17: 2.0, 18: 2.0, 19: 2.0}
+};
+
+const days = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+// Get color class based on monthly loss
+function getLossClass(loss) {
+  if (loss === 0) return 'loss-0';
+  if (loss <= 170) return 'loss-low';
+  if (loss <= 300) return 'loss-medium';
+  if (loss <= 430) return 'loss-high';
+  return 'loss-critical';
+}
+
+// Build heatmap
+const heatmap = document.getElementById('heatmap');
+
+days.forEach(day => {
+  // Row label
+  const label = document.createElement('div');
+  label.className = 'heatmap-row-label';
+  label.textContent = day;
+  heatmap.appendChild(label);
+
+  // Cells
+  hours.forEach(hour => {
+    const loss = monthlyLoss[day][hour];
+    const load = weeklyLoad[day][hour];
+    const staff = weeklyStaff[day][hour];
+
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell ' + getLossClass(loss);
+
+    cell.innerHTML = `
+      <span class="loss-value">${loss > 0 ? loss + '€' : '✓'}</span>
+      <span class="staff-info">${staff.toFixed(0)} zam</span>
+    `;
+
+    cell.dataset.day = day;
+    cell.dataset.hour = hour;
+    cell.dataset.loss = loss;
+    cell.dataset.load = load;
+    cell.dataset.staff = staff;
+
+    cell.addEventListener('mouseenter', showTooltip);
+    cell.addEventListener('mouseleave', hideTooltip);
+
+    heatmap.appendChild(cell);
+  });
+});
+
+// Daily summary
+const dailySummary = document.getElementById('daily-summary');
+days.forEach(day => {
+  const dayLoss = Object.values(monthlyLoss[day]).reduce((a, b) => a + b, 0);
+  const box = document.createElement('div');
+  box.className = 'daily-box';
+  box.innerHTML = `
+    <div class="day-name">${day}</div>
+    <div class="day-loss ${dayLoss === 0 ? 'zero' : ''}">${dayLoss > 0 ? '-' + dayLoss + '€' : '✓'}</div>
+  `;
+  dailySummary.appendChild(box);
+});
+
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+
+function showTooltip(e) {
+  const cell = e.target.closest('.heatmap-cell');
+  if (!cell) return;
+
+  const day = cell.dataset.day;
+  const hour = cell.dataset.hour;
+  const loss = parseInt(cell.dataset.loss);
+  const load = parseFloat(cell.dataset.load);
+  const staff = parseFloat(cell.dataset.staff);
+
+  let html = `<div class="tip-title">${day} ${hour}:00</div>`;
+  html += `<div class="tip-row"><span class="tip-label">Personál:</span> <span>${staff.toFixed(1)}</span></div>`;
+  html += `<div class="tip-row"><span class="tip-label">Záťaž:</span> <span>${load.toFixed(1)} txn/zam</span></div>`;
+
+  if (loss > 0) {
+    html += `<div class="tip-loss">Stratené tržby: ~${loss}€/mesiac</div>`;
+  } else {
+    html += `<div style="color:#86efac;margin-top:6px;">✓ Kapacita OK</div>`;
+  }
+
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+
+  // Position tooltip
+  const rect = cell.getBoundingClientRect();
+  tooltip.style.left = (rect.right + 10) + 'px';
+  tooltip.style.top = (rect.top) + 'px';
+
+  // Keep tooltip on screen
+  const tipRect = tooltip.getBoundingClientRect();
+  if (tipRect.right > window.innerWidth) {
+    tooltip.style.left = (rect.left - tipRect.width - 10) + 'px';
+  }
+}
+
+function hideTooltip() {
+  tooltip.style.display = 'none';
+}
+</script>
+</body>
+</html>

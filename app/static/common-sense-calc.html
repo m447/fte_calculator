@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTE Kalkulačka - Common Sense</title>
+<style>
+:root {
+  --brand-green: #78be20;
+  --brand-green-dark: #6aab1a;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f3f4f6;
+  --border-light: #e5e7eb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-page);
+  margin: 0;
+  padding: 20px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-size: 1.5rem;
+}
+
+h1 span { color: var(--brand-green); }
+
+.subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(120, 190, 32, 0.1);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.3);
+}
+
+.result {
+  display: none;
+}
+
+.result.show {
+  display: block;
+}
+
+.fte-display {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 16px;
+}
+
+.fte-value {
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.fte-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.breakdown {
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.9rem;
+}
+
+.breakdown-row:last-child {
+  border-bottom: none;
+}
+
+.breakdown-row.total {
+  font-weight: 700;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 2px solid var(--border-light);
+  border-bottom: none;
+}
+
+.breakdown-row.binding {
+  background: #f0fdf4;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.formula-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.formula-box code {
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.segment-params {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.segment-param {
+  text-align: center;
+}
+
+.segment-param-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--brand-green);
+}
+
+.segment-param-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.segment-schedule {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>FTE Kalkulačka <span>Common Sense</span></h1>
+  <p class="subtitle">Výpočet na základe produktivity segmentu a otváracích hodín</p>
+
+  <!-- Inputs -->
+  <div class="card">
+    <div class="card-title">Vstupné parametre</div>
+
+    <div class="form-group">
+      <label>Segment lekárne</label>
+      <select id="segment" onchange="updateSegment()">
+        <option value="A">A - Shopping premium (OC)</option>
+        <option value="B" selected>B - Shopping</option>
+        <option value="C">C - Street+ (ulica väčšia)</option>
+        <option value="D">D - Street (ulica)</option>
+        <option value="E">E - Poliklinika</option>
+      </select>
+      <div class="segment-params">
+        <div class="segment-param">
+          <div class="segment-param-value" id="seg-prod">9.8</div>
+          <div class="segment-param-label">txn/zam/hod</div>
+        </div>
+        <div class="segment-param">
+          <div class="segment-param-value" id="seg-hours">72</div>
+          <div class="segment-param-label">hod/týždeň</div>
+        </div>
+        <div class="segment-param">
+          <div class="segment-param-value" id="seg-staff">2.0</div>
+          <div class="segment-param-label">min. obsadenie</div>
+        </div>
+      </div>
+      <div class="segment-schedule" id="seg-schedule">9:00-21:00, 6-7 dní</div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bloky (ročne)</label>
+        <input type="number" id="bloky" value="150000" min="0">
+      </div>
+      <div class="form-group">
+        <label>Rx podiel (%)</label>
+        <input type="number" id="rx" value="50" min="0" max="100">
+      </div>
+    </div>
+
+    <button onclick="calculate()">Vypočítať FTE</button>
+  </div>
+
+  <!-- Result -->
+  <div class="card result" id="result">
+    <div class="fte-display">
+      <div class="fte-value" id="fte-result">0.0</div>
+      <div class="fte-label">Odporúčané FTE</div>
+    </div>
+
+    <div class="breakdown">
+      <div class="card-title">Rozklad výpočtu</div>
+
+      <div class="breakdown-row">
+        <span>Bloky (ročne)</span>
+        <span id="b-bloky">-</span>
+      </div>
+      <div class="breakdown-row">
+        <span>Rx úprava (Rx +41% času)</span>
+        <span id="b-rx-adj">-</span>
+      </div>
+      <div class="breakdown-row">
+        <span>Efektívne bloky</span>
+        <span id="b-effective">-</span>
+      </div>
+      <div class="breakdown-row">
+        <span>Produktivita segmentu</span>
+        <span id="b-prod">-</span>
+      </div>
+      <div class="breakdown-row" id="row-workload">
+        <span>FTE (pracovná záťaž)</span>
+        <span id="b-fte-workload">-</span>
+      </div>
+      <div class="breakdown-row" id="row-coverage">
+        <span>FTE (min. pokrytie zmien)</span>
+        <span id="b-fte-coverage">-</span>
+      </div>
+      <div class="breakdown-row total">
+        <span>Výsledné FTE</span>
+        <span id="b-fte-final">-</span>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <strong>Vzorec:</strong><br>
+      <code>FTE = max(FTE_záťaž, FTE_pokrytie)</code><br><br>
+      <code>FTE_záťaž = Bloky × (1 + 0.41×Rx%) / (Produktivita × 2088)</code><br>
+      <code>FTE_pokrytie = Hodiny/týždeň × 52 / 2088 × Min_obsadenie</code>
+    </div>
+  </div>
+</div>
+
+<script>
+// Segment parameters derived from data analysis + industry knowledge
+// Productivity from data, opening hours from typical operating schedules
+const SEGMENTS = {
+  'A': { prod: 7.5,  hours: 84, minStaff: 2.5, name: 'Shopping premium', schedule: '9:00-21:00, 7 dní' },
+  'B': { prod: 9.8,  hours: 72, minStaff: 2.0, name: 'Shopping', schedule: '9:00-21:00, 6-7 dní' },
+  'C': { prod: 7.1,  hours: 58, minStaff: 2.0, name: 'Street+', schedule: '8:00-18:00, Po-So' },
+  'D': { prod: 6.8,  hours: 52, minStaff: 1.5, name: 'Street', schedule: '8:00-18:00, Po-Pi + So ráno' },
+  'E': { prod: 6.5,  hours: 50, minStaff: 2.0, name: 'Poliklinika', schedule: '7:00-17:00, Po-Pi' }
+};
+
+const HOURS_PER_FTE_YEAR = 2088;  // From data: bloky / (fte × produktivita)
+const RX_TIME_FACTOR = 0.41;      // Rx transactions take 41% longer
+
+function updateSegment() {
+  const seg = SEGMENTS[document.getElementById('segment').value];
+  document.getElementById('seg-prod').textContent = seg.prod;
+  document.getElementById('seg-hours').textContent = seg.hours;
+  document.getElementById('seg-staff').textContent = seg.minStaff.toFixed(1);
+  document.getElementById('seg-schedule').textContent = seg.schedule;
+}
+
+function calculate() {
+  const segment = document.getElementById('segment').value;
+  const seg = SEGMENTS[segment];
+  const bloky = parseFloat(document.getElementById('bloky').value) || 0;
+  const rxPct = parseFloat(document.getElementById('rx').value) / 100 || 0;
+
+  // Effective bloky (Rx adjustment - Rx takes 41% more time)
+  const rxMultiplier = 1 + RX_TIME_FACTOR * rxPct;
+  const effectiveBloky = bloky * rxMultiplier;
+
+  // FTE based on workload demand
+  const fteWorkload = effectiveBloky / (seg.prod * HOURS_PER_FTE_YEAR);
+
+  // FTE based on minimum coverage (need staff during all opening hours)
+  const openHoursYear = seg.hours * 52;
+  const fteCoverage = (openHoursYear / HOURS_PER_FTE_YEAR) * seg.minStaff;
+
+  // Final FTE is the binding constraint
+  const fteFinal = Math.max(fteWorkload, fteCoverage);
+  const workloadBinding = fteWorkload >= fteCoverage;
+
+  // Update display
+  document.getElementById('fte-result').textContent = fteFinal.toFixed(1);
+  document.getElementById('b-bloky').textContent = bloky.toLocaleString('sk-SK');
+  document.getElementById('b-rx-adj').textContent = `×${rxMultiplier.toFixed(2)} (${(rxPct*100).toFixed(0)}% Rx)`;
+  document.getElementById('b-effective').textContent = Math.round(effectiveBloky).toLocaleString('sk-SK');
+  document.getElementById('b-prod').textContent = `${seg.prod} txn/zam/hod`;
+  document.getElementById('b-fte-workload').textContent = fteWorkload.toFixed(2);
+  document.getElementById('b-fte-coverage').textContent = `${fteCoverage.toFixed(2)} (${seg.hours}h × ${seg.minStaff})`;
+  document.getElementById('b-fte-final').textContent = fteFinal.toFixed(1);
+
+  // Highlight binding constraint
+  document.getElementById('row-workload').classList.toggle('binding', workloadBinding);
+  document.getElementById('row-coverage').classList.toggle('binding', !workloadBinding);
+
+  document.getElementById('result').classList.add('show');
+}
+
+// Initialize
+updateSegment();
+</script>
+</body>
+</html>

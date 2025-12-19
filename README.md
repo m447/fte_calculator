@@ -1,6 +1,10 @@
-# Dr.Max Pharmacy FTE Prediction Model
+# FTE Calculator & Prediction Model
 
 Machine learning model to predict optimal Full-Time Equivalent (FTE) staffing for pharmacies based on operational characteristics.
+
+> **Author:** Marian Svatko ([marian.svatko@gmail.com](mailto:marian.svatko@gmail.com))
+> **Copyright:** © 2025 Marian Svatko. All rights reserved.
+> **License:** Proprietary - All rights reserved
 
 ## Latest Changes (v5)
 
@@ -16,11 +20,14 @@ Machine learning model to predict optimal Full-Time Equivalent (FTE) staffing fo
 - Sensitivity slider for productivity impact visualization
 
 ### Model Versions
-| Version | Description | R² |
-|---------|-------------|-----|
-| v3 | Base model (no productivity) | 0.873 |
-| v4 | + prod_residual (symmetric) | 0.965 |
-| v5 | + asymmetric prod_residual | 0.927 |
+| Version | Description | R² | RMSE |
+|---------|-------------|-----|------|
+| v3 | Base model (no productivity) | 0.873 | - |
+| v4 | + prod_residual (symmetric) | 0.965 | - |
+| v5 | + asymmetric prod_residual | 0.927 | 0.40 |
+| v6 | Removed prod_residual (experimental) | 0.907 | 0.47 |
+
+**App uses: `models/fte_model_v5.pkl`** (configured in `app/server.py`)
 
 ## Project Overview
 
@@ -184,6 +191,20 @@ See `data/DATA_DICTIONARY.md` for detailed column descriptions.
 | Random Forest | 0.919 | 0.485 |
 | Lasso | 0.903 | 0.532 |
 
+### Segment Productivity Benchmarks
+
+Productivity is measured as `bloky_per_hour` (transactions/FTE/hour). The model uses **weighted averages** (by transaction volume) rather than simple means, giving larger pharmacies more influence in the benchmark.
+
+| Segment | Weighted Avg | Simple Mean |
+|---------|-------------|-------------|
+| A - shopping premium | 7.25 txn/h | 7.53 |
+| B - shopping | 9.14 txn/h | 8.92 |
+| C - street + | 6.85 txn/h | 7.12 |
+| D - street | 6.44 txn/h | 6.83 |
+| E - poliklinika | 6.11 txn/h | 6.51 |
+
+**Why weighted average?** Hypothesis: high-volume pharmacies may better represent typical segment performance.
+
 ## Key Insights
 
 1. **Transaction volume (`bloky`) is the strongest predictor** - more transactions = more staff needed
@@ -213,8 +234,42 @@ See `data/DATA_DICTIONARY.md` for detailed column descriptions.
 
 ```bash
 source venv/bin/activate
-python -c "from app.server import app; app.run(host='0.0.0.0', port=5001)"
+python -m flask --app app.server run --port 8080
 ```
+
+### AI Assistant (Vertex AI) Setup
+
+The app includes an AI assistant powered by Vertex AI Gemini. For local development:
+
+**Prerequisites:**
+- GCP project: `gen-lang-client-0415148507`
+- Model: `gemini-3-flash-preview`
+- Account with Vertex AI access: `svama85@gmail.com`
+
+**Authentication Setup:**
+
+```bash
+# 1. Login with the correct Google account
+gcloud auth login svama85@gmail.com
+
+# 2. Set the project
+gcloud config set project gen-lang-client-0415148507
+
+# 3. (Optional) If you get 403 errors, clear stale ADC credentials
+rm -f ~/.config/gcloud/application_default_credentials.json
+```
+
+**How it works:**
+- **Cloud Run (production):** Uses service account credentials automatically
+- **Local development:** Falls back to gcloud CLI authentication
+
+**Troubleshooting 403 Forbidden errors:**
+
+If the AI assistant returns 403 errors locally:
+1. Check current account: `gcloud auth list`
+2. Ensure `svama85@gmail.com` is the active account
+3. Remove stale ADC: `rm -f ~/.config/gcloud/application_default_credentials.json`
+4. Restart Flask server
 
 ### Cloud Run Deployment
 
@@ -241,4 +296,14 @@ gcloud run services update fte-calculator \
 
 ---
 
-*Generated: December 2024*
+## License & Copyright
+
+**© 2025 Marian Svatko. All rights reserved.**
+
+This software, including the FTE prediction model and its methodology, is proprietary intellectual property. Unauthorized copying, modification, distribution, or use is strictly prohibited.
+
+For licensing inquiries, contact: [marian.svatko@gmail.com](mailto:marian.svatko@gmail.com)
+
+---
+
+*Last updated: December 2025*

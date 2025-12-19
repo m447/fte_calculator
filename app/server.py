@@ -1,5 +1,11 @@
 """
-FTE Prediction Server v5 (Model v3 - Fixed Data Leakage)
+FTE Calculator & Prediction Model
+Copyright © 2025 Marian Svatko (marian.svatko@gmail.com)
+All rights reserved. Proprietary and confidential.
+
+This software and its methodology are protected intellectual property.
+Unauthorized copying, modification, or distribution is prohibited.
+
 Run: python app/server.py
 Access: http://localhost:8080
 """
@@ -58,12 +64,24 @@ with open(MODEL_PATH, 'rb') as f:
     model_pkg = pickle.load(f)
 
 # Segment productivity means for computing prod_residual (v5: asymmetric)
+# Updated Dec 2024: Using WEIGHTED average (by bloky/transactions) - larger pharmacies have more influence
+# This better reflects true segment benchmarks than simple mean
 SEGMENT_PROD_MEANS = model_pkg.get('segment_prod_means', {
-    'A - shopping premium': 7.53,
-    'B - shopping': 9.80,
-    'C - street +': 7.12,
-    'D - street': 6.83,
-    'E - poliklinika': 6.51
+    'A - shopping premium': 7.25,  # weighted avg (simple: 7.53)
+    'B - shopping': 9.14,          # weighted avg (simple: 8.92)
+    'C - street +': 6.85,          # weighted avg (simple: 7.12)
+    'D - street': 6.44,            # weighted avg (simple: 6.83)
+    'E - poliklinika': 6.11        # weighted avg (simple: 6.51)
+})
+
+# Segment proportions for FTE role distribution (F/L/ZF)
+# Calculated from training data - used for gross FTE conversion
+SEGMENT_PROPORTIONS = model_pkg.get('proportions', {
+    'A - shopping premium': {'prop_F': 0.4149, 'prop_L': 0.5350, 'prop_ZF': 0.1037},
+    'B - shopping': {'prop_F': 0.3759, 'prop_L': 0.4470, 'prop_ZF': 0.1547},
+    'C - street +': {'prop_F': 0.3488, 'prop_L': 0.3563, 'prop_ZF': 0.2699},
+    'D - street': {'prop_F': 0.2942, 'prop_L': 0.3659, 'prop_ZF': 0.2990},
+    'E - poliklinika': {'prop_F': 0.4715, 'prop_L': 0.3734, 'prop_ZF': 0.2243},
 })
 
 # Load reference data
@@ -120,7 +138,7 @@ def calculate_sensitivity(bloky, trzby, podiel_rx, typ, model_pkg, defaults, con
         props = model_pkg['proportions'].get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
         fte_F_gross = fte_net * props['prop_F'] * conv['F']['factor']
         fte_L_gross = fte_net * props['prop_L'] * conv['L']['factor']
-        fte_ZF_gross = max(1.0, fte_net * props['prop_ZF'] * conv['ZF']['factor'])
+        fte_ZF_gross = fte_net * props['prop_ZF'] * conv['ZF']['factor']
 
         return fte_F_gross + fte_L_gross + fte_ZF_gross
 
@@ -266,11 +284,7 @@ def predict():
     fte_L = round(fte_L_gross, 1)
     fte_ZF = round(fte_ZF_gross, 1)
 
-    # ZF should be minimum 1.0 (every pharmacy needs 1 responsible pharmacist)
-    if fte_ZF < 1.0:
-        fte_ZF = 1.0
-
-    # Recalculate total after ZF adjustment
+    # Recalculate total
     fte_pred = fte_F + fte_L + fte_ZF
 
     # Tolerance based on model accuracy (RMSE × 1.96 for 95% CI)
@@ -457,6 +471,10 @@ def get_network():
     df_calc = df.copy()
     df_calc['effective_bloky'] = df_calc['bloky'] * (1 + rx_time_factor * df_calc['podiel_rx'])
 
+    # Apply asymmetric prod_residual (v5: only positive values count, negative clipped to 0)
+    # This matches how the model was trained
+    df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
+
     # Build features and predict
     X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
                       for _, row in df_calc.iterrows()])
@@ -471,18 +489,26 @@ def get_network():
         'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
     }
 
-    def calc_gross_fte_predicted(fte_net, typ):
-        """Calculate GROSS FTE for predicted using role-specific factors."""
-        props = model_pkg['proportions'].get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+    def calc_gross_fte_predicted(fte_net, typ, pharmacy_id):
+        """Calculate GROSS FTE for predicted using pharmacy-specific or type-based factors."""
+        props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+        # Use pharmacy-specific factors if available, otherwise type-based
+        if int(pharmacy_id) in PHARMACY_GROSS_FACTORS:
+            conv = PHARMACY_GROSS_FACTORS[int(pharmacy_id)]
+        else:
+            conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
         fte_F = fte_net * props['prop_F'] * conv['F']
         fte_L = fte_net * props['prop_L'] * conv['L']
-        fte_ZF = max(1.0, fte_net * props['prop_ZF'] * conv['ZF'])
+        fte_ZF = fte_net * props['prop_ZF'] * conv['ZF']
         return fte_F + fte_L + fte_ZF
 
     def calc_gross_fte_actual(row):
-        """Calculate actual GROSS FTE using actual role breakdown and type-based factors."""
-        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        """Calculate actual GROSS FTE using pharmacy-specific or type-based factors."""
+        # Use pharmacy-specific factors if available, otherwise type-based
+        if int(row['id']) in PHARMACY_GROSS_FACTORS:
+            conv = PHARMACY_GROSS_FACTORS[int(row['id'])]
+        else:
+            conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
         # Use actual role breakdown from data, not segment proportions
         fte_F = row['fte_F'] * conv['F']
         fte_L = row['fte_L'] * conv['L']
@@ -490,7 +516,7 @@ def get_network():
         return fte_F + fte_L + fte_ZF
 
     df_calc['predicted_fte'] = df_calc.apply(
-        lambda row: calc_gross_fte_predicted(row['predicted_fte_net'], row['typ']), axis=1)
+        lambda row: calc_gross_fte_predicted(row['predicted_fte_net'], row['typ'], row['id']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_gross_fte_actual, axis=1)
     df_calc['fte_diff'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
@@ -529,8 +555,13 @@ def get_network():
     understaffed = df_calc[df_calc['fte_diff'] > 1.0].nlargest(15, 'fte_diff')
     overstaffed = df_calc[df_calc['fte_diff'] < -1.0].nsmallest(15, 'fte_diff')
 
-    def pharmacy_to_dict(row):
-        return {
+    def pharmacy_to_dict(row, include_priority_data=False):
+        # Always compute productivity status using prod_residual
+        # prod_residual > 0 means above segment average productivity
+        prod_residual = row.get('prod_residual', 0)
+        is_above_avg = prod_residual > 0
+
+        result = {
             'id': int(row['id']),
             'mesto': row['mesto'],
             'typ': row['typ'],
@@ -539,14 +570,76 @@ def get_network():
             'diff': round(row['fte_diff'], 1),
             'bloky': int(row['bloky']),
             'trzby': int(row['trzby']),
-            'podiel_rx': round(row['podiel_rx'] * 100, 0)
+            'podiel_rx': round(row['podiel_rx'] * 100, 0),
+            'is_above_avg_productivity': is_above_avg
         }
+        if include_priority_data:
+            # Add fields needed for priority dashboard
+            # Use prod_residual for productivity calculation (already normalized by segment)
+            prod_residual = row.get('prod_residual', 0)
+            is_above_avg = prod_residual > 0
+            prod_pct = round(prod_residual * 100, 0)  # prod_residual is already a ratio
+            bloky_trend = round(row.get('bloky_trend', 0) * 100, 0)
 
-    # All pharmacies for filtering
-    all_pharmacies = [pharmacy_to_dict(row) for _, row in df_calc.iterrows()]
+            # Revenue at risk calculation (from utilization.html formula)
+            # Loss = (Overload_ratio - 1) × 50% × Revenue
+            # IMPORTANT: Use rounded values (same as displayed) for consistency
+            revenue_at_risk = 0
+            actual_fte_rounded = round(row['actual_fte'], 1)
+            predicted_fte_rounded = round(row['predicted_fte'], 1)
+            if predicted_fte_rounded > actual_fte_rounded and is_above_avg:  # understaffed + productive
+                overload_ratio = predicted_fte_rounded / actual_fte_rounded if actual_fte_rounded > 0 else 1
+                revenue_at_risk = int((overload_ratio - 1) * 0.5 * row['trzby'])
+
+            result.update({
+                'is_above_avg_productivity': is_above_avg,
+                'prod_pct': prod_pct,
+                'bloky_trend': bloky_trend,
+                'revenue_at_risk': revenue_at_risk
+            })
+        return result
+
+    # All pharmacies for filtering (include priority data for revenue_at_risk)
+    all_pharmacies = [pharmacy_to_dict(row, include_priority_data=True) for _, row in df_calc.iterrows()]
 
     # Get unique regions for filter
     regions = sorted(df_calc['regional'].dropna().unique().tolist())
+
+    # Priority categories for dashboard
+    # Compute priority fields for each pharmacy
+    def get_priority_data(row):
+        # Use prod_residual for productivity (positive = above segment average)
+        prod_residual = row.get('prod_residual', 0)
+        is_above_avg = prod_residual > 0
+        bloky_trend = row.get('bloky_trend', 0)
+        return {
+            'is_above_avg': is_above_avg,
+            'bloky_trend': bloky_trend
+        }
+
+    # Urgent: understaffed (gap > 0.5) + above-avg productivity (losing revenue)
+    # Returns ALL qualifying pharmacies (UI will display top 10, CSV exports all)
+    urgent_candidates = df_calc[df_calc['fte_diff'] > 0.5].copy()
+    urgent_list = []
+    for _, row in urgent_candidates.iterrows():
+        priority_data = get_priority_data(row)
+        if priority_data['is_above_avg']:
+            urgent_list.append(pharmacy_to_dict(row, include_priority_data=True))
+    # Sort by revenue_at_risk descending
+    urgent_list.sort(key=lambda x: x.get('revenue_at_risk', 0), reverse=True)
+
+    # Optimize: overstaffed (gap < -0.7) - can reallocate
+    # Returns ALL qualifying pharmacies sorted by gap (most overstaffed first)
+    optimize_candidates = df_calc[df_calc['fte_diff'] < -0.7].copy()
+    optimize_list = [pharmacy_to_dict(row, include_priority_data=True) for _, row in optimize_candidates.sort_values('fte_diff').iterrows()]
+
+    # Monitor: growing significantly (bloky_trend > 15%) - watch for future needs
+    # Returns ALL qualifying pharmacies sorted by growth (highest first)
+    monitor_candidates = df_calc[df_calc['bloky_trend'] > 0.15].copy()
+    monitor_list = [pharmacy_to_dict(row, include_priority_data=True) for _, row in monitor_candidates.sort_values('bloky_trend', ascending=False).iterrows()]
+
+    # Calculate total revenue at risk for ALL urgent pharmacies
+    total_revenue_at_risk = sum(p.get('revenue_at_risk', 0) for p in urgent_list)
 
     return jsonify({
         'summary': {
@@ -563,6 +656,15 @@ def get_network():
             'overstaffed': [pharmacy_to_dict(row) for _, row in overstaffed.iterrows()],
             'understaffed_count': len(df_calc[df_calc['fte_diff'] > 1.0]),
             'overstaffed_count': len(df_calc[df_calc['fte_diff'] < -1.0])
+        },
+        'priorities': {
+            'urgent': urgent_list,  # Understaffed + high productivity = losing revenue
+            'optimize': optimize_list,  # Overstaffed = can reallocate
+            'monitor': monitor_list,  # Growing = watch for future needs
+            'urgent_count': len(urgent_list),
+            'optimize_count': len(optimize_list),
+            'monitor_count': len(monitor_list),
+            'total_revenue_at_risk': total_revenue_at_risk
         },
         'pharmacies': all_pharmacies,
         'filters': {
@@ -588,6 +690,194 @@ def get_pharmacies():
     return jsonify({'pharmacies': pharmacies})
 
 
+@app.route('/api/pharmacies/search', methods=['GET'])
+@requires_auth
+def search_pharmacies():
+    """Search pharmacies with filters - for AI assistant queries.
+
+    Query params:
+    - typ: filter by segment (e.g., "B - shopping")
+    - min_gap: minimum FTE gap (e.g., 1.0 for understaffed)
+    - max_gap: maximum FTE gap (e.g., -1.0 for overstaffed)
+    - productivity: 'above' or 'below' average
+    - sort_by: 'gap', 'bloky', 'trzby', 'fte' (default: gap)
+    - sort_order: 'asc' or 'desc' (default: desc for gap)
+    - limit: max results (default: 10)
+    """
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
+
+    # Prepare data with predictions
+    df_calc = df.copy()
+    df_calc['effective_bloky'] = df_calc['bloky'] * (1 + rx_time_factor * df_calc['podiel_rx'])
+    df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
+
+    X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
+                      for _, row in df_calc.iterrows()])
+    df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
+
+    GROSS_CONVERSION = {
+        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+    }
+
+    def calc_gross(fte_net, typ):
+        props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return fte_net * props['prop_F'] * conv['F'] + \
+               fte_net * props['prop_L'] * conv['L'] + \
+               fte_net * props['prop_ZF'] * conv['ZF']
+
+    def calc_actual_gross(row):
+        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
+
+    # Apply filters
+    result = df_calc.copy()
+
+    # Filter by segment
+    typ = request.args.get('typ')
+    if typ:
+        result = result[result['typ'] == typ]
+
+    # Filter by gap
+    min_gap = request.args.get('min_gap', type=float)
+    max_gap = request.args.get('max_gap', type=float)
+    if min_gap is not None:
+        result = result[result['fte_gap'] >= min_gap]
+    if max_gap is not None:
+        result = result[result['fte_gap'] <= max_gap]
+
+    # Filter by productivity
+    productivity = request.args.get('productivity')
+    if productivity == 'above':
+        result = result[result['prod_residual'] > 0]
+    elif productivity == 'below':
+        result = result[result['prod_residual'] <= 0]
+
+    # Sort
+    sort_by = request.args.get('sort_by', 'gap')
+    sort_order = request.args.get('sort_order', 'desc')
+    ascending = sort_order == 'asc'
+
+    sort_map = {
+        'gap': 'fte_gap',
+        'bloky': 'bloky',
+        'trzby': 'trzby',
+        'fte': 'actual_fte'
+    }
+    sort_col = sort_map.get(sort_by, 'fte_gap')
+    result = result.sort_values(sort_col, ascending=ascending)
+
+    # Limit
+    limit = request.args.get('limit', 10, type=int)
+    result = result.head(limit)
+
+    # Format output
+    pharmacies = []
+    for _, row in result.iterrows():
+        pharmacies.append({
+            'id': int(row['id']),
+            'mesto': row['mesto'],
+            'typ': row['typ'],
+            'bloky': int(row['bloky']),
+            'trzby': int(row['trzby']),
+            'podiel_rx': round(row['podiel_rx'] * 100, 0),
+            'actual_fte': round(row['actual_fte'], 1),
+            'predicted_fte': round(row['predicted_fte'], 1),
+            'gap': round(row['fte_gap'], 1),
+            'productivity': 'above_avg' if row['prod_residual'] > 0 else 'avg_or_below',
+            'prod_residual': round(row['prod_residual'], 2)
+        })
+
+    return jsonify({
+        'count': len(pharmacies),
+        'pharmacies': pharmacies,
+        'filters_applied': {
+            'typ': typ,
+            'min_gap': min_gap,
+            'max_gap': max_gap,
+            'productivity': productivity,
+            'sort_by': sort_by,
+            'limit': limit
+        }
+    })
+
+
+@app.route('/api/model/info', methods=['GET'])
+@requires_auth
+def get_model_info():
+    """Get model coefficients and info - for AI assistant awareness."""
+    # Extract coefficients from the model
+    pipeline = model_pkg['models']['fte']
+    model = pipeline.named_steps['model']
+    preprocessor = pipeline.named_steps['preprocessor']
+
+    # Get feature names after preprocessing
+    num_features = model_pkg['num_features']
+    cat_features = model_pkg['cat_features']
+
+    # Get one-hot encoded category names
+    cat_encoder = preprocessor.named_transformers_['cat']
+    cat_encoded_names = list(cat_encoder.get_feature_names_out(cat_features))
+
+    all_feature_names = num_features + cat_encoded_names
+    coefs = model.coef_
+    intercept = model.intercept_
+
+    # Build coefficient dict
+    coefficients = {}
+    for name, coef in zip(all_feature_names, coefs):
+        coefficients[name] = round(float(coef), 4)
+
+    # Segment coefficients (relative to A-shopping premium which is baseline)
+    segment_coefs = {
+        'A - shopping premium': 0.0,  # baseline (dropped in one-hot)
+    }
+    for name in cat_encoded_names:
+        if name.startswith('typ_'):
+            segment_name = name.replace('typ_', '')
+            segment_coefs[segment_name] = coefficients[name]
+
+    # Get metrics
+    metrics = model_pkg.get('metrics', {}).get('fte', {})
+
+    return jsonify({
+        'version': model_pkg.get('version', 'v5'),
+        'notes': model_pkg.get('notes', ''),
+        'metrics': {
+            'r2': round(metrics.get('r2', 0), 3),
+            'rmse': round(metrics.get('rmse', 0), 3),
+            'cv_r2_mean': round(metrics.get('cv_r2_mean', 0), 3),
+        },
+        'intercept': round(float(intercept), 4),
+        'coefficients': coefficients,
+        'segment_coefficients': segment_coefs,
+        'segment_prod_means': SEGMENT_PROD_MEANS,
+        'feature_importance': {
+            'most_positive': sorted(
+                [(k, v) for k, v in coefficients.items() if not k.startswith('typ_')],
+                key=lambda x: x[1], reverse=True
+            )[:5],
+            'most_negative': sorted(
+                [(k, v) for k, v in coefficients.items() if not k.startswith('typ_')],
+                key=lambda x: x[1]
+            )[:3]
+        },
+        'rx_time_factor': model_pkg.get('rx_time_factor', 0.41),
+        'training_data': {
+            'n_pharmacies': len(df),
+            'period': 'Sep 2020 - Aug 2021'
+        }
+    })
+
+
 @app.route('/api/pharmacy/<int:pharmacy_id>', methods=['GET'])
 @requires_auth
 def get_pharmacy(pharmacy_id):
@@ -598,19 +888,25 @@ def get_pharmacy(pharmacy_id):
 
     row = pharmacy.iloc[0]
     typ = row['typ']
+    pharmacy_id = int(row['id'])
 
-    # Type-based gross factors (same as network for consistency)
-    GROSS_CONV = {
+    # Use pharmacy-specific gross factors if available, otherwise fall back to type-based
+    TYPE_GROSS_CONV = {
         'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
         'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
         'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
         'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
         'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
     }
-    conv = GROSS_CONV.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+
+    if pharmacy_id in PHARMACY_GROSS_FACTORS:
+        conv = PHARMACY_GROSS_FACTORS[pharmacy_id]
+    else:
+        conv = TYPE_GROSS_CONV.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+
     props = model_pkg['proportions'].get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
 
-    # Calculate actual GROSS FTE using actual role breakdown and type-based factors
+    # Calculate actual GROSS FTE using actual role breakdown and pharmacy-specific factors
     fte_F_gross = float(row['fte_F']) * conv['F']
     fte_L_gross = float(row['fte_L']) * conv['L']
     fte_ZF_gross = float(row['fte_ZF']) * conv['ZF']
@@ -626,24 +922,23 @@ def get_pharmacy(pharmacy_id):
     X = pd.DataFrame([features])
     predicted_fte_net = model_pkg['models']['fte'].predict(X)[0]
 
-    # Convert predicted NET to GROSS using type-based factors (same as network)
-    GROSS_CONVERSION_PRED = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-    conv_pred = GROSS_CONVERSION_PRED.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-    props = model_pkg['proportions'].get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-
-    fte_F_pred = predicted_fte_net * props['prop_F'] * conv_pred['F']
-    fte_L_pred = predicted_fte_net * props['prop_L'] * conv_pred['L']
-    fte_ZF_pred = max(1.0, predicted_fte_net * props['prop_ZF'] * conv_pred['ZF'])
+    # Convert predicted NET to GROSS using pharmacy-specific factors (same conv as actual)
+    fte_F_pred = predicted_fte_net * props['prop_F'] * conv['F']
+    fte_L_pred = predicted_fte_net * props['prop_L'] * conv['L']
+    fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
     predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
 
     # Calculate difference
     fte_diff = predicted_fte - actual_fte
+
+    # Revenue at risk calculation (same as in get_network)
+    revenue_at_risk = 0
+    actual_fte_rounded = round(actual_fte, 1)
+    predicted_fte_rounded = round(predicted_fte, 1)
+    is_above_avg = float(row.get('prod_residual', 0)) > 0
+    if predicted_fte_rounded > actual_fte_rounded and is_above_avg:
+        overload_ratio = predicted_fte_rounded / actual_fte_rounded if actual_fte_rounded > 0 else 1
+        revenue_at_risk = int((overload_ratio - 1) * 0.5 * row['trzby'])
 
     return jsonify({
         'id': int(row['id']),
@@ -661,7 +956,14 @@ def get_pharmacy(pharmacy_id):
         'predicted_fte_L': round(fte_L_pred, 1),
         'predicted_fte_ZF': round(fte_ZF_pred, 1),
         'fte_diff': round(fte_diff, 1),
-        'gross_factors': conv  # Type-based factors used for both actual and predicted
+        'revenue_at_risk': revenue_at_risk,
+        'gross_factors': conv,  # Pharmacy-specific or type-based factors
+        'prod_residual': round(float(row.get('prod_residual', 0)), 2),
+        'is_above_avg_productivity': float(row.get('prod_residual', 0)) > 0,
+        # Productivity percentage above/below segment average
+        'prod_pct': round(float(row.get('prod_residual', 0)) / SEGMENT_PROD_MEANS.get(row['typ'], 8.0) * 100, 0),
+        # Trend: bloky growth rate (already stored as percentage in data)
+        'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0)  # Convert to percentage points
     })
 
 
@@ -687,59 +989,579 @@ VERTEX_PROJECT = os.environ.get('VERTEX_PROJECT', 'gen-lang-client-0415148507')
 VERTEX_LOCATION = os.environ.get('VERTEX_LOCATION', 'global')  # Gemini 3 requires global location
 VERTEX_MODEL = 'gemini-3-flash-preview'
 
-FTE_SYSTEM_PROMPT = """Si analytický asistent pre FTE Kalkulátor lekární Dr.Max. Poskytuj hlbokú analýzu a interpretáciu výsledkov.
+# Tool definitions for function calling
+CHAT_TOOLS = {
+    "function_declarations": [
+        {
+            "name": "search_pharmacies",
+            "description": "Vyhľadaj lekárne podľa filtrov. Použi pre otázky typu 'ktoré lekárne...', 'ukáž mi B lekárne s...', 'nájdi poddimenzované lekárne', 'existuje lekáreň v meste X'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mesto": {
+                        "type": "string",
+                        "description": "Mesto/lokalita lekárne (case-insensitive, partial match). Napr. 'Čadca', 'Bratislava', 'Košice'"
+                    },
+                    "typ": {
+                        "type": "string",
+                        "description": "Segment lekárne: 'A - shopping premium', 'B - shopping', 'C - street +', 'D - street', 'E - poliklinika'",
+                        "enum": ["A - shopping premium", "B - shopping", "C - street +", "D - street", "E - poliklinika"]
+                    },
+                    "productivity": {
+                        "type": "string",
+                        "description": "Filter podľa produktivity: 'above' = nadpriemerná, 'below' = podpriemerná",
+                        "enum": ["above", "below"]
+                    },
+                    "min_gap": {
+                        "type": "number",
+                        "description": "Minimálny FTE gap (kladné = poddimenzované). Napr. 1.0 pre lekárne ktorým chýba aspoň 1 FTE"
+                    },
+                    "max_gap": {
+                        "type": "number",
+                        "description": "Maximálny FTE gap (záporné = predimenzované). Napr. -1.0 pre lekárne s prebytkom aspoň 1 FTE"
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "description": "Zoradiť podľa: 'gap' (FTE rozdiel), 'bloky' (transakcie), 'trzby' (tržby), 'fte' (aktuálne FTE)",
+                        "enum": ["gap", "bloky", "trzby", "fte"]
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximálny počet výsledkov (default 10, max 20)"
+                    }
+                },
+                "required": []
+            }
+        },
+        {
+            "name": "get_network_summary",
+            "description": "Získaj celkový prehľad siete lekární - súhrn FTE, štatistiky podľa segmentov, outliers. Použi pre otázky typu 'koľko máme lekární', 'celkový prehľad', 'stav siete'.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        },
+        {
+            "name": "get_pharmacy_details",
+            "description": "Získaj detaily konkrétnej lekárne podľa ID. Použi keď používateľ pýta na konkrétnu lekáreň alebo chce porovnať s inou.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pharmacy_id": {
+                        "type": "integer",
+                        "description": "ID lekárne"
+                    }
+                },
+                "required": ["pharmacy_id"]
+            }
+        },
+        {
+            "name": "get_model_info",
+            "description": "Získaj informácie o ML modeli - koeficienty, metriky presnosti, váhy segmentov. Použi pre otázky typu 'aký model používate', 'ako funguje výpočet', 'aký vplyv má produktivita', 'prečo B segment má nižšie FTE'.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        },
+        {
+            "name": "detect_growth_opportunities",
+            "description": "Nájdi lekárne s potenciálom rastu ale možným neobslúženým dopytom. Toto sú lekárne ktoré RASTÚ a majú VYSOKÚ PRODUKTIVITU - model im preto odporúča menej personálu, ale v skutočnosti môžu mať kapacitné problémy počas špičiek. Použi pre otázky typu 'ktoré lekárne majú potenciál rastu', 'kde môže byť neobslúžený dopyt', 'kapacitné problémy', 'rastúce lekárne s vysokou produktivitou'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "min_growth": {
+                        "type": "number",
+                        "description": "Minimálny rast v % (default 3). Vyššia hodnota = prísnejší filter."
+                    },
+                    "segment": {
+                        "type": "string",
+                        "description": "Filter podľa segmentu: 'A', 'B', 'C', 'D', 'E'"
+                    }
+                },
+                "required": []
+            }
+        }
+    ]
+}
 
-TVOJA ÚLOHA:
-- Analyzovať pozíciu lekárne v segmente
-- Identifikovať výnimočné prípady (flagship, unikátne lekárne)
-- Vysvetliť prečo model odporúča konkrétny počet FTE
-- Upozorniť na faktory ktoré model nezachytáva
 
-MODEL:
-- Typ: Ridge Regression (lineárna regresia s L2 regularizáciou)
-- Tréningové dáta: 286 lekární, obdobie Sep 2020 - Aug 2021
-- Presnosť (R²): 87.3%, RMSE: ±0.52 FTE
+def execute_tool(tool_name, args):
+    """Execute a tool and return the result."""
+    if tool_name == "search_pharmacies":
+        return execute_search_pharmacies(args)
+    elif tool_name == "get_network_summary":
+        return execute_get_network_summary()
+    elif tool_name == "get_pharmacy_details":
+        return execute_get_pharmacy_details(args.get("pharmacy_id"))
+    elif tool_name == "get_model_info":
+        return execute_get_model_info()
+    elif tool_name == "detect_growth_opportunities":
+        return execute_detect_growth_opportunities(args)
+    else:
+        return {"error": f"Unknown tool: {tool_name}"}
 
-VSTUPY MODELU:
-- typ: kategória lekárne (A-E)
-- bloky: ročný počet transakcií
-- trzby: ročné tržby v EUR
-- podiel_rx: Rx recepty sú časovo náročnejšie, vyšší podiel = viac personálu
 
-VÝSTUP:
-- GROSS FTE (hrubé úväzky) = NET × ~1.2
-- F (Farmaceut), L (Laborant), ZF (Zodpovedný farmaceut)
+def execute_search_pharmacies(args):
+    """Execute pharmacy search with filters."""
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
 
-ANALÝZA POZÍCIE V SEGMENTE:
-- Percentily ukazujú kde lekáreň stojí v porovnaní s ostatnými rovnakého typu
-- >90% = špičková lekáreň, vyžaduje špeciálnu pozornosť
-- <10% = malá lekáreň, model môže byť menej presný
+    df_calc = df.copy()
+    df_calc['effective_bloky'] = df_calc['bloky'] * (1 + rx_time_factor * df_calc['podiel_rx'])
+    df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
 
-KEDY UPOZORNIŤ NA OPATRNOSŤ:
-1. Málo porovnateľných lekární (0-2) = model extrapoluje, odporúčanie menej spoľahlivé
-2. Lekáreň je na okraji segmentu (>90% alebo <10% percentil) = výnimočný prípad
-3. Veľký rozdiel medzi odporúčaním a skutočnosťou (>2 FTE) = preskúmať prevádzkové dôvody
-4. Shopping premium (typ A) s vysokými tržbami = možný flagship store s osobitnými požiadavkami
-5. Nízky košík pri vysokom obrate = veľa rýchlych transakcií, náročnejšia prevádzka
+    X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
+                      for _, row in df_calc.iterrows()])
+    df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-PREVÁDZKOVÉ FAKTORY KTORÉ MODEL MOMENTÁLNE NEZACHYTÁVA:
-- Otváracie hodiny (rozšírené vs štandardné)
-- Flagship/showcase status
-- Špeciálne služby (konzultácie, príprava liekov)
-- Lokalita (turistická oblasť, nemocnica)
-- Sezónnosť a špičky
+    GROSS_CONVERSION = {
+        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+    }
 
-PRAVIDLÁ ODPOVEDE:
-- Odpovedaj 3-5 vetami, stručne ale s hĺbkou
-- Ak je lekáreň výnimočná, povedz to jasne
-- Pri "predimenzované/poddimenzované" vždy zvážiť či ide o reálny problém alebo odôvodnený stav
-- Používaj slovenčinu
+    def calc_gross(fte_net, typ):
+        props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return fte_net * props['prop_F'] * conv['F'] + \
+               fte_net * props['prop_L'] * conv['L'] + \
+               fte_net * props['prop_ZF'] * conv['ZF']
 
-KRITICKÉ - HODNOTY FTE:
-- NIKDY NEPOČÍTAJ vlastné hodnoty FTE!
-- Použi IBA hodnoty označené >>> ... <<< vyššie
-- Ak vidíš ">>> ODPORÚČANÉ FTE = 8.6 <<<", povedz presne 8.6, nie 8.8 ani inú hodnotu
-- Toto je najdôležitejšie pravidlo - porušenie = nesprávna odpoveď"""
+    def calc_actual_gross(row):
+        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
+
+    # Calculate productivity percentage
+    df_calc['prod_pct'] = df_calc.apply(
+        lambda r: round(r['prod_residual'] / SEGMENT_PROD_MEANS.get(r['typ'], 8.0) * 100, 0), axis=1)
+
+    result = df_calc.copy()
+
+    # Apply filters
+    # Filter by city (case-insensitive, partial match)
+    if args.get('mesto'):
+        mesto_search = args['mesto'].lower()
+        result = result[result['mesto'].str.lower().str.contains(mesto_search, na=False)]
+
+    if args.get('typ'):
+        result = result[result['typ'] == args['typ']]
+
+    if args.get('min_gap') is not None:
+        result = result[result['fte_gap'] >= args['min_gap']]
+
+    if args.get('max_gap') is not None:
+        result = result[result['fte_gap'] <= args['max_gap']]
+
+    if args.get('productivity') == 'above':
+        result = result[result['prod_residual'] > 0]
+    elif args.get('productivity') == 'below':
+        result = result[result['prod_residual'] <= 0]
+
+    # Sort
+    sort_by = args.get('sort_by', 'gap')
+    sort_map = {'gap': 'fte_gap', 'bloky': 'bloky', 'trzby': 'trzby', 'fte': 'actual_fte'}
+    sort_col = sort_map.get(sort_by, 'fte_gap')
+
+    # For gap and fte, sort descending by default; for bloky/trzby ascending
+    ascending = sort_by in ['bloky', 'trzby']
+    result = result.sort_values(sort_col, ascending=ascending)
+
+    limit = min(args.get('limit', 10), 20)
+    result = result.head(limit)
+
+    pharmacies = []
+    for _, row in result.iterrows():
+        pharmacies.append({
+            'id': int(row['id']),
+            'mesto': row['mesto'],
+            'typ': row['typ'],
+            'bloky': int(row['bloky']),
+            'trzby': int(row['trzby']),
+            'podiel_rx': round(row['podiel_rx'] * 100, 0),
+            'actual_fte': round(row['actual_fte'], 1),
+            'predicted_fte': round(row['predicted_fte'], 1),
+            'gap': round(row['fte_gap'], 1),
+            'prod_pct': int(row['prod_pct']),
+            'productivity': 'nadpriemerná' if row['prod_residual'] > 0 else 'podpriemerná/priemerná'
+        })
+
+    return {
+        'count': len(pharmacies),
+        'filters': args,
+        'pharmacies': pharmacies
+    }
+
+
+def execute_get_network_summary():
+    """Get network-wide summary."""
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
+
+    df_calc = df.copy()
+    df_calc['effective_bloky'] = df_calc['bloky'] * (1 + rx_time_factor * df_calc['podiel_rx'])
+    df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
+
+    X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
+                      for _, row in df_calc.iterrows()])
+    df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
+
+    GROSS_CONVERSION = {
+        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+    }
+
+    def calc_gross_pred(fte_net, typ):
+        props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return fte_net * props['prop_F'] * conv['F'] + \
+               fte_net * props['prop_L'] * conv['L'] + \
+               fte_net * props['prop_ZF'] * conv['ZF']
+
+    def calc_actual_gross(row):
+        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross_pred(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
+
+    total_actual = df_calc['actual_fte'].sum()
+    total_predicted = df_calc['predicted_fte'].sum()
+
+    segments = []
+    for typ in ['A - shopping premium', 'B - shopping', 'C - street +', 'D - street', 'E - poliklinika']:
+        seg = df_calc[df_calc['typ'] == typ]
+        if len(seg) == 0:
+            continue
+        segments.append({
+            'typ': typ,
+            'count': len(seg),
+            'actual_fte': round(seg['actual_fte'].sum(), 1),
+            'predicted_fte': round(seg['predicted_fte'].sum(), 1),
+            'gap': round(seg['fte_gap'].sum(), 1),
+            'understaffed': len(seg[seg['fte_gap'] > 0.5]),
+            'overstaffed': len(seg[seg['fte_gap'] < -0.5])
+        })
+
+    return {
+        'total_pharmacies': len(df_calc),
+        'total_actual_fte': round(total_actual, 1),
+        'total_predicted_fte': round(total_predicted, 1),
+        'total_gap': round(total_predicted - total_actual, 1),
+        'understaffed_count': len(df_calc[df_calc['fte_gap'] > 0.5]),
+        'overstaffed_count': len(df_calc[df_calc['fte_gap'] < -0.5]),
+        'segments': segments
+    }
+
+
+def execute_get_pharmacy_details(pharmacy_id):
+    """Get details for a specific pharmacy."""
+    pharmacy = df[df['id'] == pharmacy_id]
+    if len(pharmacy) == 0:
+        return {"error": f"Lekáreň s ID {pharmacy_id} nenájdená"}
+
+    row = pharmacy.iloc[0]
+    typ = row['typ']
+
+    TYPE_GROSS_CONV = {
+        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+    }
+    conv = TYPE_GROSS_CONV.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+
+    actual_fte = row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+
+    # Calculate predicted
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
+    features = {col: row.get(col, 0) for col in model_pkg['feature_cols']}
+    features['effective_bloky'] = row['bloky'] * (1 + rx_time_factor * row['podiel_rx'])
+    X = pd.DataFrame([features])
+    predicted_fte_net = model_pkg['models']['fte'].predict(X)[0]
+
+    props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+    predicted_fte = predicted_fte_net * props['prop_F'] * conv['F'] + \
+                    predicted_fte_net * props['prop_L'] * conv['L'] + \
+                    predicted_fte_net * props['prop_ZF'] * conv['ZF']
+
+    prod_pct = round(float(row.get('prod_residual', 0)) / SEGMENT_PROD_MEANS.get(typ, 8.0) * 100, 0)
+
+    return {
+        'id': int(row['id']),
+        'mesto': row['mesto'],
+        'typ': typ,
+        'bloky': int(row['bloky']),
+        'trzby': int(row['trzby']),
+        'podiel_rx': round(row['podiel_rx'] * 100, 0),
+        'actual_fte': round(actual_fte, 1),
+        'predicted_fte': round(predicted_fte, 1),
+        'gap': round(predicted_fte - actual_fte, 1),
+        'prod_pct': int(prod_pct),
+        'productivity': 'nadpriemerná' if row.get('prod_residual', 0) > 0 else 'podpriemerná/priemerná'
+    }
+
+
+def execute_get_model_info():
+    """Get ML model information - coefficients, metrics, segment weights."""
+    pipeline = model_pkg['models']['fte']
+    model = pipeline.named_steps['model']
+    preprocessor = pipeline.named_steps['preprocessor']
+
+    # Get feature names
+    num_features = model_pkg['num_features']
+    cat_features = model_pkg['cat_features']
+    cat_encoder = preprocessor.named_transformers_['cat']
+    cat_encoded_names = list(cat_encoder.get_feature_names_out(cat_features))
+    all_feature_names = num_features + cat_encoded_names
+
+    coefs = model.coef_
+    intercept = model.intercept_
+
+    # Build coefficient dict
+    coefficients = {}
+    for name, coef in zip(all_feature_names, coefs):
+        coefficients[name] = round(float(coef), 4)
+
+    # Segment coefficients
+    segment_coefs = {'A - shopping premium': 0.0}
+    for name in cat_encoded_names:
+        if name.startswith('typ_'):
+            segment_name = name.replace('typ_', '')
+            segment_coefs[segment_name] = coefficients[name]
+
+    metrics = model_pkg.get('metrics', {}).get('fte', {})
+
+    return {
+        'version': model_pkg.get('version', 'v5'),
+        'type': 'Ridge Regression (L2 regularization)',
+        'training_data': '286 lekární, Sep 2020 - Aug 2021',
+        'metrics': {
+            'r2': round(metrics.get('r2', 0), 3),
+            'rmse': round(metrics.get('rmse', 0), 3),
+            'cv_r2_mean': round(metrics.get('cv_r2_mean', 0), 3),
+        },
+        'intercept': round(float(intercept), 4),
+        'segment_coefficients': segment_coefs,
+        'segment_productivity_means': SEGMENT_PROD_MEANS,
+        'feature_importance': {
+            'most_positive': sorted(
+                [(k, v) for k, v in coefficients.items() if not k.startswith('typ_')],
+                key=lambda x: x[1], reverse=True
+            )[:5],
+            'most_negative': sorted(
+                [(k, v) for k, v in coefficients.items() if not k.startswith('typ_')],
+                key=lambda x: x[1]
+            )[:3]
+        },
+        'rx_time_factor': model_pkg.get('rx_time_factor', 0.41),
+        'productivity_rule': 'Asymetrické: nadpriemerná produktivita = odmena (nižšie FTE), podpriemerná = žiadna penalizácia'
+    }
+
+
+def execute_detect_growth_opportunities(args):
+    """Find pharmacies with growth + high productivity = potential unserved demand."""
+    min_growth = args.get('min_growth', 3.0)
+    segment = args.get('segment')
+
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
+
+    df_calc = df.copy()
+    df_calc['effective_bloky'] = df_calc['bloky'] * (1 + rx_time_factor * df_calc['podiel_rx'])
+    df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
+
+    # Calculate predictions
+    X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
+                      for _, row in df_calc.iterrows()])
+    df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
+
+    GROSS_CONVERSION = {
+        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+    }
+
+    def calc_gross(fte_net, typ):
+        props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return fte_net * props['prop_F'] * conv['F'] + \
+               fte_net * props['prop_L'] * conv['L'] + \
+               fte_net * props['prop_ZF'] * conv['ZF']
+
+    def calc_actual_gross(row):
+        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
+
+    # Calculate productivity percentage
+    df_calc['prod_pct'] = df_calc.apply(
+        lambda r: round(r['prod_residual'] / SEGMENT_PROD_MEANS.get(r['typ'], 8.0) * 100, 0), axis=1)
+
+    # Filter for growth risk pattern: growing + high productivity
+    # bloky_trend > min_growth AND prod_residual > 0 (above segment average)
+    risk_pharmacies = df_calc[
+        (df_calc['bloky_trend'] > min_growth) &
+        (df_calc['prod_residual'] > 0)
+    ].copy()
+
+    if segment:
+        risk_pharmacies = risk_pharmacies[risk_pharmacies['typ'].str.startswith(segment)]
+
+    # Sort by growth rate descending
+    risk_pharmacies = risk_pharmacies.sort_values('bloky_trend', ascending=False)
+
+    results = []
+    for _, row in risk_pharmacies.head(20).iterrows():
+        bloky_trend = row.get('bloky_trend', 0)
+        risk_level = 'vysoké' if bloky_trend > 7 else 'stredné'
+
+        results.append({
+            'id': int(row['id']),
+            'mesto': row['mesto'],
+            'typ': row['typ'],
+            'bloky_trend': round(bloky_trend, 1),
+            'prod_pct': int(row.get('prod_pct', 0)),
+            'actual_fte': round(row['actual_fte'], 1),
+            'predicted_fte': round(row['predicted_fte'], 1),
+            'gap': round(row['fte_gap'], 1),
+            'risk_level': risk_level,
+            'potential_issue': 'Vysoký rast + vysoká produktivita = možný neobslúžený dopyt'
+        })
+
+    return {
+        'count': len(results),
+        'total_matching': len(risk_pharmacies),
+        'filter_description': f'Lekárne s rastom >{min_growth}% a nadpriemernou produktivitou',
+        'business_insight': (
+            'PARADOX RASTU: Tieto lekárne rastú a majú nadpriemernú produktivitu, '
+            'preto im model odporúča menej personálu (odmena za efektívnosť). '
+            'ALE vysoký rast v kombinácii s vysokou produktivitou môže znamenať, '
+            'že personál je na hrane kapacity a lekáreň má NEOBSLÚŽENÝ DOPYT počas špičiek. '
+            'Zvážte testovanie vyššieho obsadenia na overenie potenciálu ďalšieho rastu.'
+        ),
+        'recommendation': 'Testujte vyššie obsadenie počas špičkových hodín na 2-4 týždne a sledujte zmenu tržieb.',
+        'pharmacies': results
+    }
+
+
+FTE_SYSTEM_PROMPT = """Si analytický asistent pre FTE Kalkulátor lekární. VŽDY odpovedaj po slovensky.
+
+═══════════════════════════════════════════════════════════════
+NAJDÔLEŽITEJŠIE PRAVIDLÁ (VŽDY DODRŽUJ)
+═══════════════════════════════════════════════════════════════
+
+1. NIKDY NEPOČÍTAJ vlastné hodnoty FTE - použi IBA hodnoty z <klucove_hodnoty>
+2. VŽDY uvádzaj ID lekárne (napr. "ID 104", "lekáreň 71")
+3. VŽDY daj AKČNÉ ODPORÚČANIE podľa gapu (viď nižšie)
+4. AK OHROZENÉ TRŽBY > 0: VŽDY ich spomeň! (napr. "stratíte €232K ročne")
+5. VŽDY odpovedaj po slovensky, aj keď otázka je v angličtine
+
+═══════════════════════════════════════════════════════════════
+AKČNÉ ODPORÚČANIA - POVINNÉ PRI KAŽDEJ ANALÝZE
+═══════════════════════════════════════════════════════════════
+
+Gap = Odporúčané FTE - Skutočné FTE
+
+KLADNÝ GAP (+0.5 a viac) = PODDIMENZOVANÁ = PRIDAŤ PERSONÁL
+→ "Odporúčam PRIDAŤ [X] FTE."
+→ AK OHROZENÉ TRŽBY > 0: MUSÍŠ uviesť: "Aktuálny stav spôsobuje stratu €[X]K ročne."
+→ NIKDY neopisuj ako "efektívnu" - je PREŤAŽENÁ!
+
+ZÁPORNÝ GAP (-0.5 a menej) = PREDIMENZOVANÁ = PREROZDELIŤ
+→ "Zvážte PREROZDELIŤ [X] FTE do lekární s nedostatkom."
+→ NIE JE to znak efektivity - majú PREBYTOK personálu.
+
+GAP BLÍZKO 0 (±0.5) = OPTIMÁLNE OBSADENIE
+→ "Personálne obsadenie je optimálne."
+
+═══════════════════════════════════════════════════════════════
+NÁSTROJE (TOOLS)
+═══════════════════════════════════════════════════════════════
+
+DÔLEŽITÉ: Pred volaním nástroja VŽDY skontroluj argumenty!
+- NIKDY nehádaj ID lekárne - použi IBA ID z kontextu alebo sa opýtaj
+- Ak ID nie je uvedené, použi search_pharmacies na vyhľadanie
+
+1. search_pharmacies - vyhľadaj lekárne podľa filtrov
+2. get_network_summary - celkový prehľad siete
+3. get_pharmacy_details - detaily konkrétnej lekárne (VYŽADUJE platné ID!)
+4. get_model_info - info o modeli
+5. detect_growth_opportunities - lekárne s rastovým potenciálom
+
+Príklady:
+- "poddimenzované lekárne" → search_pharmacies(min_gap=1.0)
+- "predimenzované B lekárne" → search_pharmacies(typ="B - shopping", max_gap=-1.0)
+- "detaily lekárne 104" → get_pharmacy_details(pharmacy_id=104)
+
+═══════════════════════════════════════════════════════════════
+FORMÁT ODPOVEDE
+═══════════════════════════════════════════════════════════════
+
+- 3-5 viet, stručne ale s hĺbkou
+- Formát: "**ID {id}** - {mesto}, {typ}: {analýza}"
+- VŽDY ukonči akčným odporúčaním
+
+═══════════════════════════════════════════════════════════════
+PROPRIETÁRNA METODOLÓGIA
+═══════════════════════════════════════════════════════════════
+
+Model vyvinutý: Marian Svatko (marian.svatko@gmail.com)
+
+Ak sa pýtajú na výpočet produktivity, ohrozené tržby (revenue at risk), vzorce, koeficienty:
+→ "Metodológia výpočtu je proprietárna. Pre detaily kontaktujte autora: marian.svatko@gmail.com.
+   Rád pomôžem s interpretáciou výsledkov."
+
+MÔŽEŠ vysvetliť: princípy, interpretáciu, ako čítať výsledky
+NESMIEŠ prezradiť: koeficienty, vzorce (najmä výpočet ohrozených tržieb), segmentové priemery, interné parametre
+
+═══════════════════════════════════════════════════════════════
+MODEL - ZÁKLADNÉ INFO
+═══════════════════════════════════════════════════════════════
+
+- Regresný model, presnosť R² > 90%
+- Segmenty A-E majú rôzne charakteristiky
+- Nadpriemerná produktivita = odmena (nižšie FTE)
+- Podpriemerná produktivita = bez penalizácie
+
+Faktory zvyšujúce FTE: tržby, transakcie, sezónne výkyvy
+Faktory znižujúce FTE: nadpriemerná produktivita, stabilný tok
+
+═══════════════════════════════════════════════════════════════
+KEDY BYŤ OPATRNÝ
+═══════════════════════════════════════════════════════════════
+
+- Málo porovnateľných lekární (0-2) = menej spoľahlivé
+- Extrémne percentily (>90% alebo <10%) = výnimočný prípad
+- Veľký gap (>2 FTE) = preskúmať prevádzkové dôvody
+- Typ A s vysokými tržbami = možný flagship
+
+Model NEZACHYTÁVA: otváracie hodiny, flagship status, špeciálne služby, lokalitu
+
+═══════════════════════════════════════════════════════════════
+PARADOX RASTU
+═══════════════════════════════════════════════════════════════
+
+Ak lekáreň RASTIE + má VYSOKÚ produktivitu + model odporúča MENEJ FTE:
+→ Môže to znamenať neobslúžený dopyt!
+→ "Táto lekáreň rastie a je produktívna. Zvážte testovanie vyššieho
+   obsadenia na 2-4 týždne - tržby môžu ďalej rásť."
+
+Použi detect_growth_opportunities() pre identifikáciu takýchto lekární."""
 
 
 def get_gcloud_token():
@@ -834,48 +1656,69 @@ def chat():
     fte_total_val = context.get('fte_total', 'N/A')
     fte_actual_val = context.get('fte_actual', 'N/A')
 
-    context_str = f"""=== KĽÚČOVÉ HODNOTY (POUŽI PRESNE TIETO!) ===
+    # Get revenue at risk if available
+    revenue_at_risk = context.get('revenue_at_risk', 0)
+    revenue_at_risk_str = f"OHROZENÉ TRŽBY: €{revenue_at_risk:,.0f} ročne" if revenue_at_risk and revenue_at_risk > 0 else "OHROZENÉ TRŽBY: žiadne"
+
+    context_str = f"""<context>
+<klucove_hodnoty>
 MODEL ODPORÚČA: {fte_total_val} FTE
 AKTUÁLNE MÁ: {fte_actual_val} FTE
 ROZDIEL: {fte_diff} FTE
-===============================================
+{revenue_at_risk_str}
+</klucove_hodnoty>
 
-KONTEXT VÝPOČTU:
-- Lekáreň: {context.get('pharmacy_name', 'N/A')}
+<lekarenska_data>
+- ID lekárne: {context.get('pharmacy_id', 'N/A')}
+- Mesto: {context.get('pharmacy_name', 'N/A')}
 - Typ lekárne: {context.get('typ', 'N/A')}
 - Ročné bloky: {bloky:,.0f} ({bloky/1000:.0f}k)
 - Ročné tržby: €{trzby:,.0f} ({trzby/1000000:.1f}M)
 - Podiel Rx: {podiel_rx * 100:.0f}%
 - Košík: €{basket:.1f}
+</lekarenska_data>
 
-VÝSLEDOK MODELU:
+<vysledok_modelu>
 - Odporúčané FTE: {fte_total_val}
 - Aktuálne FTE: {fte_actual_val}
 - Rozdiel: {fte_diff}
 - Rozdelenie: F={context.get('fte_F', 'N/A')}, L={context.get('fte_L', 'N/A')}, ZF={context.get('fte_ZF', 'N/A')}
+</vysledok_modelu>
 
-POZÍCIA V SEGMENTE (percentily, 0%=minimum, 100%=maximum):
+<pozicia_v_segmente>
+Percentily (0%=minimum, 100%=maximum):
 - Bloky: {bloky_pct:.0f}% (rozsah: {segment_bloky_min/1000:.0f}k - {segment_bloky_max/1000:.0f}k)
 - Tržby: {trzby_pct:.0f}% (rozsah: {segment_trzby_min/1000000:.1f}M - {segment_trzby_max/1000000:.1f}M €)
 - Rx %: {rx_pct:.0f}% (rozsah: {segment_rx_min:.0f}% - {segment_rx_max:.0f}%)
+</pozicia_v_segmente>
 
-PODOBNÉ LEKÁRNE (±10% bloky a tržby):
-- Počet podobných: {comparable_count}
+<podobne_lekarne>
+- Počet podobných (±10% bloky a tržby): {comparable_count}
 - Priemer podobných: {context.get('comparable_avg', 'N/A')} FTE
+</podobne_lekarne>
 
-SEGMENT ŠTATISTIKY:
+<segment_statistiky>
 - Počet v segmente: {benchmark_count}
 - Priemer FTE: {benchmark_avg:.1f}
 - Priemer Rx: {(segment_rx_min + segment_rx_max) / 2:.0f}%
+</segment_statistiky>
 
-HODINOVÉ METRIKY:
+<hodinove_metriky>
 - Bloky/hod: {context.get('bloky_per_hour', 'N/A')} (segment: {context.get('segment_bloky_hour_min', 'N/A')} - {context.get('segment_bloky_hour_max', 'N/A')})
 - Tržby/hod: {context.get('trzby_per_hour', 'N/A')} €
+</hodinove_metriky>
 
-INDIKÁTORY PRE ANALÝZU:
+<trend>
+- Medziročný trend: {(context.get('bloky_trend') or 0) * 100:.1f}%
+- Významný rast (>15%): {'ÁNO - RASTIE!' if (context.get('bloky_trend') or 0) > 0.15 else 'NIE'}
+</trend>
+
+<indikatory>
 - Unikátna lekáreň (málo porovnateľných): {'ÁNO' if is_unique else 'NIE'}
 - Na okraji segmentu (>90% alebo <10%): {'ÁNO' if is_outlier else 'NIE'}
-- Veľký rozdiel vs skutočnosť (>2 FTE): {'ÁNO' if is_large_diff else 'NIE'}"""
+- Veľký rozdiel vs skutočnosť (>2 FTE): {'ÁNO' if is_large_diff else 'NIE'}
+</indikatory>
+</context>"""
 
     # Call Vertex AI (global location uses different endpoint format)
     if VERTEX_LOCATION == 'global':
@@ -886,6 +1729,7 @@ INDIKÁTORY PRE ANALÝZU:
     # Include FTE values directly in question to prevent hallucination
     enhanced_question = f"{user_question} (Poznámka: Model odporúča presne {fte_total_val} FTE, aktuálne má {fte_actual_val} FTE)"
 
+    # Initial payload with tools
     payload = {
         "contents": [{
             "role": "user",
@@ -894,9 +1738,13 @@ INDIKÁTORY PRE ANALÝZU:
         "systemInstruction": {
             "parts": [{"text": FTE_SYSTEM_PROMPT}]
         },
+        "tools": [CHAT_TOOLS],
         "generationConfig": {
             "temperature": 0,
-            "maxOutputTokens": 2048
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {
+                "thinkingLevel": "MEDIUM"
+            }
         }
     }
 
@@ -906,18 +1754,89 @@ INDIKÁTORY PRE ANALÝZU:
     }
 
     try:
+        # First API call
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
         result = response.json()
 
-        # Extract text from response
-        answer = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        # Check if model wants to use a tool
+        candidate = result.get('candidates', [{}])[0]
+        content = candidate.get('content', {})
+        parts = content.get('parts', [])
 
-        return jsonify({
-            'answer': answer,
-            'model': VERTEX_MODEL,
-            'tokens': result.get('usageMetadata', {})
-        })
+        # Look for function calls
+        function_calls = [p for p in parts if 'functionCall' in p]
+
+        if function_calls:
+            # Execute tools and collect results
+            tool_results = []
+            for fc in function_calls:
+                func_call = fc['functionCall']
+                tool_name = func_call['name']
+                tool_args = func_call.get('args', {})
+
+                # Execute the tool
+                tool_result = execute_tool(tool_name, tool_args)
+                tool_results.append({
+                    'name': tool_name,
+                    'result': tool_result
+                })
+
+            # Build follow-up request with tool results
+            follow_up_contents = payload['contents'].copy()
+
+            # Add model's response with function calls
+            follow_up_contents.append({
+                "role": "model",
+                "parts": parts
+            })
+
+            # Add function responses
+            function_response_parts = []
+            for tr in tool_results:
+                function_response_parts.append({
+                    "functionResponse": {
+                        "name": tr['name'],
+                        "response": tr['result']
+                    }
+                })
+
+            follow_up_contents.append({
+                "role": "user",
+                "parts": function_response_parts
+            })
+
+            # Second API call with tool results
+            follow_up_payload = {
+                "contents": follow_up_contents,
+                "systemInstruction": payload['systemInstruction'],
+                "tools": [CHAT_TOOLS],
+                "generationConfig": payload['generationConfig']
+            }
+
+            response2 = requests.post(url, json=follow_up_payload, headers=headers, timeout=30)
+            response2.raise_for_status()
+            result2 = response2.json()
+
+            # Extract final answer
+            answer = result2.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+
+            return jsonify({
+                'answer': answer,
+                'model': VERTEX_MODEL,
+                'tools_used': [tr['name'] for tr in tool_results],
+                'tokens': result2.get('usageMetadata', {})
+            })
+
+        else:
+            # No tool call, extract text directly
+            answer = parts[0].get('text', '') if parts else ''
+
+            return jsonify({
+                'answer': answer,
+                'model': VERTEX_MODEL,
+                'tokens': result.get('usageMetadata', {})
+            })
 
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Vertex AI request failed: {str(e)}'}), 500

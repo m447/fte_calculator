@@ -157,6 +157,24 @@ def calculate_sensitivity(bloky, trzby, podiel_rx, typ, model_pkg, defaults, con
     }
 
 
+def calculate_revenue_at_risk(predicted_fte, actual_fte, trzby, is_above_avg_productivity):
+    """Calculate potential revenue at risk due to understaffing in productive pharmacies."""
+    if not actual_fte or predicted_fte <= actual_fte or trzby <= 0 or not is_above_avg_productivity:
+        return 0
+
+    # Using rounded values for consistency with display
+    actual_fte_rounded = round(actual_fte, 1)
+    predicted_fte_rounded = round(predicted_fte, 1)
+
+    if predicted_fte_rounded <= actual_fte_rounded:
+        return 0
+
+    overload_ratio = predicted_fte_rounded / actual_fte_rounded if actual_fte_rounded > 0 else 1
+    # Loss = (Overload_ratio - 1) × 50% × Revenue
+    revenue_at_risk = int((overload_ratio - 1) * 0.5 * trzby)
+    return revenue_at_risk
+
+
 @app.route('/api/predict', methods=['POST'])
 @requires_auth
 def predict():
@@ -370,6 +388,30 @@ def predict():
     hist_blokyhod = compute_histogram(type_data['bloky_per_hour'])
     hist_trzbyhod = compute_histogram(type_data['trzby_per_hour'])
 
+    # Get actual FTE if pharmacy_id provided (for revenue at risk calc)
+    actual_fte = None
+    if pharmacy_id is not None:
+        try:
+            pharmacy_id_int = int(pharmacy_id)
+            pharmacy_matches = df[df['id'] == pharmacy_id_int]
+            if not pharmacy_matches.empty:
+                p_row = pharmacy_matches.iloc[0]
+                # Determine factors for actuals (specific or default)
+                if pharmacy_id_int in PHARMACY_GROSS_FACTORS:
+                    a_conv = PHARMACY_GROSS_FACTORS[pharmacy_id_int]
+                else:
+                    a_conv = GROSS_CONVERSION.get(p_row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+                
+                actual_fte = p_row['fte_F'] * a_conv['F'] + \
+                             p_row['fte_L'] * a_conv['L'] + \
+                             p_row['fte_ZF'] * a_conv['ZF']
+        except ValueError:
+            pass  # Invalid pharmacy_id format
+
+    # Revenue at risk
+    is_above_avg_productivity = productivity_z > 0
+    revenue_at_risk = calculate_revenue_at_risk(fte_pred, actual_fte, trzby, is_above_avg_productivity)
+
     return jsonify({
         'meta': {
             'version': '5.1',
@@ -391,6 +433,7 @@ def predict():
             'L': fte_L,
             'ZF': fte_ZF
         },
+        'revenue_at_risk': revenue_at_risk,
         'benchmark': {
             'avg': round(type_data['fte'].mean() * type_conv, 1),  # Convert to GROSS using type-based factors
             'min': round(type_data['fte'].min() * type_conv, 1),
@@ -459,6 +502,7 @@ def predict():
         },
         'sensitivity': calculate_sensitivity(bloky, trzby, podiel_rx, typ, model_pkg, defaults, conv)
     })
+
 
 
 @app.route('/api/network', methods=['GET'])

@@ -87,7 +87,7 @@ body {
   font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-page);
   margin: 0;
-  padding: 20px 16px 40px;
+  padding: 20px 16px 120px; /* Increased bottom padding for mobile safe area */
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -2176,6 +2176,44 @@ input:checked + .toggle-slider:before {
   100% { transform: scale(1); }
 }
 
+.sim-reset-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.sim-reset-btn:hover {
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.btn-new-pharmacy {
+  background: transparent;
+  border: none;
+  color: var(--brand-green);
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-new-pharmacy:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+.btn-new-pharmacy svg {
+  width: 14px;
+  height: 14px;
+}
+
 .sim-charts {
   display: flex;
   flex-direction: column;
@@ -2971,9 +3009,41 @@ input:checked + .toggle-slider:before {
   color: var(--text-secondary);
 }
 
+/* Toast notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast {
+  background: #dc2626;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  font-size: 0.9rem;
+  animation: toastSlideIn 0.3s ease-out;
+  max-width: 350px;
+}
+.toast.success { background: #16a34a; }
+.toast.warning { background: #f59e0b; }
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 </style>
 </head>
 <body>
+<div class="toast-container" id="toast-container"></div>
 <div class="container">
   <div class="header animate-in">
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> FTE Kalkulačka</h1>
@@ -3064,6 +3134,10 @@ input:checked + .toggle-slider:before {
     <div class="pharmacy-id-row">
       <input type="number" id="pharmacy-id-input" placeholder="ID" min="1">
       <button type="button" id="pharmacy-load-btn" class="btn-load">Načítať</button>
+      <button type="button" class="btn-new-pharmacy" id="btn-new-pharmacy" title="Vymazať formulár a zadať parametre novej/plánovanej lekárne">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m-8-8h16"/></svg>
+        Nová lekáreň
+      </button>
       <span class="pharmacy-hint" id="pharmacy-hint"></span>
     </div>
 
@@ -3099,7 +3173,7 @@ input:checked + .toggle-slider:before {
         </div>
       </div>
       <div class="tooltip-wrapper">
-        <span class="tooltip-text">Nadpriemerná = nižšie FTE</span>
+        <span class="tooltip-text">Nadpriemerná = viac transakcií/hod. ako priemer segmentu</span>
         <label>Produktivita</label>
         <div class="segmented-control">
           <div class="segment-option">
@@ -3134,8 +3208,9 @@ input:checked + .toggle-slider:before {
     </div>
 
     <!-- Revenue Loss Display (Kahneman loss framing) -->
-    <div class="revenue-loss" id="revenue-loss" style="display:none;">
-      <!-- Content populated by JavaScript -->
+    <div class="revenue-loss" id="revenue-loss" style="display:none; position: relative;">
+      <button onclick="this.parentElement.style.display='none'" style="position: absolute; top: 8px; right: 12px; background: transparent; border: none; cursor: pointer; color: #b91c1c; font-size: 20px; font-weight: 700; opacity: 0.5;">×</button>
+      <div id="revenue-loss-content"></div>
     </div>
 
 
@@ -3564,7 +3639,10 @@ input:checked + .toggle-slider:before {
 
       <!-- Simulation - Unified with position charts -->
       <div class="card">
-        <div class="card-title">Simulácia zmien</div>
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          Simulácia zmien
+          <button class="sim-reset-btn" id="sim-reset-btn">Reset</button>
+        </div>
         <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
           Ako by sa zmenilo odporúčané FTE pri zmene parametrov
         </p>
@@ -3652,6 +3730,20 @@ input:checked + .toggle-slider:before {
 </div>
 
 <script>
+// Toast notification helper
+function showToast(message, type = 'error', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'toastFadeOut 0.3s ease-out forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
 const bloky = document.getElementById("bloky");
 const trzby = document.getElementById("trzby");
 const rxInput = document.getElementById("rx");
@@ -3873,6 +3965,7 @@ async function loadPharmacyById(pharmacyId) {
     console.error('Error loading pharmacy:', error);
     hint.textContent = `ID ${pharmacyId} nenájdené`;
     hint.classList.add('error');
+    showToast(`Lekáreň ID ${pharmacyId} nebola nájdená`);
     selectedPharmacyId = null;
     window.selectedPharmacyActualFte = null;
     window.selectedPharmacyPredictedFte = null;
@@ -3896,6 +3989,64 @@ pharmacyIdInput.onkeypress = (e) => {
   }
 };
 
+// "Nová lekáreň" button - reset form for new/pipeline pharmacy
+document.getElementById('btn-new-pharmacy').addEventListener('click', function() {
+  // Clear pharmacy ID
+  document.getElementById('pharmacy-id-input').value = '';
+  document.getElementById('pharmacy-hint').textContent = '';
+  document.getElementById('pharmacy-hint').classList.remove('loaded', 'error');
+
+  // Reset form fields
+  document.getElementById('bloky').value = '';
+  document.getElementById('trzby').value = '';
+  document.getElementById('rx').value = 50;
+  document.getElementById('typ').selectedIndex = 0;
+  document.getElementById('prod-avg').checked = true;
+  selectedProductivityZ = 0;
+
+  // Hide results
+  document.getElementById('result').style.display = 'none';
+
+  // Reset Analýza tab
+  document.getElementById('analyza-empty').style.display = 'flex';
+  document.getElementById('analyza-content').style.display = 'none';
+
+  // Clear stored data
+  selectedPharmacyId = null;
+  window.selectedPharmacyActualFte = null;
+  window.selectedPharmacyPredictedFte = null;
+  window.selectedPharmacyIsAboveAvgProd = null;
+  window.selectedPharmacyData = null;
+  window.pharmacyProdPct = null;
+
+  // Focus on typ select for quick type selection
+  document.getElementById('typ').focus();
+
+  // Brief visual feedback
+  showToast('Pripravené pre novú lekáreň', 'success', 2000);
+});
+
+// Type averages for new pharmacy auto-fill
+const typeAverages = {
+  'A - shopping premium': { bloky: 85000, trzby: 2100000, rx: 45 },
+  'B - shopping': { bloky: 65000, trzby: 1400000, rx: 48 },
+  'C - street +': { bloky: 35000, trzby: 750000, rx: 52 },
+  'D - street': { bloky: 25000, trzby: 550000, rx: 55 },
+  'E - poliklinika': { bloky: 40000, trzby: 900000, rx: 60 }
+};
+
+// Auto-fill when typ changes (only in new pharmacy mode)
+document.getElementById('typ').addEventListener('change', function() {
+  if (selectedPharmacyId === null) {
+    const avg = typeAverages[this.value];
+    if (avg) {
+      document.getElementById('bloky').value = avg.bloky;
+      document.getElementById('trzby').value = avg.trzby;
+      document.getElementById('rx').value = avg.rx;
+    }
+  }
+});
+
 // Update actual FTE comparison in calculator tab
 function updateActualFteCompare(recommendedFte) {
   const vsEl = document.getElementById('val-vs');
@@ -3916,27 +4067,19 @@ function updateActualFteCompare(recommendedFte) {
 }
 
 // Show revenue loss with Kahneman loss framing
-// Only shown for above-average productivity pharmacies (validated by pharmacy 25 data: +8% prod = 5.3% loss)
-function showRevenueLoss(predictedFte, actualFte, trzby, isAboveAvgProductivity) {
+// Now uses centralized calculation from API
+function showRevenueLoss(revenueAtRisk, trzby) {
   const lossEl = document.getElementById('revenue-loss');
+  const contentEl = document.getElementById('revenue-loss-content');
 
-  // Only show when:
-  // 1. We have actual FTE data
-  // 2. Pharmacy is understaffed (predicted > actual)
-  // 3. Revenue is positive
-  // 4. Productivity is above average (otherwise gap may be inefficiency, not true understaffing)
-  if (!actualFte || predictedFte <= actualFte || trzby <= 0 || !isAboveAvgProductivity) {
+  if (!revenueAtRisk || revenueAtRisk <= 0 || !trzby) {
     lossEl.style.display = 'none';
     return;
   }
 
-  const overloadRatio = predictedFte / actualFte;
-  // trzby is already in actual EUR (not millions) from data object
-  const yearlyLoss = (overloadRatio - 1) * 0.5 * trzby;
-
-  const lossPercent = ((yearlyLoss / trzby) * 100).toFixed(1);
-  const lossK = Math.round(yearlyLoss / 1000);
-  lossEl.innerHTML = `
+  const lossPercent = ((revenueAtRisk / trzby) * 100).toFixed(1);
+  const lossK = Math.round(revenueAtRisk / 1000);
+  contentEl.innerHTML = `
     <div class="revenue-loss-header">REVENUE AT RISK</div>
     <div class="revenue-loss-value">€${lossK}K | ${lossPercent}% per year</div>
     <div class="revenue-loss-note">Staff capacity exceeded</div>
@@ -4140,14 +4283,12 @@ calcBtn.onclick = async () => {
     // Update actual FTE comparison (if pharmacy loaded)
     updateActualFteCompare(fteTotal);
 
-    // Show revenue loss (Kahneman loss framing) - only for above-average productivity pharmacies
-    // Based on pharmacy 25 analysis: +8% productivity still has 5.3% lost revenue
-    // For below-average, the gap may be inefficiency, not true understaffing
-    const actualFteForLoss = window.selectedPharmacyActualFte || null;
-    const isAboveAvgProductivity = window.selectedPharmacyIsAboveAvgProd || false;  // Use separate var (not nulled on calc)
-    // Use DB prediction for consistency with Sieť tab (not fresh API prediction)
-    const predictedFteForLoss = window.selectedPharmacyPredictedFte || fteTotal;
-    showRevenueLoss(predictedFteForLoss, actualFteForLoss, data.trzby, isAboveAvgProductivity);
+    // Show revenue loss (Kahneman loss framing)
+    // Use pre-calculated revenue_at_risk from pharmacy API when available
+    const revenueAtRisk = window.selectedPharmacyData
+      ? window.selectedPharmacyData.revenue_at_risk
+      : r.revenue_at_risk;
+    showRevenueLoss(revenueAtRisk, data.trzby);
 
     // Render sensitivity analysis
     if (r.sensitivity) {
@@ -4170,6 +4311,7 @@ calcBtn.onclick = async () => {
 
   } catch (error) {
     console.error('Error:', error);
+    showToast('Chyba pri výpočte FTE');
   } finally {
     // Remove loading state
     calcBtn.classList.remove('loading');
@@ -4204,8 +4346,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // NETWORK DASHBOARD
 // ============================================
 async function loadNetworkData() {
+  const loadingEl = document.getElementById('network-loading');
+  const contentEl = document.getElementById('network-content');
+  
+  loadingEl.style.display = 'flex';
+  loadingEl.innerHTML = 'Načítavam dáta...';
+  contentEl.style.display = 'none';
+
   try {
     const response = await fetch('/api/network');
+    if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
 
     // Store data globally for CSV export
@@ -4299,7 +4449,13 @@ async function loadNetworkData() {
 
   } catch (error) {
     console.error('Error loading network data:', error);
-    document.getElementById('network-loading').innerHTML = 'Chyba pri načítaní dát';
+    document.getElementById('network-loading').innerHTML = `
+      <div style="text-align:center;">
+        <p style="margin-bottom:10px;">Chyba pri načítaní dát siete</p>
+        <button onclick="loadNetworkData()" class="btn-load">⟳ Skúsiť znova</button>
+      </div>
+    `;
+    showToast('Chyba pri načítaní dát siete');
   }
 }
 
@@ -4683,6 +4839,13 @@ function initSensitivitySliders(sensitivity, baseFte) {
   trzbySlider.oninput = updateSimulationDisplay;
   prodSlider.oninput = updateSimulationDisplay;
 
+  // Reset button
+  document.getElementById('sim-reset-btn').addEventListener('click', function() {
+    trzbySlider.value = 0;
+    prodSlider.value = 0;
+    updateSimulationDisplay();
+  });
+
   // Initial display
   updateSimulationDisplay();
 
@@ -4824,7 +4987,17 @@ chatClose.onclick = () => {
 
 // Send message
 async function sendChatMessage(question) {
-  if (!question.trim() || !lastCalculationResult) return;
+  if (!question.trim()) return;
+
+  // If no context, provide a generic helpful message instead of failing silently
+  if (!lastCalculationResult) {
+    addChatMessage(question, 'user');
+    chatInput.value = '';
+    setTimeout(() => {
+      addChatMessage("Najprv prosím vypočítajte FTE pre lekáreň v záložke Kalkulačka alebo vyberte lekáreň v záložke Prehľad, aby som vám mohol poradiť s konkrétnymi dátami. Zatiaľ vám môžem vysvetliť princípy modelu.", 'assistant');
+    }, 500);
+    return;
+  }
 
   // Add user message
   addChatMessage(question, 'user');

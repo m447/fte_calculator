@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prehľad - Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-green: #78BE20;
+      --brand-green-dark: #5a9216;
+      --brand-green-light: #e8f5d6;
+      --text-primary: #1f2937;
+      --text-secondary: #374151;
+      --text-muted: #6b7280;
+      --bg-card: #ffffff;
+      --bg-subtle: #f8faf6;
+      --bg-page: #f3f4f6;
+      --border-light: #e5e7eb;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --amber: #eab308;
+      --amber-light: #fefce8;
+      --green: #22c55e;
+      --green-light: #f0fdf4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Nunito Sans', -apple-system, sans-serif;
+      background: var(--bg-page);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-size: 1.5rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+    }
+
+    /* ============================================
+       HERO STAT - Revenue at Risk
+       ============================================ */
+    .hero-stat {
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%);
+      border: 1px solid rgba(220, 38, 38, 0.25);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-stat::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -30%;
+      width: 60%;
+      height: 150%;
+      background: radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #b91c1c;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .hero-stat-label::before {
+      content: '⚠';
+      font-size: 0.9rem;
+    }
+
+    .hero-stat-value {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #dc2626;
+      line-height: 1;
+      animation: heroReveal 0.8s ease-out, heroPulse 2s ease-in-out 1s;
+    }
+
+    @keyframes heroReveal {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes heroPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    .hero-stat-detail {
+      font-size: 0.85rem;
+      color: #b91c1c;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+
+    /* ============================================
+       QUICK STATS ROW
+       ============================================ */
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .quick-stat {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+      border: 1px solid var(--border-light);
+    }
+
+    .quick-stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .quick-stat-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    .quick-stat.urgent .quick-stat-value { color: var(--red); }
+    .quick-stat.monitor .quick-stat-value { color: var(--green); }
+    .quick-stat.optimize .quick-stat-value { color: var(--amber); }
+
+    /* ============================================
+       PRIORITY SECTIONS
+       ============================================ */
+    .priority-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    .priority-card-title {
+      padding: 16px 20px 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .priority-section {
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .priority-section:last-child {
+      border-bottom: none;
+    }
+
+    .priority-header {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      cursor: pointer;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+
+    .priority-header:hover {
+      background: var(--bg-subtle);
+    }
+
+    .priority-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .priority-icon.urgent {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: white;
+    }
+
+    .priority-icon.monitor {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+    }
+
+    .priority-icon.optimize {
+      background: linear-gradient(135deg, #eab308, #ca8a04);
+      color: white;
+    }
+
+    .priority-header-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .priority-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .priority-count {
+      background: var(--bg-subtle);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .priority-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .priority-total {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .priority-total.urgent { color: var(--red); }
+    .priority-total.monitor { color: var(--green); }
+    .priority-total.optimize { color: var(--amber); }
+
+    .priority-arrow {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+      margin-left: 8px;
+    }
+
+    .priority-section.expanded .priority-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* Priority List */
+    .priority-list {
+      display: none;
+      padding: 0 12px 12px;
+    }
+
+    .priority-section.expanded .priority-list {
+      display: block;
+    }
+
+    .priority-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      background: var(--bg-subtle);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .priority-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .priority-item:hover {
+      background: var(--border-light);
+      transform: translateX(4px);
+    }
+
+    .priority-item:hover .priority-item-action {
+      opacity: 1;
+    }
+
+    /* Severity bar (background indicator) */
+    .priority-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: var(--severity, 0%);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .priority-item.urgent::before {
+      background: linear-gradient(90deg, var(--red), transparent);
+    }
+
+    .priority-item.monitor::before {
+      background: linear-gradient(90deg, var(--green), transparent);
+    }
+
+    .priority-item.optimize::before {
+      background: linear-gradient(90deg, var(--amber), transparent);
+    }
+
+    .priority-item-rank {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .priority-item-info {
+      flex: 1;
+      min-width: 0;
+      z-index: 1;
+    }
+
+    .priority-item-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .priority-item-id {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .priority-item-detail {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .priority-item-metrics {
+      display: flex;
+      gap: 16px;
+      z-index: 1;
+    }
+
+    .priority-item-metric {
+      text-align: right;
+    }
+
+    .priority-item-metric-value {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .priority-item-metric-value.urgent { color: var(--red); }
+    .priority-item-metric-value.monitor { color: var(--green); }
+    .priority-item-metric-value.optimize { color: var(--amber); }
+
+    .priority-item-metric-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .priority-item-action {
+      opacity: 0;
+      background: var(--brand-green);
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+      z-index: 1;
+    }
+
+    .priority-item-action:hover {
+      background: var(--brand-green-dark);
+    }
+
+    /* Severity mini-bar */
+    .severity-bar {
+      width: 40px;
+      height: 4px;
+      background: var(--border-light);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .severity-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+
+    .severity-bar-fill.urgent { background: var(--red); }
+    .severity-bar-fill.monitor { background: var(--green); }
+    .severity-bar-fill.optimize { background: var(--amber); }
+
+    /* ============================================
+       FOOTER NOTE
+       ============================================ */
+    .demo-note {
+      margin-top: 24px;
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border-left: 4px solid var(--brand-green);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .demo-note strong {
+      color: var(--text-primary);
+    }
+
+    .demo-note ul {
+      margin: 8px 0 0 16px;
+      padding: 0;
+    }
+
+    .demo-note li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Prehľad siete</h1>
+    <p class="subtitle">Kde konať pre maximálny dopad</p>
+
+    <!-- HERO STAT -->
+    <div class="hero-stat">
+      <div class="hero-stat-label">Ohrozený ročný obrat</div>
+      <div class="hero-stat-value">€847K</div>
+      <div class="hero-stat-detail">z 12 poddimenzovaných lekární</div>
+    </div>
+
+    <!-- QUICK STATS -->
+    <div class="quick-stats">
+      <div class="quick-stat urgent">
+        <div class="quick-stat-value">12</div>
+        <div class="quick-stat-label">Urgentné</div>
+      </div>
+      <div class="quick-stat monitor">
+        <div class="quick-stat-value">8</div>
+        <div class="quick-stat-label">Sledovať</div>
+      </div>
+      <div class="quick-stat optimize">
+        <div class="quick-stat-value">15</div>
+        <div class="quick-stat-label">Optimalizovať</div>
+      </div>
+    </div>
+
+    <!-- PRIORITY SECTIONS -->
+    <div class="priority-card">
+      <div class="priority-card-title">Kde konať</div>
+
+      <!-- URGENT SECTION -->
+      <div class="priority-section expanded" id="section-urgent">
+        <div class="priority-header" onclick="toggleSection('urgent')">
+          <div class="priority-icon urgent">!</div>
+          <div class="priority-header-content">
+            <div class="priority-title">
+              STRATENÉ TRŽBY
+              <span class="priority-count">12</span>
+            </div>
+            <div class="priority-subtitle">Poddimenzované s vysokou produktivitou</div>
+          </div>
+          <div class="priority-total urgent">€847K</div>
+          <span class="priority-arrow">▼</span>
+        </div>
+        <div class="priority-list">
+          <div class="priority-item urgent" style="--severity: 95%;" onclick="openCalculator(25)">
+            <div class="priority-item-rank">1</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Bratislava Centrum
+                <span class="priority-item-id">#25</span>
+              </div>
+              <div class="priority-item-detail">
+                4.2 → 5.8 FTE potreba • +38% produktivita
+                <div class="severity-bar"><div class="severity-bar-fill urgent" style="width: 95%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value urgent">€124K</div>
+                <div class="priority-item-metric-label">Strata/rok</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+
+          <div class="priority-item urgent" style="--severity: 78%;" onclick="openCalculator(41)">
+            <div class="priority-item-rank">2</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Košice OC Optima
+                <span class="priority-item-id">#41</span>
+              </div>
+              <div class="priority-item-detail">
+                3.8 → 5.1 FTE potreba • +29% produktivita
+                <div class="severity-bar"><div class="severity-bar-fill urgent" style="width: 78%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value urgent">€98K</div>
+                <div class="priority-item-metric-label">Strata/rok</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+
+          <div class="priority-item urgent" style="--severity: 62%;" onclick="openCalculator(87)">
+            <div class="priority-item-rank">3</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Žilina Aupark
+                <span class="priority-item-id">#87</span>
+              </div>
+              <div class="priority-item-detail">
+                2.9 → 3.7 FTE potreba • +22% produktivita
+                <div class="severity-bar"><div class="severity-bar-fill urgent" style="width: 62%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value urgent">€76K</div>
+                <div class="priority-item-metric-label">Strata/rok</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONITOR SECTION -->
+      <div class="priority-section" id="section-monitor">
+        <div class="priority-header" onclick="toggleSection('monitor')">
+          <div class="priority-icon monitor">↑</div>
+          <div class="priority-header-content">
+            <div class="priority-title">
+              SLEDOVAŤ
+              <span class="priority-count">8</span>
+            </div>
+            <div class="priority-subtitle">Rastúce lekárne - pripraviť sa na budúcnosť</div>
+          </div>
+          <div class="priority-total monitor">+18% rast</div>
+          <span class="priority-arrow">▼</span>
+        </div>
+        <div class="priority-list">
+          <div class="priority-item monitor" style="--severity: 85%;" onclick="openCalculator(156)">
+            <div class="priority-item-rank">1</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Nitra Mlyny
+                <span class="priority-item-id">#156</span>
+              </div>
+              <div class="priority-item-detail">
+                Aktuálne OK • +24% medziročný rast
+                <div class="severity-bar"><div class="severity-bar-fill monitor" style="width: 85%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value monitor">+24%</div>
+                <div class="priority-item-metric-label">Rast</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+
+          <div class="priority-item monitor" style="--severity: 68%;" onclick="openCalculator(203)">
+            <div class="priority-item-rank">2</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Trnava City Arena
+                <span class="priority-item-id">#203</span>
+              </div>
+              <div class="priority-item-detail">
+                Aktuálne OK • +19% medziročný rast
+                <div class="severity-bar"><div class="severity-bar-fill monitor" style="width: 68%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value monitor">+19%</div>
+                <div class="priority-item-metric-label">Rast</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTIMIZE SECTION -->
+      <div class="priority-section" id="section-optimize">
+        <div class="priority-header" onclick="toggleSection('optimize')">
+          <div class="priority-icon optimize">↓</div>
+          <div class="priority-header-content">
+            <div class="priority-title">
+              OPTIMALIZOVAŤ
+              <span class="priority-count">15</span>
+            </div>
+            <div class="priority-subtitle">Predimenzované - možnosť prerozdeliť</div>
+          </div>
+          <div class="priority-total optimize">+8.4 FTE</div>
+          <span class="priority-arrow">▼</span>
+        </div>
+        <div class="priority-list">
+          <div class="priority-item optimize" style="--severity: 72%;" onclick="openCalculator(89)">
+            <div class="priority-item-rank">1</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Prešov Centrál
+                <span class="priority-item-id">#89</span>
+              </div>
+              <div class="priority-item-detail">
+                5.2 → 3.8 FTE optimum • -1.4 FTE prebytok
+                <div class="severity-bar"><div class="severity-bar-fill optimize" style="width: 72%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value optimize">+1.4</div>
+                <div class="priority-item-metric-label">FTE navyše</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+
+          <div class="priority-item optimize" style="--severity: 58%;" onclick="openCalculator(112)">
+            <div class="priority-item-rank">2</div>
+            <div class="priority-item-info">
+              <div class="priority-item-name">
+                Banská Bystrica Europa
+                <span class="priority-item-id">#112</span>
+              </div>
+              <div class="priority-item-detail">
+                4.8 → 3.7 FTE optimum • -1.1 FTE prebytok
+                <div class="severity-bar"><div class="severity-bar-fill optimize" style="width: 58%;"></div></div>
+              </div>
+            </div>
+            <div class="priority-item-metrics">
+              <div class="priority-item-metric">
+                <div class="priority-item-metric-value optimize">+1.1</div>
+                <div class="priority-item-metric-label">FTE navyše</div>
+              </div>
+            </div>
+            <button class="priority-item-action">Otvoriť →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEMO NOTE -->
+    <div class="demo-note">
+      <strong>Vylepšenia oproti súčasnému dizajnu:</strong>
+      <ul>
+        <li>Hero štatistika pre ohrozený obrat (najdôležitejšie číslo)</li>
+        <li>Štýlované ikony namiesto textových znakov</li>
+        <li>Viditeľné podtitulky vysvetľujúce kategórie</li>
+        <li>Severity bar ukazujúci relatívnu závažnosť</li>
+        <li>Poradie (rank) pre rýchle skenovanie</li>
+        <li>Tlačidlo "Otvoriť" na hover pre rýchlu akciu</li>
+        <li>Celková hodnota za sekciu v hlavičke</li>
+        <li>Urgentná sekcia rozbalená defaultne</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    function toggleSection(section) {
+      const el = document.getElementById('section-' + section);
+      el.classList.toggle('expanded');
+    }
+
+    function openCalculator(id) {
+      // In real app, this would switch to calculator tab and load pharmacy
+      alert('Otváram lekáreň #' + id + ' v kalkulačke...');
+    }
+  </script>
+</body>
+</html>

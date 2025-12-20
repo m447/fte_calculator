@@ -1,0 +1,30 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Test files
+*.test.py
+tests/
+
+# Development files
+*.md
+*.ipynb
+src/
+
+# Raw data (only ml_ready_v3.csv is needed)
+data/raw/
+data/payroll/
+data/*.xlsx
+
+# Results (not needed in production)
+results/

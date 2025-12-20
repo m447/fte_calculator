@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulácia zmien - Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-green: #78BE20;
+      --brand-green-dark: #5a9216;
+      --brand-green-light: #e8f5d6;
+      --text-primary: #1f2937;
+      --text-secondary: #374151;
+      --text-muted: #6b7280;
+      --bg-card: #ffffff;
+      --bg-subtle: #f8faf6;
+      --border-light: #e5e7eb;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Nunito Sans', -apple-system, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      font-size: 1.5rem;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      font-size: 0.9rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    /* ============================================
+       SIMULATION SECTION
+       ============================================ */
+    .sim-section {
+      padding: 24px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .sim-section:last-child {
+      border-bottom: none;
+    }
+
+    .sim-section.productivity {
+      background: var(--bg-subtle);
+    }
+
+    .sim-question {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sim-question-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--brand-green-light);
+      color: var(--brand-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .sim-section.productivity .sim-question-icon {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    /* Slider row */
+    .sim-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .sim-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 80px;
+    }
+
+    .sim-slider-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .sim-slider {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: linear-gradient(to right,
+        var(--border-light) 0%,
+        var(--border-light) 50%,
+        var(--brand-green-light) 50%,
+        var(--brand-green-light) 100%);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+
+    .sim-slider:focus {
+      outline: none;
+    }
+
+    .sim-slider:active {
+      box-shadow: 0 0 0 4px rgba(120, 190, 32, 0.2);
+    }
+
+    .sim-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      background: var(--brand-green);
+      border: 3px solid white;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .sim-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    .sim-slider:active::-webkit-slider-thumb {
+      cursor: grabbing;
+      transform: scale(1.15);
+    }
+
+    .sim-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      background: var(--brand-green);
+      border: 3px solid white;
+      border-radius: 50%;
+      cursor: grab;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* Center marker */
+    .sim-slider-wrap::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 16px;
+      background: var(--text-muted);
+      opacity: 0.3;
+      border-radius: 1px;
+      pointer-events: none;
+    }
+
+    /* Range labels */
+    .sim-range-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Value display */
+    .sim-value {
+      min-width: 60px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: center;
+      background: var(--bg-subtle);
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
+    .sim-section.productivity .sim-value {
+      background: white;
+    }
+
+    /* Result display */
+    .sim-result {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--brand-green-light);
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .sim-result.negative {
+      background: #fef2f2;
+    }
+
+    .sim-result.zero {
+      background: var(--bg-subtle);
+    }
+
+    .sim-result-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--brand-green);
+      transition: color 0.3s;
+    }
+
+    .sim-result.negative .sim-result-value {
+      color: var(--red);
+    }
+
+    .sim-result.zero .sim-result-value {
+      color: var(--text-muted);
+    }
+
+    .sim-result-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .sim-result.negative .sim-result-text {
+      color: var(--red);
+    }
+
+    /* Productivity hint */
+    .sim-hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: white;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .sim-hint-icon {
+      font-size: 1rem;
+    }
+
+    /* Summary section */
+    .sim-summary {
+      padding: 24px;
+      background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+      color: white;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-summary::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -30%;
+      width: 80%;
+      height: 150%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .sim-summary-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+
+    .sim-summary-value {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .sim-summary-value.pulse {
+      animation: pulse 0.3s ease-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .sim-summary-breakdown {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-size: 1rem;
+      opacity: 0.95;
+    }
+
+    .sim-summary-arrow {
+      font-size: 1.3rem;
+      opacity: 0.7;
+    }
+
+    .sim-summary-new {
+      font-weight: 700;
+      font-size: 1.1rem;
+      background: rgba(255,255,255,0.2);
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    /* Comparison note */
+    .comparison-note {
+      margin-top: 30px;
+      padding: 16px;
+      background: white;
+      border-radius: 12px;
+      border-left: 4px solid var(--brand-green);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .comparison-note strong {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simulácia zmien</h1>
+    <p class="subtitle">Ako sa zmení potreba FTE?</p>
+
+    <div class="card">
+      <!-- Demand Section -->
+      <div class="sim-section">
+        <div class="sim-question">
+          <div class="sim-question-icon">↑</div>
+          Čo ak sa zmení dopyt?
+        </div>
+
+        <div class="sim-slider-row">
+          <div class="sim-label">Tržby</div>
+          <div class="sim-slider-wrap">
+            <input type="range" class="sim-slider" id="trzby-slider" min="-20" max="30" value="15">
+            <div class="sim-range-labels">
+              <span>-20%</span>
+              <span>0%</span>
+              <span>+30%</span>
+            </div>
+          </div>
+          <div class="sim-value" id="trzby-value">+15%</div>
+        </div>
+
+        <div class="sim-result" id="trzby-result">
+          <div class="sim-result-value" id="trzby-fte">+0.8</div>
+          <div class="sim-result-text">FTE potrebujete navyše</div>
+        </div>
+      </div>
+
+      <!-- Productivity Section -->
+      <div class="sim-section productivity">
+        <div class="sim-question">
+          <div class="sim-question-icon">⚡</div>
+          Čo ak zlepšíme efektivitu?
+        </div>
+
+        <div class="sim-slider-row">
+          <div class="sim-label">Produktivita</div>
+          <div class="sim-slider-wrap">
+            <input type="range" class="sim-slider" id="prod-slider" min="0" max="20" value="10">
+            <div class="sim-range-labels">
+              <span>Priemer</span>
+              <span>+1σ</span>
+              <span>+2σ</span>
+            </div>
+          </div>
+          <div class="sim-value" id="prod-value">+1.0σ</div>
+        </div>
+
+        <div class="sim-result negative" id="prod-result">
+          <div class="sim-result-value" id="prod-fte">-0.5</div>
+          <div class="sim-result-text">FTE môžete ušetriť</div>
+        </div>
+
+        <div class="sim-hint">
+          <span class="sim-hint-icon">💡</span>
+          Vyššia produktivita = menej potrebného personálu pri rovnakom objeme
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="sim-summary">
+        <div class="sim-summary-label">Celkový vplyv</div>
+        <div class="sim-summary-value" id="total-value">+0.3 FTE</div>
+        <div class="sim-summary-breakdown">
+          <span id="base-fte">4.2</span>
+          <span class="sim-summary-arrow">→</span>
+          <span class="sim-summary-new" id="new-fte">4.5 FTE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="comparison-note">
+      <strong>Zjednodušený model:</strong> Namiesto 4 sliderov len 2 kľúčové otázky - rast dopytu a zlepšenie efektivity.
+    </div>
+  </div>
+
+  <script>
+    const baseFte = 4.2;
+
+    // Coefficients
+    const trzbyCoef = 0.052;  // FTE per 1% revenue change
+    const prodCoef = 0.5;     // FTE saved per 1σ productivity improvement
+
+    function update() {
+      const trzbyVal = parseInt(document.getElementById('trzby-slider').value);
+      const prodVal = parseInt(document.getElementById('prod-slider').value);
+
+      // Update value displays
+      document.getElementById('trzby-value').textContent = (trzbyVal >= 0 ? '+' : '') + trzbyVal + '%';
+      document.getElementById('prod-value').textContent = '+' + (prodVal / 10).toFixed(1) + 'σ';
+
+      // Calculate FTE impacts
+      const trzbyFte = trzbyVal * trzbyCoef;
+      const prodFte = -(prodVal / 10) * prodCoef; // Negative = saves FTE
+
+      // Update Tržby result
+      const trzbyResultEl = document.getElementById('trzby-result');
+      const trzbyFteEl = document.getElementById('trzby-fte');
+      trzbyFteEl.textContent = (trzbyFte >= 0 ? '+' : '') + trzbyFte.toFixed(1);
+
+      trzbyResultEl.classList.remove('negative', 'zero');
+      if (Math.abs(trzbyFte) < 0.05) {
+        trzbyResultEl.classList.add('zero');
+        trzbyResultEl.querySelector('.sim-result-text').textContent = 'FTE bez zmeny';
+      } else if (trzbyFte < 0) {
+        trzbyResultEl.classList.add('negative');
+        trzbyResultEl.querySelector('.sim-result-text').textContent = 'FTE môžete ubrať';
+      } else {
+        trzbyResultEl.querySelector('.sim-result-text').textContent = 'FTE potrebujete navyše';
+      }
+
+      // Update Productivity result
+      const prodResultEl = document.getElementById('prod-result');
+      const prodFteEl = document.getElementById('prod-fte');
+      prodFteEl.textContent = prodFte.toFixed(1);
+
+      prodResultEl.classList.remove('negative', 'zero');
+      if (Math.abs(prodFte) < 0.05) {
+        prodResultEl.classList.add('zero');
+        prodResultEl.querySelector('.sim-result-text').textContent = 'FTE bez zmeny';
+      } else {
+        prodResultEl.classList.add('negative');
+        prodResultEl.querySelector('.sim-result-text').textContent = 'FTE môžete ušetriť';
+      }
+
+      // Total
+      const totalFte = trzbyFte + prodFte;
+      const newFte = baseFte + totalFte;
+
+      const totalEl = document.getElementById('total-value');
+      totalEl.textContent = (totalFte >= 0 ? '+' : '') + totalFte.toFixed(1) + ' FTE';
+
+      // Pulse animation
+      totalEl.classList.remove('pulse');
+      void totalEl.offsetWidth;
+      totalEl.classList.add('pulse');
+
+      document.getElementById('base-fte').textContent = baseFte.toFixed(1);
+      document.getElementById('new-fte').textContent = newFte.toFixed(1) + ' FTE';
+    }
+
+    // Attach listeners
+    document.getElementById('trzby-slider').addEventListener('input', update);
+    document.getElementById('prod-slider').addEventListener('input', update);
+
+    // Initial update
+    update();
+  </script>
+</body>
+</html>

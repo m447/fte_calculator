@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parametre lekárne - Enhanced Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand-green: #78be20;
+  --brand-green-light: rgba(120, 190, 32, 0.15);
+  --brand-green-dark: #5a9118;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --bg-page: #f8faf6;
+  --bg-card: #ffffff;
+  --bg-subtle: #f4f7f2;
+  --bg-calculated: #f0f4ed;
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+  --positive: #16a34a;
+  --negative: #dc2626;
+  --accent-warm: #f59e0b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Nunito Sans', sans-serif;
+  background: var(--bg-page);
+  margin: 0;
+  padding: 40px 20px;
+  color: var(--text-primary);
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+h2 {
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 24px;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 900px) {
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comparison-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+/* ============================================
+   CARD STYLES
+   ============================================ */
+.card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.card-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+input[type="number"],
+input[type="text"],
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px var(--brand-green-light);
+}
+
+/* Section dividers */
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 700;
+}
+
+/* Form rows */
+.form-row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.form-row-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.form-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+/* Helper text - show on hover */
+.helper-text {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.3;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: opacity 0.2s, height 0.2s;
+}
+
+.form-group:hover .helper-text,
+.form-row > div:hover .helper-text {
+  opacity: 1;
+  height: auto;
+}
+
+/* ============================================
+   PRODUCTIVITY TOGGLE - OLD (Current)
+   ============================================ */
+.productivity-toggle-old {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.toggle-label-old {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.toggle-switch-old {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch-old input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider-old {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-medium);
+  border-radius: 24px;
+  transition: 0.3s;
+}
+
+.toggle-slider-old:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-switch-old input:checked + .toggle-slider-old {
+  background-color: var(--brand-green);
+}
+
+.toggle-switch-old input:checked + .toggle-slider-old:before {
+  transform: translateX(20px);
+}
+
+/* ============================================
+   PRODUCTIVITY TOGGLE - NEW (Segmented Control)
+   ============================================ */
+.segmented-control {
+  display: flex;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.segment-option {
+  flex: 1;
+  position: relative;
+}
+
+.segment-option input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.segment-option label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+  text-align: center;
+}
+
+.segment-option input:checked + label {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.segment-option input:focus + label {
+  box-shadow: 0 0 0 2px var(--brand-green-light);
+}
+
+/* High productivity highlight */
+.segment-option.high-productivity input:checked + label {
+  background: var(--brand-green);
+  color: white;
+}
+
+/* ============================================
+   CALCULATED FIELDS - NEW STYLING
+   ============================================ */
+.calculated-section {
+  background: var(--bg-calculated);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.calculated-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.calculated-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brand-green-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--brand-green-dark);
+}
+
+.calculated-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.calculated-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.calculated-item {
+  text-align: center;
+}
+
+.calculated-item label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.calculated-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calculated-value.highlight {
+  color: var(--brand-green);
+}
+
+/* Old calculated style (current) */
+.readonly-input {
+  background: var(--bg-subtle) !important;
+  color: var(--text-muted) !important;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   RX SLIDER
+   ============================================ */
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider-container input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: var(--border-light);
+  border-radius: 3px;
+  border: none;
+  padding: 0;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.slider-value {
+  width: 60px !important;
+  text-align: center;
+}
+
+.slider-unit {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Input with suffix (compact alternative to slider) */
+.input-with-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-suffix input {
+  padding-right: 36px;
+}
+
+.input-suffix {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* Compact segmented control */
+.segmented-control.compact {
+  padding: 3px;
+}
+
+.segmented-control.compact .segment-option label {
+  padding: 8px 10px;
+  font-size: 0.75rem;
+}
+
+/* ============================================
+   PHARMACY ID ROW
+   ============================================ */
+.pharmacy-id-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.pharmacy-id-row input {
+  width: 100px;
+}
+
+.btn-load {
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border-medium);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-load:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+  color: var(--brand-green);
+}
+
+/* ============================================
+   FIELD WITH ICON
+   ============================================ */
+.field-with-icon {
+  position: relative;
+}
+
+.field-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.field-with-icon input {
+  padding-right: 36px;
+}
+
+/* ============================================
+   IMPROVED LABELS WITH CONTEXT
+   ============================================ */
+.label-with-hint {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.label-with-hint label {
+  margin-bottom: 0;
+}
+
+.label-hint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Info tooltip */
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--border-light);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: help;
+  margin-left: 4px;
+}
+
+/* ============================================
+   DEMO COMPARISON STYLES
+   ============================================ */
+.demo-note {
+  background: #fef3c7;
+  border-left: 3px solid var(--accent-warm);
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 16px;
+  font-size: 0.8rem;
+  color: #92400e;
+}
+
+.improvement-badge {
+  display: inline-block;
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+/* Calculate button - inverse/outlined style */
+.btn-calculate {
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px 24px;
+  background: transparent;
+  color: var(--brand-green);
+  border: 2px solid var(--brand-green);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.btn-calculate:hover {
+  background: var(--brand-green);
+  color: white;
+}
+
+.btn-calculate:active {
+  transform: scale(0.98);
+}
+</style>
+</head>
+<body>
+<div class="container" style="max-width: 960px;">
+
+  <h2>Parametre lekárne - Design Comparison</h2>
+
+  <div class="comparison">
+    <!-- CURRENT DESIGN -->
+    <div>
+      <div class="comparison-label">Current Design</div>
+      <div class="card">
+        <div class="card-title">Parametre lekárne</div>
+
+        <div class="form-group">
+          <label>Lekáreň ID</label>
+          <div class="pharmacy-id-row">
+            <input type="number" placeholder="ID" min="1">
+            <button type="button" class="btn-load">Načítať</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Typ lekárne</label>
+          <select>
+            <option>B - shopping</option>
+          </select>
+        </div>
+
+        <div class="form-row form-row-3">
+          <div>
+            <label>Bloky (tis.)</label>
+            <input type="number" value="60">
+          </div>
+          <div>
+            <label>Tržby (mil. €)</label>
+            <input type="number" value="1.2">
+          </div>
+          <div>
+            <label>Produktivita</label>
+            <div class="productivity-toggle-old">
+              <span class="toggle-label-old">Ø</span>
+              <label class="toggle-switch-old">
+                <input type="checkbox">
+                <span class="toggle-slider-old"></span>
+              </label>
+              <span class="toggle-label-old">▲</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Podiel RX</label>
+          <div class="slider-container">
+            <input type="range" min="20" max="90" value="50">
+            <input type="number" class="slider-value" value="50">
+            <span class="slider-unit">%</span>
+          </div>
+        </div>
+
+        <div class="form-row form-row-3">
+          <div>
+            <label>Bloky/hod</label>
+            <input type="text" value="7.2" readonly class="readonly-input">
+          </div>
+          <div>
+            <label>Tržby/hod</label>
+            <input type="text" value="145€" readonly class="readonly-input">
+          </div>
+          <div>
+            <label>Košík (€)</label>
+            <input type="text" value="20€" readonly class="readonly-input">
+          </div>
+        </div>
+
+        <div class="demo-note" style="margin-top: 16px;">
+          <strong>Issues:</strong><br>
+          • "Ø" and "▲" symbols are cryptic<br>
+          • Calculated fields look editable<br>
+          • No context for "Bloky", "RX"<br>
+          • No logical grouping
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPROVED DESIGN -->
+    <div>
+      <div class="comparison-label">Improved Design <span class="improvement-badge">New</span></div>
+      <div class="card">
+        <div class="card-title">Parametre lekárne</div>
+
+        <!-- Pharmacy ID and Type -->
+        <div class="form-section">
+          <div class="form-group">
+            <label>Lekáreň ID</label>
+            <div class="pharmacy-id-row">
+              <input type="number" placeholder="ID" min="1">
+              <button type="button" class="btn-load">Načítať</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Typ lekárne</label>
+            <select>
+              <option>B - shopping</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section: Volume -->
+        <div class="form-section">
+          <div class="section-label">Parametre</div>
+
+          <div class="form-row form-row-2">
+            <div>
+              <div class="label-with-hint">
+                <label>Bloky</label>
+                <span class="label-hint">tis. / rok</span>
+              </div>
+              <input type="number" value="60">
+              <div class="helper-text">Počet transakcií za rok</div>
+            </div>
+            <div>
+              <div class="label-with-hint">
+                <label>Tržby</label>
+                <span class="label-hint">mil. € / rok</span>
+              </div>
+              <input type="number" value="1.2">
+            </div>
+          </div>
+
+          <div class="form-row form-row-2">
+            <div>
+              <div class="label-with-hint">
+                <label>Podiel Rx</label>
+                <span class="label-hint">recepty</span>
+              </div>
+              <div class="input-with-suffix">
+                <input type="number" value="50" min="20" max="90">
+                <span class="input-suffix">%</span>
+              </div>
+            </div>
+            <div>
+              <label>Produktivita <span class="info-icon" title="Nadpriemerná = nižšie FTE">?</span></label>
+              <div class="segmented-control compact">
+                <div class="segment-option">
+                  <input type="radio" name="prod-new" id="prod-avg" checked>
+                  <label for="prod-avg">Priemer</label>
+                </div>
+                <div class="segment-option high-productivity">
+                  <input type="radio" name="prod-new" id="prod-high">
+                  <label for="prod-high">Nad</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Calculated -->
+        <div class="form-section" style="margin-bottom: 0;">
+          <div class="calculated-section">
+            <div class="calculated-header">
+              <div class="calculated-icon">fx</div>
+              <div class="calculated-label">Vypočítané metriky</div>
+            </div>
+            <div class="calculated-row">
+              <div class="calculated-item">
+                <label>Bloky/hod</label>
+                <div class="calculated-value">7.2</div>
+              </div>
+              <div class="calculated-item">
+                <label>Tržby/hod</label>
+                <div class="calculated-value">145 €</div>
+              </div>
+              <div class="calculated-item">
+                <label>Košík</label>
+                <div class="calculated-value highlight">20 €</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDALONE IMPROVED VERSION -->
+  <h2 style="margin-top: 48px;">Full Improved Card</h2>
+
+  <div style="max-width: 480px;">
+    <div class="card">
+      <div class="card-title">Parametre lekárne</div>
+
+      <!-- Pharmacy ID and Type -->
+      <div class="form-section">
+        <div class="form-group">
+          <label>Lekáreň ID</label>
+          <div class="pharmacy-id-row">
+            <input type="number" placeholder="ID" min="1" value="1234">
+            <button type="button" class="btn-load">Načítať</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label>Typ lekárne</label>
+          <select>
+            <option>A - shopping premium</option>
+            <option selected>B - shopping</option>
+            <option>C - street +</option>
+            <option>D - street</option>
+            <option>E - poliklinika</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section: Volume -->
+      <div class="form-section">
+        <div class="section-label">Parametre</div>
+
+        <div class="form-row form-row-2">
+          <div>
+            <div class="label-with-hint">
+              <label>Bloky</label>
+              <span class="label-hint">tis. / rok</span>
+            </div>
+            <input type="number" value="68">
+            <div class="helper-text">Počet transakcií za rok</div>
+          </div>
+          <div>
+            <div class="label-with-hint">
+              <label>Tržby</label>
+              <span class="label-hint">mil. € / rok</span>
+            </div>
+            <input type="number" value="1.4">
+          </div>
+        </div>
+
+        <div class="form-row form-row-2">
+          <div>
+            <div class="label-with-hint">
+              <label>Podiel Rx</label>
+              <span class="label-hint">recepty</span>
+            </div>
+            <div class="input-with-suffix">
+              <input type="number" value="55" min="20" max="90">
+              <span class="input-suffix">%</span>
+            </div>
+          </div>
+          <div>
+            <label>Produktivita <span class="info-icon" title="Nadpriemerná = nižšie FTE">?</span></label>
+            <div class="segmented-control compact">
+              <div class="segment-option">
+                <input type="radio" name="prod-full" id="prod-avg-full">
+                <label for="prod-avg-full">Priemer</label>
+              </div>
+              <div class="segment-option high-productivity">
+                <input type="radio" name="prod-full" id="prod-high-full" checked>
+                <label for="prod-high-full">Nad</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Calculated -->
+      <div class="form-section" style="margin-bottom: 0;">
+        <div class="calculated-section">
+          <div class="calculated-header">
+            <div class="calculated-icon">fx</div>
+            <div class="calculated-label">Vypočítané metriky</div>
+          </div>
+          <div class="calculated-row">
+            <div class="calculated-item">
+              <label>Bloky/hod</label>
+              <div class="calculated-value">8.1</div>
+            </div>
+            <div class="calculated-item">
+              <label>Tržby/hod</label>
+              <div class="calculated-value">168 €</div>
+            </div>
+            <div class="calculated-item">
+              <label>Košík</label>
+              <div class="calculated-value highlight">20.6 €</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <button class="btn-calculate">
+      Vypočítať
+    </button>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1557,26 +1557,34 @@ FORMÁT ODPOVEDE
 - VŽDY ukonči akčným odporúčaním
 
 ═══════════════════════════════════════════════════════════════
-INTERNÁ METODOLÓGIA
+INTERNÁ METODOLÓGIA - CHRÁNENÉ INFORMÁCIE
 ═══════════════════════════════════════════════════════════════
 
 Ak sa pýtajú na výpočet produktivity, ohrozené tržby (revenue at risk), vzorce, koeficienty:
 → "Táto metodológia je interná. Rád pomôžem s interpretáciou výsledkov."
 
-MÔŽEŠ vysvetliť: princípy, interpretáciu, ako čítať výsledky
-NESMIEŠ prezradiť: koeficienty, vzorce (najmä výpočet ohrozených tržieb), segmentové priemery, interné parametre
+Ak sa pýtajú na presnosť/validáciu modelu:
+→ "Model je validovaný oproti reálnym dátam siete a pravidelne aktualizovaný."
+
+MÔŽEŠ vysvetliť: princípy, interpretáciu, ako čítať výsledky, či je lekáreň nad/pod priemerom
+NESMIEŠ prezradiť:
+- koeficienty, vzorce (najmä výpočet ohrozených tržieb a produktivity)
+- segmentové priemery a rozpätia (min-max hodnoty)
+- presnosť modelu (R², RMSE, accuracy, %)
+- na čom bol model trénovaný
+- percentily a konkrétne poradie v segmente
+- rozpätia produktivity segmentov
 
 ═══════════════════════════════════════════════════════════════
-MODEL - ZÁKLADNÉ INFO
+MODEL - ZÁKLADNÉ INFO (VEREJNÉ)
 ═══════════════════════════════════════════════════════════════
 
-- Regresný model, presnosť R² > 90%
 - Segmenty A-E majú rôzne charakteristiky
 - Nadpriemerná produktivita = odmena (nižšie FTE)
 - Podpriemerná produktivita = bez penalizácie
 
-Faktory zvyšujúce FTE: tržby, transakcie, sezónne výkyvy
-Faktory znižujúce FTE: nadpriemerná produktivita, stabilný tok
+Faktory zvyšujúce FTE: tržby, transakcie
+Faktory znižujúce FTE: nadpriemerná produktivita
 
 ═══════════════════════════════════════════════════════════════
 KEDY BYŤ OPATRNÝ
@@ -1723,10 +1731,9 @@ ROZDIEL: {fte_diff} FTE
 </vysledok_modelu>
 
 <pozicia_v_segmente>
-Percentily (0%=minimum, 100%=maximum):
-- Bloky: {bloky_pct:.0f}% (rozsah: {segment_bloky_min/1000:.0f}k - {segment_bloky_max/1000:.0f}k)
-- Tržby: {trzby_pct:.0f}% (rozsah: {segment_trzby_min/1000000:.1f}M - {segment_trzby_max/1000000:.1f}M €)
-- Rx %: {rx_pct:.0f}% (rozsah: {segment_rx_min:.0f}% - {segment_rx_max:.0f}%)
+- Bloky vs segment: {'nadpriemerné' if bloky_pct > 60 else 'podpriemerné' if bloky_pct < 40 else 'priemerné'}
+- Tržby vs segment: {'nadpriemerné' if trzby_pct > 60 else 'podpriemerné' if trzby_pct < 40 else 'priemerné'}
+- Rx % vs segment: {'nadpriemerné' if rx_pct > 60 else 'podpriemerné' if rx_pct < 40 else 'priemerné'}
 </pozicia_v_segmente>
 
 <podobne_lekarne>
@@ -1736,18 +1743,15 @@ Percentily (0%=minimum, 100%=maximum):
 
 <segment_statistiky>
 - Počet v segmente: {benchmark_count}
-- Priemer FTE: {benchmark_avg:.1f}
-- Priemer Rx: {(segment_rx_min + segment_rx_max) / 2:.0f}%
 </segment_statistiky>
 
 <hodinove_metriky>
-- Bloky/hod: {context.get('bloky_per_hour', 'N/A')} (segment: {context.get('segment_bloky_hour_min', 'N/A')} - {context.get('segment_bloky_hour_max', 'N/A')})
-- Tržby/hod: {context.get('trzby_per_hour', 'N/A')} €
+- Produktivita: {'nadpriemerná' if context.get('is_above_avg_productivity') else 'priemerná/podpriemerná'}
 </hodinove_metriky>
 
 <trend>
-- Medziročný trend: {(context.get('bloky_trend') or 0) * 100:.1f}%
-- Významný rast (>15%): {'ÁNO - RASTIE!' if (context.get('bloky_trend') or 0) > 0.15 else 'NIE'}
+- Medziročný trend: {(context.get('bloky_trend') or 0):.1f}%
+- Významný rast (>15%): {'ÁNO - RASTIE!' if (context.get('bloky_trend') or 0) > 15 else 'NIE'}
 </trend>
 
 <indikatory>

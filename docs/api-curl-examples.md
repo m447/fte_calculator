@@ -1,3 +1,18 @@
+  | Endpoint               | Method | Auth            | Description                     |
+  |------------------------|--------|-----------------|---------------------------------|
+  | /                      | GET    | Basic           | Main web UI (index-v2.html)     |
+  | /v1                    | GET    | Basic           | Legacy web UI (index.html)      |
+  | /utilization           | GET    | Basic           | Utilization page                |
+  | /api/predict           | POST   | Basic + API Key | Calculate recommended FTE       |
+  | /api/network           | GET    | Basic + API Key | Network summary with priorities |
+  | /api/pharmacies        | GET    | Basic + API Key | List all pharmacies             |
+  | /api/pharmacies/search | GET    | Basic + API Key | Search pharmacies by name       |
+  | /api/model/info        | GET    | Basic + API Key | ML model information            |
+  | /api/pharmacy/<id>     | GET    | Basic + API Key | Get specific pharmacy details   |
+  | /api/benchmarks        | GET    | Basic + API Key | Segment benchmarks              |
+  | /api/chat              | POST   | Basic + API Key | AI assistant                    |
+
+
 # FTE Calculator API - Curl Examples
 
 Base URL: `https://fte-calculator-638044991573.europe-west1.run.app`

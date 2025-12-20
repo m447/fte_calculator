@@ -1254,8 +1254,8 @@ def execute_search_pharmacies(args):
     sort_map = {'gap': 'fte_gap', 'bloky': 'bloky', 'trzby': 'trzby', 'fte': 'actual_fte'}
     sort_col = sort_map.get(sort_by, 'fte_gap')
 
-    # For gap and fte, sort descending by default; for bloky/trzby ascending
-    ascending = sort_by in ['bloky', 'trzby']
+    # Allow explicit ascending/descending, default to descending for all (largest first)
+    ascending = args.get('ascending', False)
     result = result.sort_values(sort_col, ascending=ascending)
 
     limit = min(args.get('limit', 10), 20)
@@ -1913,17 +1913,70 @@ ROZDIEL: {fte_diff} FTE
             for i, p in enumerate(parts2):
                 print(f"[DEBUG] Part {i} keys: {list(p.keys())}")
 
-            # Check if model wants another tool call
-            function_calls2 = [p for p in parts2 if 'functionCall' in p]
-            if function_calls2:
-                print(f"[DEBUG] Model requested another tool call: {[fc['functionCall']['name'] for fc in function_calls2]}")
-                # For now, return a message indicating we need to handle chained calls
-                return jsonify({
-                    'answer': 'Model potrebuje vykonať ďalšie vyhľadávanie. Skúste otázku zjednodušiť.',
-                    'model': VERTEX_MODEL,
-                    'tools_used': [tr['name'] for tr in tool_results],
-                    'debug': 'chained_tool_call'
+            # Check if model wants another tool call - support up to 2 more rounds
+            all_tools_used = [tr['name'] for tr in tool_results]
+            current_contents = follow_up_contents
+            current_parts = parts2
+            latest_result = result2
+
+            for round_num in range(2):  # Up to 2 additional rounds
+                function_calls_next = [p for p in current_parts if 'functionCall' in p]
+                if not function_calls_next:
+                    break  # No more tool calls needed
+
+                print(f"[DEBUG] Round {round_num + 2}: Model requested tool calls: {[fc['functionCall']['name'] for fc in function_calls_next]}")
+
+                # Execute additional tools
+                additional_results = []
+                for fc in function_calls_next:
+                    func_call = fc['functionCall']
+                    tool_name = func_call['name']
+                    tool_args = func_call.get('args', {})
+                    tool_result = execute_tool(tool_name, tool_args)
+                    additional_results.append({
+                        'name': tool_name,
+                        'result': tool_result
+                    })
+                    all_tools_used.append(tool_name)
+
+                # Build next request
+                current_contents = current_contents.copy()
+                current_contents.append({
+                    "role": "model",
+                    "parts": current_parts
                 })
+
+                additional_response_parts = []
+                for tr in additional_results:
+                    additional_response_parts.append({
+                        "functionResponse": {
+                            "name": tr['name'],
+                            "response": tr['result']
+                        }
+                    })
+
+                current_contents.append({
+                    "role": "user",
+                    "parts": additional_response_parts
+                })
+
+                # Make API call
+                next_payload = {
+                    "contents": current_contents,
+                    "systemInstruction": payload['systemInstruction'],
+                    "tools": [CHAT_TOOLS],
+                    "generationConfig": payload['generationConfig']
+                }
+
+                response_next = requests.post(url, json=next_payload, headers=headers, timeout=30)
+                response_next.raise_for_status()
+                result_next = response_next.json()
+
+                candidate_next = result_next.get('candidates', [{}])[0]
+                content_next = candidate_next.get('content', {})
+                current_parts = content_next.get('parts', [])
+                parts2 = current_parts  # Update for final answer extraction
+                latest_result = result_next
 
             # Extract final answer (skip thinking blocks, find text)
             final_parts = parts2
@@ -1939,8 +1992,8 @@ ROZDIEL: {fte_diff} FTE
             return jsonify({
                 'answer': answer if answer else 'Nepodarilo sa získať odpoveď. Skúste otázku preformulovať.',
                 'model': VERTEX_MODEL,
-                'tools_used': [tr['name'] for tr in tool_results],
-                'tokens': result2.get('usageMetadata', {})
+                'tools_used': all_tools_used,
+                'tokens': latest_result.get('usageMetadata', {})
             })
 
         else:

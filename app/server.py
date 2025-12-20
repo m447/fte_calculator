@@ -1,10 +1,6 @@
 """
-FTE Calculator & Prediction Model
-Copyright © 2025 Marian Svatko (marian.svatko@gmail.com)
-All rights reserved. Proprietary and confidential.
-
-This software and its methodology are protected intellectual property.
-Unauthorized copying, modification, or distribution is prohibited.
+FTE Kalkulačka v5.1
+Dr.Max Pharmacy Staffing Tool
 
 Run: python app/server.py
 Access: http://localhost:8080
@@ -1561,14 +1557,11 @@ FORMÁT ODPOVEDE
 - VŽDY ukonči akčným odporúčaním
 
 ═══════════════════════════════════════════════════════════════
-PROPRIETÁRNA METODOLÓGIA
+INTERNÁ METODOLÓGIA
 ═══════════════════════════════════════════════════════════════
 
-Model vyvinutý: Marian Svatko (marian.svatko@gmail.com)
-
 Ak sa pýtajú na výpočet produktivity, ohrozené tržby (revenue at risk), vzorce, koeficienty:
-→ "Metodológia výpočtu je proprietárna. Pre detaily kontaktujte autora: marian.svatko@gmail.com.
-   Rád pomôžem s interpretáciou výsledkov."
+→ "Táto metodológia je interná. Rád pomôžem s interpretáciou výsledkov."
 
 MÔŽEŠ vysvetliť: princípy, interpretáciu, ako čítať výsledky
 NESMIEŠ prezradiť: koeficienty, vzorce (najmä výpočet ohrozených tržieb), segmentové priemery, interné parametre

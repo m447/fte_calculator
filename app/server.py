@@ -287,9 +287,9 @@ def predict():
     # Recalculate total
     fte_pred = fte_F + fte_L + fte_ZF
 
-    # Tolerance based on model accuracy (RMSE × 1.96 for 95% CI)
+    # Tolerance based on model accuracy (RMSE converted to GROSS)
     avg_conv = (gross_factors_used['F'] + gross_factors_used['L'] + gross_factors_used['ZF']) / 3
-    tolerance = fte_std * avg_conv * 1.96  # ~±1.0 FTE for 95% CI
+    tolerance = fte_std * avg_conv  # ~±0.5 FTE typical error
 
     # Type-based conversion for benchmarks (always use type-based, not pharmacy-specific)
     type_conv = (conv['F']['factor'] + conv['L']['factor'] + conv['ZF']['factor']) / 3

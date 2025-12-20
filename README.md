@@ -86,6 +86,22 @@ This project analyzes pharmacy operational data to predict the optimal number of
 
 **GCP Project:** `gen-lang-client-0415148507`
 
+**Credentials:**
+- Používateľ: `drmax`
+- Heslo: `FteCalc2024!Rx#Secure`
+
+**Usage Analytics (BigQuery):**
+- Dataset: `gen-lang-client-0415148507.fte_analytics`
+- All requests logged automatically via Cloud Logging sink
+- Query in [BigQuery Console](https://console.cloud.google.com/bigquery?project=gen-lang-client-0415148507)
+
+```sql
+-- Example: Requests per day
+SELECT DATE(timestamp) as date, COUNT(*) as requests
+FROM `gen-lang-client-0415148507.fte_analytics.run_googleapis_com_requests_*`
+GROUP BY date ORDER BY date DESC
+```
+
 ## Installation
 
 ```bash

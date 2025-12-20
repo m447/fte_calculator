@@ -1980,66 +1980,50 @@ input:checked + .toggle-slider:before {
 /* ============================================
    SIMULATION - Simplified (2 questions)
    ============================================ */
+/* Simulation section - unified with position charts */
 .sim-section {
-  padding: 20px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 0;
+  margin-bottom: 18px;
 }
 
 .sim-section:last-of-type {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
-.sim-section.productivity {
-  background: var(--bg-subtle);
-  border-radius: 0 0 12px 12px;
-  margin: 0 -20px -20px -20px;
-  padding: 20px;
-}
-
-.sim-question {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  display: flex;
+.sim-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px;
   align-items: center;
-  gap: 8px;
-}
-
-.sim-question-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--brand-green-light);
-  color: var(--brand-green);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-}
-
-.sim-section.productivity .sim-question-icon {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.sim-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
 .sim-label {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
-  min-width: 75px;
+}
+
+.sim-input-value {
+  font-weight: 700;
+  color: var(--brand-green);
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sim-input-value.visible {
+  opacity: 1;
+}
+
+.sim-input-value.negative {
+  color: #dc2626;
 }
 
 .sim-slider-wrap {
-  flex: 1;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sim-slider {
@@ -2047,11 +2031,7 @@ input:checked + .toggle-slider:before {
   -webkit-appearance: none;
   appearance: none;
   height: 8px;
-  background: linear-gradient(to right,
-    var(--border-light) 0%,
-    var(--border-light) 40%,
-    var(--brand-green-light) 40%,
-    var(--brand-green-light) 100%);
+  background: linear-gradient(90deg, var(--border-light) 0%, var(--brand-green-light) 50%, var(--border-light) 100%);
   border-radius: 4px;
   cursor: pointer;
   transition: box-shadow 0.2s;
@@ -2067,14 +2047,14 @@ input:checked + .toggle-slider:before {
 
 .sim-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   background: var(--brand-green);
-  border: 3px solid white;
+  border: 2px solid white;
   border-radius: 50%;
   cursor: grab;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: transform 0.15s;
 }
 
 .sim-slider::-webkit-slider-thumb:hover {
@@ -2083,86 +2063,38 @@ input:checked + .toggle-slider:before {
 
 .sim-slider:active::-webkit-slider-thumb {
   cursor: grabbing;
-  transform: scale(1.15);
 }
 
 .sim-slider::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   background: var(--brand-green);
-  border: 3px solid white;
+  border: 2px solid white;
   border-radius: 50%;
   cursor: grab;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-/* Center marker */
-.sim-slider-wrap::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 40%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 14px;
-  background: var(--text-muted);
-  opacity: 0.3;
-  border-radius: 1px;
-  pointer-events: none;
-}
-
-.sim-section.productivity .sim-slider-wrap::after {
-  left: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 .sim-range-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 6px;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
 }
 
-.sim-value {
-  min-width: 55px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-align: center;
-  background: var(--bg-subtle);
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-.sim-section.productivity .sim-value {
-  background: white;
-}
-
-/* Result display */
+/* Result - matches position-result style */
 .sim-result {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--brand-green-light);
-  transition: background 0.3s;
-}
-
-.sim-result.negative {
-  background: #fef2f2;
-}
-
-.sim-result.zero {
-  background: var(--bg-subtle);
+  gap: 2px;
 }
 
 .sim-result-value {
-  font-size: 1.4rem;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--brand-green);
-  transition: color 0.3s;
+  transition: color 0.2s;
 }
 
 .sim-result.negative .sim-result-value {
@@ -2173,69 +2105,65 @@ input:checked + .toggle-slider:before {
   color: var(--text-muted);
 }
 
-.sim-result-text {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: 500;
+.sim-result-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-green);
 }
 
-.sim-result.negative .sim-result-text {
-  color: #b91c1c;
+.sim-result.negative .sim-result-indicator {
+  background: #dc2626;
 }
 
-/* Productivity hint */
-.sim-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: white;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.sim-result.zero .sim-result-indicator {
+  background: var(--text-muted);
 }
 
-.sim-hint-icon {
-  font-size: 1rem;
-}
-
-/* Summary section */
+/* Summary section - cleaner style */
 .sim-summary {
-  margin-top: 20px;
-  padding: 20px;
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-  border-radius: 12px;
-  color: white;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.sim-summary::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -30%;
-  width: 80%;
-  height: 150%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  pointer-events: none;
+  margin-top: 18px;
+  padding: 16px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 80px 1fr 100px;
+  align-items: center;
+  gap: 12px;
 }
 
 .sim-summary-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.9;
-  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sim-summary-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.sim-summary-arrow {
+  color: var(--text-muted);
+}
+
+.sim-summary-new {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .sim-summary-value {
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brand-green);
+  text-align: center;
+}
+
+.sim-summary-value.negative {
+  color: #dc2626;
 }
 
 .sim-summary-value.pulse {
@@ -2248,25 +2176,12 @@ input:checked + .toggle-slider:before {
   100% { transform: scale(1); }
 }
 
-.sim-summary-breakdown {
+.sim-charts {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-  opacity: 0.95;
-}
-
-.sim-summary-arrow {
-  font-size: 1.2rem;
-  opacity: 0.7;
-}
-
-.sim-summary-new {
-  font-weight: 700;
-  background: rgba(255,255,255,0.2);
-  padding: 4px 12px;
-  border-radius: 16px;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 /* ============================================
@@ -2730,6 +2645,316 @@ input:checked + .toggle-slider:before {
   font-style: italic;
 }
 
+/* Revenue Teaser - show problem, hide solution */
+.revenue-teaser {
+  margin: 16px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  border-radius: 14px;
+  color: #f9fafb;
+  text-align: center;
+}
+
+.teaser-header {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #f87171;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.teaser-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fca5a5;
+  margin-bottom: 16px;
+}
+
+.teaser-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.teaser-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.teaser-bar-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  width: 90px;
+  text-align: right;
+}
+
+.teaser-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #374151;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.teaser-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f87171, #dc2626);
+  border-radius: 4px;
+  position: relative;
+}
+
+.teaser-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 4px,
+    rgba(0,0,0,0.3) 4px,
+    rgba(0,0,0,0.3) 8px
+  );
+}
+
+.teaser-question {
+  font-size: 0.9rem;
+  color: #d1d5db;
+  margin: 16px 0 12px;
+  font-style: italic;
+}
+
+.teaser-cta {
+  display: inline-block;
+  background: var(--brand-green);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.teaser-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.4);
+}
+
+.teaser-hint {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 12px;
+}
+
+/* Blurred preview sections */
+.teaser-blurred-section {
+  margin: 16px 0;
+}
+
+.teaser-section-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.teaser-heatmap-blur,
+.teaser-schedule-blur {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.blur-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(31, 41, 55, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mini heatmap */
+.teaser-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: #374151;
+  border-radius: 8px;
+}
+
+.th-row {
+  display: flex;
+  gap: 2px;
+}
+
+.th-row span {
+  width: 22px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: #9ca3af;
+  border-radius: 2px;
+}
+
+.th-row span.g {
+  background: #065f46;
+}
+
+.th-row span.y {
+  background: #92400e;
+}
+
+.th-row span.r {
+  background: #dc2626;
+}
+
+/* Mini schedule table */
+.teaser-schedule {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  background: #374151;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.teaser-schedule th,
+.teaser-schedule td {
+  padding: 8px 12px;
+  text-align: center;
+  color: #d1d5db;
+}
+
+.teaser-schedule th {
+  background: #4b5563;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.teaser-schedule td {
+  border-top: 1px solid #4b5563;
+}
+
+.teaser-schedule td.warn {
+  background: rgba(220, 38, 38, 0.3);
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+/* Capacity visual bars */
+.capacity-visual {
+  padding: 12px;
+  background: #374151;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.capacity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capacity-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.capacity-bar {
+  flex: 1;
+  height: 28px;
+  background: rgba(220, 38, 38, 0.2);
+  border-radius: 6px;
+  display: flex;
+  overflow: hidden;
+  border: 1px dashed rgba(220, 38, 38, 0.4);
+}
+
+.capacity-fill {
+  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px 0 0 5px;
+  position: relative;
+}
+
+.capacity-fill.critical {
+  background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+}
+
+.capacity-icons {
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+}
+
+.capacity-gap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(220, 38, 38, 0.15) 4px,
+    rgba(220, 38, 38, 0.15) 8px
+  );
+}
+
+.capacity-gap.critical {
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(220, 38, 38, 0.3) 4px,
+    rgba(220, 38, 38, 0.3) 8px
+  );
+}
+
+.gap-icon {
+  font-size: 0.85rem;
+}
+
+.capacity-pct {
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.capacity-pct.warn {
+  color: #fbbf24;
+}
+
+.capacity-pct.critical {
+  color: #f87171;
+}
+
 /* CSV export button styling */
 .btn-export-csv {
   background: transparent;
@@ -2752,7 +2977,7 @@ input:checked + .toggle-slider:before {
 <div class="container">
   <div class="header animate-in">
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> FTE Kalkulačka</h1>
-    <p class="subtitle">Overte, či je personálne obsadenie lekárne optimálne</p>
+    <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast?</p>
     <button onclick="document.getElementById('about-modal').style.display='flex'" style="
       position: absolute;
       top: 12px;
@@ -2912,6 +3137,7 @@ input:checked + .toggle-slider:before {
     <div class="revenue-loss" id="revenue-loss" style="display:none;">
       <!-- Content populated by JavaScript -->
     </div>
+
 
     <!-- Distribution comparison -->
     <div class="distribution-box" id="distribution-box" style="display:none;">
@@ -3336,75 +3562,61 @@ input:checked + .toggle-slider:before {
         </div>
       </div>
 
-      <!-- Simulation - Simplified -->
+      <!-- Simulation - Unified with position charts -->
       <div class="card">
         <div class="card-title">Simulácia zmien</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+          Ako by sa zmenilo odporúčané FTE pri zmene parametrov
+        </p>
 
-        <!-- Demand Section -->
-        <div class="sim-section">
-          <div class="sim-question">
-            <div class="sim-question-icon">↑</div>
-            Čo ak sa zmení dopyt?
-          </div>
-
-          <div class="sim-slider-row">
-            <div class="sim-label">Tržby</div>
-            <div class="sim-slider-wrap">
-              <input type="range" class="sim-slider" id="sens-trzby" min="-20" max="30" value="0">
-              <div class="sim-range-labels">
-                <span>-20%</span>
-                <span>0%</span>
-                <span>+30%</span>
+        <div class="sim-charts">
+          <!-- Tržby row -->
+          <div class="sim-section">
+            <div class="sim-row">
+              <div class="sim-label">Tržby <span class="sim-input-value" id="sens-trzby-val"></span></div>
+              <div class="sim-slider-wrap">
+                <input type="range" class="sim-slider" id="sens-trzby" min="-20" max="30" value="0">
+                <div class="sim-range-labels">
+                  <span>-20%</span>
+                  <span>0%</span>
+                  <span>+30%</span>
+                </div>
+              </div>
+              <div class="sim-result" id="sens-trzby-result">
+                <div class="sim-result-value" id="sens-trzby-fte">0.0</div>
+                <div class="sim-result-indicator"></div>
               </div>
             </div>
-            <div class="sim-value" id="sens-trzby-val">0%</div>
           </div>
 
-          <div class="sim-result" id="sens-trzby-result">
-            <div class="sim-result-value" id="sens-trzby-fte">0.0</div>
-            <div class="sim-result-text" id="sens-trzby-text">FTE bez zmeny</div>
-          </div>
-        </div>
-
-        <!-- Productivity Section -->
-        <div class="sim-section productivity">
-          <div class="sim-question">
-            <div class="sim-question-icon">⚡</div>
-            Čo ak zlepšíme efektivitu?
-          </div>
-
-          <div class="sim-slider-row">
-            <div class="sim-label">Produktivita</div>
-            <div class="sim-slider-wrap">
-              <input type="range" class="sim-slider" id="sens-prod" min="0" max="20" value="0">
-              <div class="sim-range-labels">
-                <span>Priemer</span>
-                <span>+1σ</span>
-                <span>+2σ</span>
+          <!-- Produktivita row -->
+          <div class="sim-section">
+            <div class="sim-row">
+              <div class="sim-label">Produktivita <span class="sim-input-value" id="sens-prod-val"></span></div>
+              <div class="sim-slider-wrap">
+                <input type="range" class="sim-slider" id="sens-prod" min="0" max="20" value="0">
+                <div class="sim-range-labels">
+                  <span>Priemer</span>
+                  <span>+1σ</span>
+                  <span>+2σ</span>
+                </div>
+              </div>
+              <div class="sim-result zero" id="sens-prod-result">
+                <div class="sim-result-value" id="sens-prod-fte">0.0</div>
+                <div class="sim-result-indicator"></div>
               </div>
             </div>
-            <div class="sim-value" id="sens-prod-val">0σ</div>
           </div>
 
-          <div class="sim-result zero" id="sens-prod-result">
-            <div class="sim-result-value" id="sens-prod-fte">0.0</div>
-            <div class="sim-result-text" id="sens-prod-text">FTE bez zmeny</div>
-          </div>
-
-          <div class="sim-hint">
-            <span class="sim-hint-icon">💡</span>
-            Vyššia produktivita = menej potrebného personálu pri rovnakom objeme
-          </div>
-        </div>
-
-        <!-- Summary -->
-        <div class="sim-summary">
-          <div class="sim-summary-label">Celkový vplyv</div>
-          <div class="sim-summary-value" id="sens-total-fte">0.0 FTE</div>
-          <div class="sim-summary-breakdown">
-            <span id="sens-base-fte">0.0</span>
-            <span class="sim-summary-arrow">→</span>
-            <span class="sim-summary-new" id="sens-new-fte">0.0 FTE</span>
+          <!-- Summary row -->
+          <div class="sim-summary">
+            <div class="sim-summary-label">Celkom</div>
+            <div class="sim-summary-breakdown">
+              <span id="sens-base-fte">0.0</span>
+              <span class="sim-summary-arrow">→</span>
+              <span class="sim-summary-new" id="sens-new-fte">0.0</span>
+            </div>
+            <div class="sim-summary-value" id="sens-total-fte">0.0 FTE</div>
           </div>
         </div>
       </div>
@@ -4490,41 +4702,48 @@ function updateSimulationDisplay() {
   const totalFte = trzbyFte + prodFte;
 
   // Update Tržby display
-  document.getElementById('sens-trzby-val').textContent = (trzbyVal >= 0 ? '+' : '') + trzbyVal + '%';
-
   const trzbyResultEl = document.getElementById('sens-trzby-result');
   const trzbyFteEl = document.getElementById('sens-trzby-fte');
-  const trzbyTextEl = document.getElementById('sens-trzby-text');
+  const trzbyValEl = document.getElementById('sens-trzby-val');
 
   trzbyFteEl.textContent = (trzbyFte >= 0 ? '+' : '') + trzbyFte.toFixed(1);
   trzbyResultEl.classList.remove('negative', 'zero');
 
+  // Show input value next to label
+  if (trzbyVal !== 0) {
+    trzbyValEl.textContent = (trzbyVal >= 0 ? '+' : '') + trzbyVal + '%';
+    trzbyValEl.classList.add('visible');
+    trzbyValEl.classList.toggle('negative', trzbyVal < 0);
+  } else {
+    trzbyValEl.classList.remove('visible');
+  }
+
   if (Math.abs(trzbyFte) < 0.05) {
     trzbyResultEl.classList.add('zero');
-    trzbyTextEl.textContent = 'FTE bez zmeny';
   } else if (trzbyFte < 0) {
     trzbyResultEl.classList.add('negative');
-    trzbyTextEl.textContent = 'FTE môžete ubrať';
-  } else {
-    trzbyTextEl.textContent = 'FTE potrebujete navyše';
   }
 
   // Update Productivity display
-  document.getElementById('sens-prod-val').textContent = '+' + prodVal.toFixed(1) + 'σ';
-
   const prodResultEl = document.getElementById('sens-prod-result');
   const prodFteEl = document.getElementById('sens-prod-fte');
-  const prodTextEl = document.getElementById('sens-prod-text');
+  const prodValEl = document.getElementById('sens-prod-val');
 
   prodFteEl.textContent = prodFte.toFixed(1);
   prodResultEl.classList.remove('negative', 'zero');
 
+  // Show input value next to label
+  if (prodVal > 0) {
+    prodValEl.textContent = '+' + prodVal.toFixed(1) + 'σ';
+    prodValEl.classList.add('visible');
+  } else {
+    prodValEl.classList.remove('visible');
+  }
+
   if (Math.abs(prodFte) < 0.05) {
     prodResultEl.classList.add('zero');
-    prodTextEl.textContent = 'FTE bez zmeny';
   } else {
     prodResultEl.classList.add('negative');
-    prodTextEl.textContent = 'FTE môžete ušetriť';
   }
 
   // Update total with pulse animation

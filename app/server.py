@@ -1859,16 +1859,40 @@ ROZDIEL: {fte_diff} FTE
             response2.raise_for_status()
             result2 = response2.json()
 
+            # Debug: log the response structure
+            print(f"[DEBUG] Second response candidates: {len(result2.get('candidates', []))}")
+            candidate2 = result2.get('candidates', [{}])[0]
+            content2 = candidate2.get('content', {})
+            parts2 = content2.get('parts', [])
+            print(f"[DEBUG] Second response parts count: {len(parts2)}")
+            for i, p in enumerate(parts2):
+                print(f"[DEBUG] Part {i} keys: {list(p.keys())}")
+
+            # Check if model wants another tool call
+            function_calls2 = [p for p in parts2 if 'functionCall' in p]
+            if function_calls2:
+                print(f"[DEBUG] Model requested another tool call: {[fc['functionCall']['name'] for fc in function_calls2]}")
+                # For now, return a message indicating we need to handle chained calls
+                return jsonify({
+                    'answer': 'Model potrebuje vykonať ďalšie vyhľadávanie. Skúste otázku zjednodušiť.',
+                    'model': VERTEX_MODEL,
+                    'tools_used': [tr['name'] for tr in tool_results],
+                    'debug': 'chained_tool_call'
+                })
+
             # Extract final answer (skip thinking blocks, find text)
-            final_parts = result2.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+            final_parts = parts2
             answer = ''
             for part in final_parts:
                 if 'text' in part:
                     answer = part['text']
                     break
 
+            if not answer:
+                print(f"[DEBUG] No text found in parts. Full parts: {parts2[:2]}")  # Log first 2 parts
+
             return jsonify({
-                'answer': answer,
+                'answer': answer if answer else 'Nepodarilo sa získať odpoveď. Skúste otázku preformulovať.',
                 'model': VERTEX_MODEL,
                 'tools_used': [tr['name'] for tr in tool_results],
                 'tokens': result2.get('usageMetadata', {})

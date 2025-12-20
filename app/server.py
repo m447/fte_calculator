@@ -1859,8 +1859,13 @@ ROZDIEL: {fte_diff} FTE
             response2.raise_for_status()
             result2 = response2.json()
 
-            # Extract final answer
-            answer = result2.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            # Extract final answer (skip thinking blocks, find text)
+            final_parts = result2.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+            answer = ''
+            for part in final_parts:
+                if 'text' in part:
+                    answer = part['text']
+                    break
 
             return jsonify({
                 'answer': answer,
@@ -1870,8 +1875,12 @@ ROZDIEL: {fte_diff} FTE
             })
 
         else:
-            # No tool call, extract text directly
-            answer = parts[0].get('text', '') if parts else ''
+            # No tool call, extract text directly (skip thinking blocks)
+            answer = ''
+            for part in parts:
+                if 'text' in part:
+                    answer = part['text']
+                    break
 
             return jsonify({
                 'answer': answer,

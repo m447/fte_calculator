@@ -24,10 +24,25 @@ CORS(app)
 APP_USERNAME = os.environ.get('APP_USERNAME', 'drmax')
 APP_PASSWORD = os.environ.get('APP_PASSWORD', 'FteCalc2024!Rx#Secure')
 
+# API Key for direct API access (separate from web UI auth)
+API_KEY = os.environ.get('API_KEY', 'fte-api-2024-xK9mP2vL8nQ4wR7y')
+
 
 def check_auth(username, password):
     """Check if username/password combination is valid."""
     return username == APP_USERNAME and password == APP_PASSWORD
+
+
+def check_api_key():
+    """Check if valid API key is provided in header."""
+    provided_key = request.headers.get('X-API-Key')
+    return provided_key == API_KEY
+
+
+def is_browser_request():
+    """Check if request is from browser (has Referer from our app)."""
+    referer = request.headers.get('Referer', '')
+    return 'fte-calculator' in referer or 'localhost' in referer
 
 
 def authenticate():
@@ -39,13 +54,43 @@ def authenticate():
     )
 
 
+def api_key_required():
+    """Send 403 response for missing API key."""
+    return Response(
+        json.dumps({'error': 'API key required. Use X-API-Key header.'}),
+        403,
+        {'Content-Type': 'application/json'}
+    )
+
+
 def requires_auth(f):
-    """Decorator to require authentication."""
+    """Decorator for web pages - requires Basic Auth only."""
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
         if not auth or not check_auth(auth.username, auth.password):
             return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+
+def requires_api_auth(f):
+    """Decorator for API endpoints - requires Basic Auth + API Key (unless from browser)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # First check Basic Auth
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+
+        # For browser requests (from web UI), allow without API key
+        if is_browser_request():
+            return f(*args, **kwargs)
+
+        # For direct API access, require API key
+        if not check_api_key():
+            return api_key_required()
+
         return f(*args, **kwargs)
     return decorated
 
@@ -172,7 +217,7 @@ def calculate_revenue_at_risk(predicted_fte, actual_fte, trzby, is_above_avg_pro
 
 
 @app.route('/api/predict', methods=['POST'])
-@requires_auth
+@requires_api_auth
 def predict():
     """Predict FTE with role breakdown - returns GROSS FTE (contracted positions)."""
     data = request.json
@@ -502,7 +547,7 @@ def predict():
 
 
 @app.route('/api/network', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def get_network():
     """Get network-wide staffing analysis with predictions for all pharmacies."""
     rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
@@ -715,7 +760,7 @@ def get_network():
 
 
 @app.route('/api/pharmacies', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def get_pharmacies():
     """Get list of all pharmacies for selector dropdown."""
     pharmacies = []
@@ -731,7 +776,7 @@ def get_pharmacies():
 
 
 @app.route('/api/pharmacies/search', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def search_pharmacies():
     """Search pharmacies with filters - for AI assistant queries.
 
@@ -851,7 +896,7 @@ def search_pharmacies():
 
 
 @app.route('/api/model/info', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def get_model_info():
     """Get model coefficients and info - for AI assistant awareness."""
     # Extract coefficients from the model
@@ -919,7 +964,7 @@ def get_model_info():
 
 
 @app.route('/api/pharmacy/<int:pharmacy_id>', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def get_pharmacy(pharmacy_id):
     """Get details for a specific pharmacy including predicted FTE (same as network)."""
     pharmacy = df[df['id'] == pharmacy_id]
@@ -1008,7 +1053,7 @@ def get_pharmacy(pharmacy_id):
 
 
 @app.route('/api/benchmarks', methods=['GET'])
-@requires_auth
+@requires_api_auth
 def get_benchmarks():
     """Get benchmarks for all store types."""
     benchmarks = []
@@ -1637,7 +1682,7 @@ def get_gcloud_token():
 
 
 @app.route('/api/chat', methods=['POST'])
-@requires_auth
+@requires_api_auth
 def chat():
     """AI chat endpoint using Vertex AI Gemini 2.5 Flash."""
     data = request.json

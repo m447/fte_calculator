@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Micro Charts - Refined Options</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 { color: #007a4d; margin-bottom: 10px; }
+    h2 { color: #333; border-bottom: 2px solid #007a4d; padding-bottom: 8px; margin-top: 30px; }
+    .subtitle { color: #666; margin-bottom: 30px; }
+
+    .demo-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* Option 1: Aligned ASCII */
+    .ascii-aligned {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      background: #fafafa;
+      padding: 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.9;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .ascii-aligned .header {
+      color: #666;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .ascii-aligned .highlight {
+      background: #fef2f2;
+      display: block;
+      margin: 0 -20px;
+      padding: 0 20px;
+    }
+    .ascii-aligned .bar { color: #007a4d; }
+    .ascii-aligned .bar-empty { color: #e5e5e5; }
+    .ascii-aligned .need { color: #dc2626; font-weight: 600; }
+    .ascii-aligned .ok { color: #666; }
+
+    /* Option 2: Simplified Table */
+    .simple-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .simple-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-bottom: 2px solid #e0e0e0;
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .simple-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .simple-table tr:hover { background: #fafafa; }
+    .simple-table tr.highlight {
+      background: #fef7f7;
+    }
+    .simple-table tr.highlight:hover {
+      background: #fef2f2;
+    }
+
+    .bar-simple {
+      width: 100px;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-simple-fill {
+      height: 100%;
+      background: #007a4d;
+      border-radius: 4px;
+    }
+    .bar-simple-fill.highlight {
+      background: #b91c1c;
+    }
+
+    .status-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .status-tag.need {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .status-tag.ok {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .recommendation {
+      background: #f0fdf4;
+      border-left: 3px solid #007a4d;
+      padding: 14px 16px;
+      margin-top: 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+    }
+    .recommendation strong { color: #007a4d; }
+  </style>
+</head>
+<body>
+  <h1>Refined Micro Chart Options</h1>
+  <p class="subtitle">Porovnanie lekární podobných ID 33 (131k blokov)</p>
+
+  <!-- Option 1: Aligned ASCII -->
+  <div class="demo-section">
+    <h2>Option 1: Aligned ASCII Bars</h2>
+    <p style="color:#666; font-size:13px; margin-bottom:16px;">Monospace font, aligned columns, works in plain text</p>
+
+    <div class="ascii-aligned"><span class="header">Lekáreň                      Bloky    FTE      Vizuál              Rozdiel</span>
+<span class="highlight"><span class="bar">▸</span> ID 33  Levice, TESCO          131k    6.7  <span class="bar">████████</span><span class="bar-empty">████</span>  <span class="need">potrebuje +1.2</span></span>
+  ID 74  Martin, Kaufland       126k    6.9  <span class="bar">████████</span><span class="bar-empty">████</span>  <span class="ok">+0.2 vs ID 33</span>
+  ID 42  BA, Kaufland Petrž.    134k    7.3  <span class="bar">█████████</span><span class="bar-empty">███</span>  <span class="ok">+0.6 vs ID 33</span>
+  ID 618 BB, Kaufland           136k    7.9  <span class="bar">██████████</span><span class="bar-empty">██</span>  <span class="ok">+1.2 vs ID 33</span>
+  ID 36  Zvolen, Kaufland       134k    8.5  <span class="bar">███████████</span><span class="bar-empty">█</span>  <span class="ok">+1.8 vs ID 33</span>
+  ID 54  Malacky, Kaufland      137k    8.5  <span class="bar">███████████</span><span class="bar-empty">█</span>  <span class="ok">+1.8 vs ID 33</span></div>
+
+    <div class="recommendation">
+      <strong>Odporúčanie:</strong> V ID 33 pridať 1.2 FTE. Možnosť presunu z ID 36 alebo ID 54.
+    </div>
+  </div>
+
+  <!-- Option 2: Simplified Table -->
+  <div class="demo-section">
+    <h2>Option 2: Simplified Table (Fewer Colors)</h2>
+    <p style="color:#666; font-size:13px; margin-bottom:16px;">Clean table with single accent color</p>
+
+    <table class="simple-table">
+      <thead>
+        <tr>
+          <th>Lekáreň</th>
+          <th>Bloky</th>
+          <th>FTE</th>
+          <th style="width:120px;">Porovnanie</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="highlight">
+          <td><strong>ID 33</strong> - Levice, TESCO</td>
+          <td>131k</td>
+          <td><strong>6.7</strong></td>
+          <td><div class="bar-simple"><div class="bar-simple-fill highlight" style="width:56%"></div></div></td>
+          <td><span class="status-tag need">+1.2 potreba</span></td>
+        </tr>
+        <tr>
+          <td><strong>ID 74</strong> - Martin, Kaufland</td>
+          <td>126k</td>
+          <td>6.9</td>
+          <td><div class="bar-simple"><div class="bar-simple-fill" style="width:58%"></div></div></td>
+          <td><span class="status-tag ok">+0.2</span></td>
+        </tr>
+        <tr>
+          <td><strong>ID 42</strong> - BA, Kaufland Petržalka</td>
+          <td>134k</td>
+          <td>7.3</td>
+          <td><div class="bar-simple"><div class="bar-simple-fill" style="width:61%"></div></div></td>
+          <td><span class="status-tag ok">+0.6</span></td>
+        </tr>
+        <tr>
+          <td><strong>ID 618</strong> - BB, Kaufland</td>
+          <td>136k</td>
+          <td>7.9</td>
+          <td><div class="bar-simple"><div class="bar-simple-fill" style="width:66%"></div></div></td>
+          <td><span class="status-tag ok">+1.2</span></td>
+        </tr>
+        <tr>
+          <td><strong>ID 36</strong> - Zvolen, Kaufland</td>
+          <td>134k</td>
+          <td>8.5</td>
+          <td><div class="bar-simple"><div class="bar-simple-fill" style="width:71%"></div></div></td>
+          <td><span class="status-tag ok">+1.8</span></td>
+        </tr>
+        <tr>
+          <td><strong>ID 54</strong> - Malacky, Kaufland</td>
+          <td>137k</td>
+          <td>8.5</td>
+          <td><div class="bar-simple"><div class="bar-simple-fill" style="width:71%"></div></div></td>
+          <td><span class="status-tag ok">+1.8</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="recommendation">
+      <strong>Odporúčanie:</strong> V ID 33 pridať 1.2 FTE. Možnosť presunu z ID 36 alebo ID 54.
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="demo-section" style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+    <h2 style="border-color: #64748b;">Comparison</h2>
+    <table style="width:100%; font-size:14px;">
+      <tr>
+        <td style="padding:8px;"><strong>Option 1 (ASCII)</strong></td>
+        <td style="padding:8px;">Zero frontend changes. Add to AI prompt only. Works immediately.</td>
+      </tr>
+      <tr>
+        <td style="padding:8px;"><strong>Option 2 (Table)</strong></td>
+        <td style="padding:8px;">Needs frontend parsing. More polished look. Better for final product.</td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

@@ -1602,6 +1602,32 @@ FORMÁT ODPOVEDE
 - VŽDY ukonči akčným odporúčaním
 
 ═══════════════════════════════════════════════════════════════
+POROVNÁVACIA TABUĽKA (pri porovnaní viacerých lekární)
+═══════════════════════════════════════════════════════════════
+
+Pri porovnaní 3+ lekární použi ASCII tabuľku s vizuálnymi pruhmi:
+
+```
+Lekáreň                      Bloky    FTE                    Rozdiel
+ID 33  Levice, TESCO          131k    6.7  ██████░░░░░░  potrebuje +1.2
+ID 74  Martin, Kaufland       126k    6.9  ███████░░░░░  +0.2 vs ID 33
+ID 618 BB, Kaufland           136k    7.9  █████████░░░  +1.2 vs ID 33
+ID 54  Malacky, Kaufland      137k    8.5  ███████████░  +1.8 vs ID 33
+```
+
+PRAVIDLÁ:
+- ŽIADNE prázdne riadky medzi dátami!
+- Zarovnaj stĺpce medzerami (monospace)
+- Pruhy: █ = vyplnené, ░ = prázdne (12 znakov spolu)
+- Pruh zodpovedá FTE: 6.0=██████░░░░░░, 8.0=████████░░░░, 10.0=██████████░░
+- Pod tabuľkou: krátke odporúčanie
+
+OHROZENÉ TRŽBY (Revenue at Risk):
+- Ak je ohrozených tržieb > 0, VŽDY uveď na konci: "⚠ Ohrozené tržby: €XXK ročne"
+- Pri zozname viacerých lekární: uveď ohrozené tržby pre každú v stĺpci
+- Pri sumári: "⚠ Celkovo ohrozených tržieb: €XXK ročne"
+
+═══════════════════════════════════════════════════════════════
 INTERNÁ METODOLÓGIA - CHRÁNENÉ INFORMÁCIE
 ═══════════════════════════════════════════════════════════════
 

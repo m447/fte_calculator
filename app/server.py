@@ -1607,19 +1607,22 @@ POROVNÁVACIA TABUĽKA (pri porovnaní viacerých lekární)
 
 Pri porovnaní 3+ lekární použi ASCII tabuľku s vizuálnymi pruhmi:
 
-```
-Lekáreň                      Bloky    FTE                    Rozdiel
-ID 33  Levice, TESCO          131k    6.7  ██████░░░░░░  potrebuje +1.2
-ID 74  Martin, Kaufland       126k    6.9  ███████░░░░░  +0.2 vs ID 33
-ID 618 BB, Kaufland           136k    7.9  █████████░░░  +1.2 vs ID 33
-ID 54  Malacky, Kaufland      137k    8.5  ███████████░  +1.8 vs ID 33
-```
+Lekáreň                      Bloky    FTE                 Rozdiel
+ID 33  Levice, TESCO          131k    6.5  ██████        potrebuje +1.2
+ID 74  Martin, Kaufland       126k    6.9  ███████       +0.4
+ID 618 BB, Kaufland           136k    7.9  ████████      +1.4
+ID 54  Malacky, Kaufland      137k    8.5  █████████     +2.0
 
 PRAVIDLÁ:
+- NEPOUŽÍVAJ ``` (backticks) okolo tabuľky!
 - ŽIADNE prázdne riadky medzi dátami!
 - Zarovnaj stĺpce medzerami (monospace)
-- Pruhy: █ = vyplnené, ░ = prázdne (12 znakov spolu)
-- Pruh zodpovedá FTE: 6.0=██████░░░░░░, 8.0=████████░░░░, 10.0=██████████░░
+- Pruhy: █ len vyplnené (NEPOUŽÍVAJ ░)
+- Dĺžka pruhu = FTE: 6=██████, 8=████████, 10=██████████
+- Stĺpec "Rozdiel": rozdiel FTE oproti PRVEJ lekárni v tabuľke (referenčná)
+  - Prvá lekáreň: "potrebuje +X.X" (jej interný diff actual vs predicted)
+  - Ostatné: "+X.X" alebo "-X.X" = ich FTE mínus FTE prvej lekárne
+  - Príklad: ID 33 má 6.5 FTE, ID 74 má 6.9 FTE → rozdiel = +0.4
 - Pod tabuľkou: krátke odporúčanie
 
 OHROZENÉ TRŽBY (Revenue at Risk):
@@ -1859,7 +1862,7 @@ ROZDIEL: {fte_diff} FTE
         "tools": [CHAT_TOOLS],
         "generationConfig": {
             "temperature": 0,
-            "maxOutputTokens": 2048,
+            "maxOutputTokens": 4096,
             "thinkingConfig": {
                 "thinkingLevel": "MEDIUM"
             }
@@ -2044,6 +2047,105 @@ ROZDIEL: {fte_diff} FTE
 
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Vertex AI request failed: {str(e)}'}), 500
+
+
+# === CLAUDE AGENT ENDPOINT ===
+
+# Initialize agent (lazy loading)
+_agent = None
+
+def get_agent():
+    """Get or create the Claude agent instance."""
+    global _agent
+    if _agent is None:
+        try:
+            from .claude_agent import DrMaxAgent
+            data_path = Path(__file__).parent.parent / 'data'
+
+            # Build predictions cache from pharmacy data
+            predictions_cache = {}
+            for idx, row in df_all.iterrows():
+                pharmacy_id = row['id']
+                # Get prediction for this pharmacy
+                pred_result = predict_fte_from_model(
+                    bloky=row['bloky'],
+                    trzby=row['trzby'],
+                    typ=row['typ'],
+                    podiel_rx=row['podiel_rx'],
+                    bloky_trend=row.get('bloky_trend', 0),
+                    productivity_z=0  # Use average productivity
+                )
+                predictions_cache[pharmacy_id] = {
+                    'predicted_fte': pred_result['fte']['total'],
+                    'diff': row['fte'] - pred_result['fte']['total'],
+                    'revenue_at_risk': max(0, (pred_result['fte']['total'] - row['fte']) * 100000)  # Simplified
+                }
+
+            _agent = DrMaxAgent(data_path, predictions_cache)
+            print("[INFO] Claude Agent initialized successfully")
+        except Exception as e:
+            print(f"[WARNING] Claude Agent not available: {e}")
+            _agent = None
+    return _agent
+
+
+@app.route('/api/agent/analyze', methods=['POST'])
+@requires_api_auth
+def agent_analyze():
+    """
+    Claude Agent endpoint for complex multi-step analysis.
+
+    Uses sanitized data with indexed productivity values.
+    Protected information (formulas, coefficients) is never exposed.
+    """
+    agent = get_agent()
+
+    if agent is None:
+        return jsonify({
+            'error': 'Claude Agent not available. Set ANTHROPIC_API_KEY environment variable.',
+            'fallback': 'Use /api/chat endpoint instead'
+        }), 503
+
+    data = request.json
+    prompt = data.get('prompt', '')
+
+    if not prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
+
+    try:
+        # Run synchronous analysis
+        result = agent.analyze_sync(prompt)
+
+        if 'error' in result and result['error']:
+            return jsonify({'error': result['error']}), 500
+
+        return jsonify({
+            'response': result['response'],
+            'tools_used': result['tools_used'],
+            'rounds': result['rounds'],
+            'model': 'claude-opus-4-5',
+            'note': 'Productivity values are indexed (100 = segment average)'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/agent/status', methods=['GET'])
+def agent_status():
+    """Check if Claude Agent is available."""
+    agent = get_agent()
+    return jsonify({
+        'available': agent is not None,
+        'model': 'claude-opus-4-5' if agent else None,
+        'features': [
+            'search_pharmacies',
+            'compare_to_peers',
+            'get_understaffed',
+            'get_regional_summary',
+            'generate_report'
+        ] if agent else []
+    })
 
 
 if __name__ == '__main__':

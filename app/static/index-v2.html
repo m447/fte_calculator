@@ -1890,11 +1890,7 @@ input:checked + .toggle-slider:before {
 }
 
 .chat-message .bar-filled {
-  color: #007a4d;
-}
-
-.chat-message .bar-empty {
-  color: #d1d5db;
+  color: var(--brand-green);
 }
 
 .chat-input-area {
@@ -1986,6 +1982,52 @@ input:checked + .toggle-slider:before {
   background: var(--brand-green-light);
   border-color: var(--brand-green);
   color: var(--brand-green-dark);
+}
+
+/* Agent mode styling */
+.chat-suggestion.agent {
+  background: linear-gradient(135deg, #f0e6ff 0%, #e6f0ff 100%);
+  border-color: #8b5cf6;
+  color: #6d28d9;
+}
+
+.chat-suggestion.agent:hover {
+  background: linear-gradient(135deg, #e6d6ff 0%, #d6e6ff 100%);
+  border-color: #7c3aed;
+}
+
+.agent-toggle {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-toggle:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+  color: var(--brand-green);
+}
+
+.agent-toggle.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  border-color: #7c3aed;
+  color: white;
+}
+
+.agent-mode-indicator {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
 }
 
 /* ============================================
@@ -2204,25 +2246,28 @@ input:checked + .toggle-slider:before {
 
 .btn-new-pharmacy {
   background: transparent;
-  border: none;
+  border: 1px dashed var(--brand-green);
+  border-radius: 6px;
   color: var(--brand-green);
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  opacity: 0.8;
+  opacity: 0.7;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  margin-left: auto;
 }
 .btn-new-pharmacy:hover {
   opacity: 1;
-  text-decoration: underline;
+  background: rgba(0, 128, 56, 0.08);
+  border-style: solid;
 }
 .btn-new-pharmacy svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
 .sim-charts {
@@ -3140,7 +3185,7 @@ input:checked + .toggle-slider:before {
       <input type="number" id="pharmacy-id-input" placeholder="ID" min="1">
       <button type="button" id="pharmacy-load-btn" class="btn-load">Načítať</button>
       <button type="button" class="btn-new-pharmacy" id="btn-new-pharmacy" title="Vymazať formulár a zadať parametre novej/plánovanej lekárne">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m-8-8h16"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Nová lekáreň
       </button>
       <span class="pharmacy-hint" id="pharmacy-hint"></span>
@@ -3707,24 +3752,37 @@ input:checked + .toggle-slider:before {
 </div>
 
 <!-- AI Chat Assistant -->
-<button class="chat-trigger" id="chat-trigger" title="Opýtať sa AI">?</button>
+<button class="chat-trigger" id="chat-trigger" title="Opýtať sa AI">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+  </svg>
+</button>
 
 <div class="chat-panel" id="chat-panel">
   <div class="chat-header">
-    <h3>FTE Asistent</h3>
+    <h3>FTE AI Asistent</h3>
     <button class="chat-close" id="chat-close">&times;</button>
   </div>
   <div class="chat-messages" id="chat-messages">
     <div class="chat-message assistant">
-      <div class="bubble">Dobrý deň, som váš FTE asistent. Môžem vysvetliť výpočet alebo odpovedať na otázky o personálnom odporúčaní.</div>
+      <div class="bubble">Dobrý deň, som váš FTE AI asistent. Môžem vysvetliť výpočet alebo odpovedať na otázky o personálnom odporúčaní.</div>
     </div>
   </div>
   <div class="chat-suggestions" id="chat-suggestions">
-    <button class="chat-suggestion" data-q="Prečo práve toto FTE?">Prečo toto FTE?</button>
-    <button class="chat-suggestion" data-q="Ako sa porovnávam so sieťou?">Porovnanie</button>
-    <button class="chat-suggestion" data-q="Vysvetli rozdelenie F/L/ZF">Rozdelenie</button>
+    <button class="chat-suggestion" data-q="Ako je na tom personálne ID 33?">Stav ID 33</button>
+    <button class="chat-suggestion" data-q="Uveď 5 B lekární výkonom podobné ID 33, ktoré majú viac FTE">Podobné s vyšším FTE</button>
+    <button class="chat-suggestion" data-q="Porovnaj ID 33 a 36">Porovnaj ID 33 vs 36</button>
+  </div>
+  <!-- Agent mode suggestions (hidden by default) -->
+  <div class="chat-suggestions agent-suggestions" id="agent-suggestions" style="display:none;">
+    <button class="chat-suggestion agent" data-q="Analyzuj všetky poddimenzované lekárne v regióne RR11 a vygeneruj report">Regionálna analýza</button>
+    <button class="chat-suggestion agent" data-q="Nájdi 10 lekární s najvyššími ohrozenými tržbami a porovnaj ich s podobnými">Top 10 ohrozených</button>
+    <button class="chat-suggestion agent" data-q="Vytvor report porovnania lekární ID 33, 36, 54 vrátane odporúčaní">Porovnávací report</button>
   </div>
   <div class="chat-input-area">
+    <button class="agent-toggle" id="agent-toggle" title="Prepnúť na pokročilú analýzu (Claude)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    </button>
     <input type="text" class="chat-input" id="chat-input" placeholder="Napíšte otázku...">
     <button class="chat-send" id="chat-send">&#10148;</button>
   </div>
@@ -4665,7 +4723,7 @@ function renderOutlierList(type, outliers) {
 
     list.innerHTML += `
       <div class="outlier-item" onclick="analyzeOutlier(decodeURIComponent('${pData}'))">
-        <div class="outlier-chat-icon">?</div>
+        <div class="outlier-chat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg></div>
         <div class="outlier-info">
           <div class="outlier-name">${p.mesto} <span style="color:var(--text-muted);font-weight:400;">#${p.id}</span></div>
           <div class="outlier-type">${shortType} | ${(p.bloky/1000).toFixed(0)}k bloky | ${(p.trzby/1000000).toFixed(1)}M € | ${p.podiel_rx}% Rx</div>
@@ -5059,13 +5117,81 @@ function addChatMessage(text, role) {
 function formatAnswer(text) {
   // Convert markdown-like formatting to HTML
   return text
+    // Remove markdown code block markers
+    .replace(/```\n?/g, '')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     // Style revenue at risk lines in red
     .replace(/(⚠[^<\n]*(?:ohrozené|Ohrozené)[^<\n]*)/gi, '<span class="risk-text">$1</span>')
-    // Style bar characters
+    // Style bar characters (filled bars only)
     .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
-    .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
     .replace(/\n/g, '<br>');
+}
+
+// === AGENT MODE ===
+let agentModeEnabled = false;
+const agentToggle = document.getElementById('agent-toggle');
+const agentSuggestions = document.getElementById('agent-suggestions');
+
+agentToggle.addEventListener('click', () => {
+  agentModeEnabled = !agentModeEnabled;
+  agentToggle.classList.toggle('active', agentModeEnabled);
+
+  // Toggle suggestion visibility
+  chatSuggestions.style.display = agentModeEnabled ? 'none' : 'flex';
+  agentSuggestions.style.display = agentModeEnabled ? 'flex' : 'none';
+
+  // Update placeholder
+  chatInput.placeholder = agentModeEnabled
+    ? 'Pokročilá analýza (Claude)...'
+    : 'Napíšte otázku...';
+});
+
+// Handle agent suggestion clicks
+document.querySelectorAll('.chat-suggestion.agent').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const q = btn.dataset.q;
+    if (q) sendAgentMessage(q);
+  });
+});
+
+async function sendAgentMessage(prompt) {
+  if (!prompt.trim()) return;
+
+  // Add user message with agent indicator
+  addChatMessage(prompt + ' <span class="agent-mode-indicator">Claude</span>', 'user');
+  chatInput.value = '';
+  chatSend.disabled = true;
+  agentSuggestions.style.display = 'none';
+
+  // Show typing indicator
+  const typingId = showTypingIndicator();
+
+  try {
+    const response = await fetch('/api/agent/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt })
+    });
+
+    const data = await response.json();
+    removeTypingIndicator(typingId);
+
+    if (data.error) {
+      addChatMessage('Prepáčte, nastala chyba: ' + data.error, 'assistant');
+    } else {
+      // Format response with agent indicator
+      const formattedResponse = formatAnswer(data.response);
+      const toolsInfo = data.tools_used && data.tools_used.length > 0
+        ? `<br><small style="color:var(--text-muted);">Použité nástroje: ${data.tools_used.join(', ')}</small>`
+        : '';
+      addChatMessage(formattedResponse + toolsInfo, 'assistant');
+    }
+  } catch (error) {
+    removeTypingIndicator(typingId);
+    addChatMessage('Prepáčte, nepodarilo sa spojiť s Claude agentom.', 'assistant');
+  }
+
+  chatSend.disabled = false;
 }
 
 function showTypingIndicator() {

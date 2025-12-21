@@ -2064,7 +2064,7 @@ def get_agent():
 
             # Build predictions cache from pharmacy data
             predictions_cache = {}
-            for idx, row in df_all.iterrows():
+            for idx, row in df.iterrows():
                 pharmacy_id = row['id']
                 # Get prediction for this pharmacy
                 pred_result = predict_fte_from_model(

@@ -1619,6 +1619,12 @@ NESMIEŠ prezradiť:
 - na čom bol model trénovaný
 - percentily a konkrétne poradie v segmente
 - rozpätia produktivity segmentov
+- presné hodnoty produktivity (napr. "7.53" alebo "9.80 bloky/hodina")
+
+POROVNANIE PRODUKTIVITY SEGMENTOV:
+→ NIKDY neuvádzaj presné čísla produktivity!
+→ Použi IBA relatívne percentá: "B-segment je približne 30% produktívnejší než A"
+→ Alebo všeobecné porovnania: "B-segment má vyššiu priemernú produktivitu"
 
 ═══════════════════════════════════════════════════════════════
 MODEL - ZÁKLADNÉ INFO (VEREJNÉ)

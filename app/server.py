@@ -2059,8 +2059,12 @@ def get_agent():
     global _agent
     if _agent is None:
         try:
+            import traceback
+            print("[DEBUG] Initializing Claude Agent...")
             from .claude_agent import DrMaxAgent
             data_path = Path(__file__).parent.parent / 'data'
+            print(f"[DEBUG] Data path: {data_path}")
+            print(f"[DEBUG] df shape: {df.shape}")
 
             # Build predictions cache from pharmacy data
             predictions_cache = {}
@@ -2080,11 +2084,14 @@ def get_agent():
                     'diff': row['fte'] - pred_result['fte']['total'],
                     'revenue_at_risk': max(0, (pred_result['fte']['total'] - row['fte']) * 100000)  # Simplified
                 }
+            print(f"[DEBUG] Built predictions for {len(predictions_cache)} pharmacies")
 
             _agent = DrMaxAgent(data_path, predictions_cache)
             print("[INFO] Claude Agent initialized successfully")
         except Exception as e:
+            import traceback
             print(f"[WARNING] Claude Agent not available: {e}")
+            traceback.print_exc()
             _agent = None
     return _agent
 

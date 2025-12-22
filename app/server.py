@@ -6,6 +6,10 @@ Run: python app/server.py
 Access: http://localhost:8080
 """
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from functools import wraps
@@ -26,6 +30,42 @@ APP_PASSWORD = os.environ.get('APP_PASSWORD', 'FteCalc2024!Rx#Secure')
 
 # API Key for direct API access (separate from web UI auth)
 API_KEY = os.environ.get('API_KEY', 'fte-api-2024-xK9mP2vL8nQ4wR7y')
+
+# GCS Logging Configuration
+AGENT_LOG_BUCKET = os.environ.get('AGENT_LOG_BUCKET', 'drmax-agent-logs')
+AGENT_LOG_ENABLED = os.environ.get('AGENT_LOG_ENABLED', 'true').lower() == 'true'
+
+def log_agent_request_to_gcs(log_data: dict):
+    """
+    Log agent request/response to Google Cloud Storage.
+
+    Stores JSON files in format: gs://bucket/agent-logs/YYYY/MM/DD/request_id.json
+    """
+    if not AGENT_LOG_ENABLED:
+        return
+
+    try:
+        from google.cloud import storage
+        from datetime import datetime
+        import json
+
+        client = storage.Client()
+        bucket = client.bucket(AGENT_LOG_BUCKET)
+
+        # Create path: agent-logs/2024/12/22/abc12345.json
+        now = datetime.utcnow()
+        blob_path = f"agent-logs/{now.year}/{now.month:02d}/{now.day:02d}/{log_data.get('request_id', 'unknown')}.json"
+
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(
+            json.dumps(log_data, ensure_ascii=False, indent=2, default=str),
+            content_type='application/json'
+        )
+        print(f"[{log_data.get('request_id', '')}] Logged to GCS: {blob_path}")
+
+    except Exception as e:
+        # Don't fail the request if logging fails
+        print(f"[WARNING] GCS logging failed: {type(e).__name__}: {e}")
 
 
 def check_auth(username, password):
@@ -876,9 +916,9 @@ def search_pharmacies():
             'podiel_rx': round(row['podiel_rx'] * 100, 0),
             'actual_fte': round(row['actual_fte'], 1),
             'predicted_fte': round(row['predicted_fte'], 1),
-            'gap': round(row['fte_gap'], 1),
-            'productivity': 'above_avg' if row['prod_residual'] > 0 else 'avg_or_below',
-            'prod_residual': round(row['prod_residual'], 2)
+            'fte_gap': round(row['fte_gap'], 1),
+            'is_above_avg': row['prod_residual'] > 0,
+            'revenue_at_risk': int(row.get('revenue_at_risk', 0))
         })
 
     return jsonify({
@@ -1105,6 +1145,18 @@ CHAT_TOOLS = {
                         "type": "number",
                         "description": "Maximálny FTE gap (záporné = predimenzované). Napr. -1.0 pre lekárne s prebytkom aspoň 1 FTE"
                     },
+                    "min_fte": {
+                        "type": "number",
+                        "description": "Minimálne aktuálne FTE. Napr. 7.0 pre lekárne s 7+ FTE"
+                    },
+                    "min_bloky": {
+                        "type": "integer",
+                        "description": "Minimálny počet blokov. Napr. 120000 pre lekárne s 120k+ blokov"
+                    },
+                    "max_bloky": {
+                        "type": "integer",
+                        "description": "Maximálny počet blokov. Napr. 140000 pre lekárne s max 140k blokov"
+                    },
                     "sort_by": {
                         "type": "string",
                         "description": "Zoradiť podľa: 'gap' (FTE rozdiel), 'bloky' (transakcie), 'trzby' (tržby), 'fte' (aktuálne FTE)",
@@ -1219,9 +1271,19 @@ def execute_search_pharmacies(args):
         conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
         return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
+    def calc_revenue_at_risk(row):
+        is_above_avg = row['prod_residual'] > 0
+        actual_rounded = round(row['actual_fte'], 1)
+        predicted_rounded = round(row['predicted_fte'], 1)
+        if predicted_rounded > actual_rounded and is_above_avg and actual_rounded > 0:
+            overload_ratio = predicted_rounded / actual_rounded
+            return int((overload_ratio - 1) * 0.5 * row['trzby'])
+        return 0
+
     df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
+    df_calc['revenue_at_risk'] = df_calc.apply(calc_revenue_at_risk, axis=1)
 
     # Calculate productivity percentage
     df_calc['prod_pct'] = df_calc.apply(
@@ -1249,6 +1311,15 @@ def execute_search_pharmacies(args):
     elif args.get('productivity') == 'below':
         result = result[result['prod_residual'] <= 0]
 
+    if args.get('min_fte') is not None:
+        result = result[result['actual_fte'] >= args['min_fte']]
+
+    if args.get('min_bloky') is not None:
+        result = result[result['bloky'] >= args['min_bloky']]
+
+    if args.get('max_bloky') is not None:
+        result = result[result['bloky'] <= args['max_bloky']]
+
     # Sort
     sort_by = args.get('sort_by', 'gap')
     sort_map = {'gap': 'fte_gap', 'bloky': 'bloky', 'trzby': 'trzby', 'fte': 'actual_fte'}
@@ -1269,12 +1340,11 @@ def execute_search_pharmacies(args):
             'typ': row['typ'],
             'bloky': int(row['bloky']),
             'trzby': int(row['trzby']),
-            'podiel_rx': round(row['podiel_rx'] * 100, 0),
             'actual_fte': round(row['actual_fte'], 1),
             'predicted_fte': round(row['predicted_fte'], 1),
-            'gap': round(row['fte_gap'], 1),
-            'prod_pct': int(row['prod_pct']),
-            'productivity': 'nadpriemerná' if row['prod_residual'] > 0 else 'podpriemerná/priemerná'
+            'fte_gap': round(row['fte_gap'], 1),
+            'is_above_avg': row['prod_residual'] > 0,
+            'revenue_at_risk': int(row.get('revenue_at_risk', 0))
         })
 
     return {
@@ -1544,149 +1614,86 @@ def execute_detect_growth_opportunities(args):
     }
 
 
-FTE_SYSTEM_PROMPT = """Si analytický asistent pre FTE Kalkulátor lekární. VŽDY odpovedaj po slovensky.
+FTE_SYSTEM_PROMPT = """Si analytický asistent pre FTE Kalkulátor lekární. Tvojou úlohou je interpretovať VYPOČÍTANÉ dáta.
+
+JAZYK: VŽDY odpovedaj po slovensky.
 
 ═══════════════════════════════════════════════════════════════
-NAJDÔLEŽITEJŠIE PRAVIDLÁ (VŽDY DODRŽUJ)
+HLAVNÉ ZÁSADY
 ═══════════════════════════════════════════════════════════════
 
-1. NIKDY NEPOČÍTAJ vlastné hodnoty FTE - použi IBA hodnoty z <klucove_hodnoty>
-2. VŽDY uvádzaj ID lekárne (napr. "ID 104", "lekáreň 71")
-3. VŽDY daj AKČNÉ ODPORÚČANIE podľa gapu (viď nižšie)
-4. AK OHROZENÉ TRŽBY > 0: VŽDY ich spomeň! (napr. "stratíte €232K ročne")
-5. VŽDY odpovedaj po slovensky, aj keď otázka je v angličtine
+1. Použi hodnoty z <context>. Ak hodnota CHÝBA, môžeš ju vypočítať z dostupných dát.
+2. VŽDY uvádzaj ID lekárne a Mesto.
+3. Pred odpoveďou si v tichosti skontroluj: fte_gap, revenue_at_risk, is_above_avg.
+4. Buď STRUČNÝ: max 3 vety pre jednu lekáreň, odrážky pre prehľadnosť.
 
 ═══════════════════════════════════════════════════════════════
-AKČNÉ ODPORÚČANIA - POVINNÉ PRI KAŽDEJ ANALÝZE
+AKČNÉ ODPORÚČANIE (podľa hodnoty 'fte_gap' v kontexte)
 ═══════════════════════════════════════════════════════════════
 
-Gap = Odporúčané FTE - Skutočné FTE
+Gap > +0.5:  "Poddimenzovaná. Odporúčam PRIDAŤ personál."
+Gap < -0.5: "Predimenzovaná. Zvážte PREROZDELIŤ personál."
+Gap ±0.5:   "Optimálne obsadenie."
 
-KLADNÝ GAP (+0.5 a viac) = PODDIMENZOVANÁ = PRIDAŤ PERSONÁL
-→ "Odporúčam PRIDAŤ [X] FTE."
-→ AK OHROZENÉ TRŽBY > 0: MUSÍŠ uviesť: "Aktuálny stav spôsobuje stratu €[X]K ročne."
-→ NIKDY neopisuj ako "efektívnu" - je PREŤAŽENÁ!
+DÔLEŽITÉ: Pridanie FTE odporúčaj IBA ak:
+- revenue_at_risk > 0 (ohrozené tržby existujú)
+- is_above_avg = true (produktivita nadpriemerná)
 
-ZÁPORNÝ GAP (-0.5 a menej) = PREDIMENZOVANÁ = PREROZDELIŤ
-→ "Zvážte PREROZDELIŤ [X] FTE do lekární s nedostatkom."
-→ NIE JE to znak efektivity - majú PREBYTOK personálu.
-
-GAP BLÍZKO 0 (±0.5) = OPTIMÁLNE OBSADENIE
-→ "Personálne obsadenie je optimálne."
+Ak is_above_avg = false → "Produktivita podpriemerná - najprv optimalizovať procesy."
 
 ═══════════════════════════════════════════════════════════════
-NÁSTROJE (TOOLS)
+OHROZENÉ TRŽBY (Revenue at Risk)
 ═══════════════════════════════════════════════════════════════
 
-DÔLEŽITÉ: Pred volaním nástroja VŽDY skontroluj argumenty!
-- NIKDY nehádaj ID lekárne - použi IBA ID z kontextu alebo sa opýtaj
-- Ak ID nie je uvedené, použi search_pharmacies na vyhľadanie
+Ak je v kontexte 'revenue_at_risk' > 0, MUSÍŠ uviesť:
+→ "⚠ Tento stav ohrozuje tržby vo výške €[hodnota] ročne."
 
-1. search_pharmacies - vyhľadaj lekárne podľa filtrov
-2. get_network_summary - celkový prehľad siete
-3. get_pharmacy_details - detaily konkrétnej lekárne (VYŽADUJE platné ID!)
-4. get_model_info - info o modeli
-5. detect_growth_opportunities - lekárne s rastovým potenciálom
+Toto uvádzaj LEN ak je hodnota v dátach, NEODHADUJ ju.
 
-Príklady:
+═══════════════════════════════════════════════════════════════
+PRODUKTIVITA
+═══════════════════════════════════════════════════════════════
+
+Interpretuj flag 'is_above_avg' z kontextu:
+- TRUE  = "Nadpriemerná produktivita" (model odmeňuje nižším FTE)
+- FALSE = "Priemerná/Podpriemerná produktivita"
+
+Pri porovnaní segmentov použi IBA relatívne porovnania:
+→ "B-segment má vyššiu priemernú produktivitu než A"
+→ NIKDY neuvádzaj presné čísla produktivity!
+
+═══════════════════════════════════════════════════════════════
+FORMÁT PRE VIACERO LEKÁRNÍ (3+)
+═══════════════════════════════════════════════════════════════
+
+Použi kompaktnú tabuľku:
+
+ID    Mesto      FTE    Prod   Risk€    Gap
+33    Levice     6.5    ↑      45K      +1.2
+74    Martin     6.9    ↓      0        +0.4
+
+Legenda: Prod ↑=nadpriem, ↓=podpriem | Risk€=ohrozené tržby | Gap=koľko FTE chýba
+Na konci: "⚠ Celkovo ohrozené: €XXK" (ak súčet > 0)
+
+═══════════════════════════════════════════════════════════════
+PRÍKLADY POUŽITIA NÁSTROJOV
+═══════════════════════════════════════════════════════════════
+
 - "poddimenzované lekárne" → search_pharmacies(min_gap=1.0)
 - "predimenzované B lekárne" → search_pharmacies(typ="B - shopping", max_gap=-1.0)
+- "podobné lekárne s viac FTE" → search_pharmacies(typ="B - shopping", min_bloky=120000, max_bloky=140000, min_fte=7.0)
 - "detaily lekárne 104" → get_pharmacy_details(pharmacy_id=104)
 
-═══════════════════════════════════════════════════════════════
-FORMÁT ODPOVEDE
-═══════════════════════════════════════════════════════════════
-
-- 3-5 viet, stručne ale s hĺbkou
-- Formát: "**ID {id}** - {mesto}, {typ}: {analýza}"
-- VŽDY ukonči akčným odporúčaním
+NIKDY nehádaj ID - ak nie je uvedené, použi search_pharmacies.
 
 ═══════════════════════════════════════════════════════════════
-POROVNÁVACIA TABUĽKA (pri porovnaní viacerých lekární)
+BEZPEČNOSŤ (CHRÁNENÉ INFORMÁCIE)
 ═══════════════════════════════════════════════════════════════
 
-Pri porovnaní 3+ lekární použi ASCII tabuľku s vizuálnymi pruhmi:
+Ak sa pýtajú na vzorce, koeficienty, presnosť modelu:
+→ "Metodológia je interná. Môžem vysvetliť princípy a interpretáciu."
 
-Lekáreň                      Bloky    FTE                 Rozdiel
-ID 33  Levice, TESCO          131k    6.5  ██████        potrebuje +1.2
-ID 74  Martin, Kaufland       126k    6.9  ███████       +0.4
-ID 618 BB, Kaufland           136k    7.9  ████████      +1.4
-ID 54  Malacky, Kaufland      137k    8.5  █████████     +2.0
-
-PRAVIDLÁ:
-- NEPOUŽÍVAJ ``` (backticks) okolo tabuľky!
-- ŽIADNE prázdne riadky medzi dátami!
-- Zarovnaj stĺpce medzerami (monospace)
-- Pruhy: █ len vyplnené (NEPOUŽÍVAJ ░)
-- Dĺžka pruhu = FTE: 6=██████, 8=████████, 10=██████████
-- Stĺpec "Rozdiel": rozdiel FTE oproti PRVEJ lekárni v tabuľke (referenčná)
-  - Prvá lekáreň: "potrebuje +X.X" (jej interný diff actual vs predicted)
-  - Ostatné: "+X.X" alebo "-X.X" = ich FTE mínus FTE prvej lekárne
-  - Príklad: ID 33 má 6.5 FTE, ID 74 má 6.9 FTE → rozdiel = +0.4
-- Pod tabuľkou: krátke odporúčanie
-
-OHROZENÉ TRŽBY (Revenue at Risk):
-- Ak je ohrozených tržieb > 0, VŽDY uveď na konci: "⚠ Ohrozené tržby: €XXK ročne"
-- Pri zozname viacerých lekární: uveď ohrozené tržby pre každú v stĺpci
-- Pri sumári: "⚠ Celkovo ohrozených tržieb: €XXK ročne"
-
-═══════════════════════════════════════════════════════════════
-INTERNÁ METODOLÓGIA - CHRÁNENÉ INFORMÁCIE
-═══════════════════════════════════════════════════════════════
-
-Ak sa pýtajú na výpočet produktivity, ohrozené tržby (revenue at risk), vzorce, koeficienty:
-→ "Táto metodológia je interná. Rád pomôžem s interpretáciou výsledkov."
-
-Ak sa pýtajú na presnosť/validáciu modelu:
-→ "Model je validovaný oproti reálnym dátam siete a pravidelne aktualizovaný."
-
-MÔŽEŠ vysvetliť: princípy, interpretáciu, ako čítať výsledky, či je lekáreň nad/pod priemerom
-NESMIEŠ prezradiť:
-- koeficienty, vzorce (najmä výpočet ohrozených tržieb a produktivity)
-- segmentové priemery a rozpätia (min-max hodnoty)
-- presnosť modelu (R², RMSE, accuracy, %)
-- na čom bol model trénovaný
-- percentily a konkrétne poradie v segmente
-- rozpätia produktivity segmentov
-- presné hodnoty produktivity (napr. "7.53" alebo "9.80 bloky/hodina")
-
-POROVNANIE PRODUKTIVITY SEGMENTOV:
-→ NIKDY neuvádzaj presné čísla produktivity!
-→ Použi IBA relatívne percentá: "B-segment je približne 30% produktívnejší než A"
-→ Alebo všeobecné porovnania: "B-segment má vyššiu priemernú produktivitu"
-
-═══════════════════════════════════════════════════════════════
-MODEL - ZÁKLADNÉ INFO (VEREJNÉ)
-═══════════════════════════════════════════════════════════════
-
-- Segmenty A-E majú rôzne charakteristiky
-- Nadpriemerná produktivita = odmena (nižšie FTE)
-- Podpriemerná produktivita = bez penalizácie
-
-Faktory zvyšujúce FTE: tržby, transakcie
-Faktory znižujúce FTE: nadpriemerná produktivita
-
-═══════════════════════════════════════════════════════════════
-KEDY BYŤ OPATRNÝ
-═══════════════════════════════════════════════════════════════
-
-- Málo porovnateľných lekární (0-2) = menej spoľahlivé
-- Extrémne percentily (>90% alebo <10%) = výnimočný prípad
-- Veľký gap (>2 FTE) = preskúmať prevádzkové dôvody
-- Typ A s vysokými tržbami = možný flagship
-
-Model NEZACHYTÁVA: otváracie hodiny, flagship status, špeciálne služby, lokalitu
-
-═══════════════════════════════════════════════════════════════
-PARADOX RASTU
-═══════════════════════════════════════════════════════════════
-
-Ak lekáreň RASTIE + má VYSOKÚ produktivitu + model odporúča MENEJ FTE:
-→ Môže to znamenať neobslúžený dopyt!
-→ "Táto lekáreň rastie a je produktívna. Zvážte testovanie vyššieho
-   obsadenia na 2-4 týždne - tržby môžu ďalej rásť."
-
-Použi detect_growth_opportunities() pre identifikáciu takýchto lekární."""
+NESMIEŠ prezradiť: koeficienty, vzorce, segmentové priemery, presnosť modelu (R², RMSE)."""
 
 
 def get_gcloud_token():
@@ -2059,39 +2066,13 @@ def get_agent():
     global _agent
     if _agent is None:
         try:
-            import traceback
-            print("[DEBUG] Initializing Claude Agent...")
             from .claude_agent import DrMaxAgent
             data_path = Path(__file__).parent.parent / 'data'
-            print(f"[DEBUG] Data path: {data_path}")
-            print(f"[DEBUG] df shape: {df.shape}")
-
-            # Build predictions cache from pharmacy data
-            predictions_cache = {}
-            for idx, row in df.iterrows():
-                pharmacy_id = row['id']
-                # Get prediction for this pharmacy
-                pred_result = predict_fte_from_model(
-                    bloky=row['bloky'],
-                    trzby=row['trzby'],
-                    typ=row['typ'],
-                    podiel_rx=row['podiel_rx'],
-                    bloky_trend=row.get('bloky_trend', 0),
-                    productivity_z=0  # Use average productivity
-                )
-                predictions_cache[pharmacy_id] = {
-                    'predicted_fte': pred_result['fte']['total'],
-                    'diff': row['fte'] - pred_result['fte']['total'],
-                    'revenue_at_risk': max(0, (pred_result['fte']['total'] - row['fte']) * 100000)  # Simplified
-                }
-            print(f"[DEBUG] Built predictions for {len(predictions_cache)} pharmacies")
-
-            _agent = DrMaxAgent(data_path, predictions_cache)
+            # Predictions are now pre-calculated in CSV - no cache needed
+            _agent = DrMaxAgent(data_path)
             print("[INFO] Claude Agent initialized successfully")
         except Exception as e:
-            import traceback
             print(f"[WARNING] Claude Agent not available: {e}")
-            traceback.print_exc()
             _agent = None
     return _agent
 
@@ -2105,6 +2086,9 @@ def agent_analyze():
     Uses sanitized data with indexed productivity values.
     Protected information (formulas, coefficients) is never exposed.
     """
+    import uuid
+    request_id = str(uuid.uuid4())[:8]
+
     agent = get_agent()
 
     if agent is None:
@@ -2114,28 +2098,82 @@ def agent_analyze():
         }), 503
 
     data = request.json
-    prompt = data.get('prompt', '')
+    prompt = data.get('prompt', '') if data else ''
 
+    # P1 FIX: Input validation
     if not prompt:
         return jsonify({'error': 'No prompt provided'}), 400
 
+    if len(prompt) > 2000:
+        return jsonify({'error': 'Prompt too long (max 2000 characters)'}), 400
+
+    # Strip and sanitize
+    prompt = prompt.strip()
+
+    print(f"[{request_id}] Agent request: {prompt[:100]}...")
+
     try:
+        from datetime import datetime
+        request_timestamp = datetime.utcnow().isoformat() + 'Z'
+
         # Run synchronous analysis
-        result = agent.analyze_sync(prompt)
+        result = agent.analyze_sync(prompt, request_id=request_id)
 
         if 'error' in result and result['error']:
+            print(f"[{request_id}] Agent error: {result['error']}")
+            # Log error to GCS
+            log_agent_request_to_gcs({
+                'request_id': request_id,
+                'timestamp': request_timestamp,
+                'prompt': prompt,
+                'status': 'error',
+                'error': result['error'],
+                'duration_seconds': result.get('duration_seconds')
+            })
             return jsonify({'error': result['error']}), 500
+
+        print(f"[{request_id}] Agent complete: tools={result.get('tools_used', [])}")
+
+        # Log successful request to GCS (includes reasoning)
+        log_agent_request_to_gcs({
+            'request_id': request_id,
+            'timestamp': request_timestamp,
+            'prompt': prompt,
+            'status': 'success',
+            'response': result['response'],
+            'tools_used': result['tools_used'],
+            'tool_call_count': result.get('tool_call_count', 0),
+            'duration_seconds': result.get('duration_seconds'),
+            'architecture': result.get('architecture'),
+            'reasoning': result.get('_reasoning', {})
+        })
 
         return jsonify({
             'response': result['response'],
             'tools_used': result['tools_used'],
-            'rounds': result['rounds'],
+            'tool_call_count': result.get('tool_call_count', 0),
+            'duration_seconds': result.get('duration_seconds'),
             'model': 'claude-opus-4-5',
+            'request_id': request_id,
             'note': 'Productivity values are indexed (100 = segment average)'
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # P1 FIX: Don't expose internal errors
+        print(f"[{request_id}] Agent exception: {type(e).__name__}: {e}")
+        # Log exception to GCS
+        log_agent_request_to_gcs({
+            'request_id': request_id,
+            'timestamp': datetime.utcnow().isoformat() + 'Z' if 'datetime' in dir() else None,
+            'prompt': prompt,
+            'status': 'exception',
+            'error_type': type(e).__name__,
+            'error': str(e)
+        })
+        return jsonify({
+            'error': 'Agent processing failed. Please try again.',
+            'request_id': request_id
+        }), 500
 
 
 @app.route('/api/agent/status', methods=['GET'])
@@ -2147,12 +2185,129 @@ def agent_status():
         'model': 'claude-opus-4-5' if agent else None,
         'features': [
             'search_pharmacies',
+            'get_pharmacy_details',
             'compare_to_peers',
             'get_understaffed',
             'get_regional_summary',
-            'generate_report'
+            'get_all_regions_summary',
+            'generate_report',
+            'get_segment_comparison',
+            'get_city_summary',
+            'get_network_overview',
+            'get_trend_analysis',
+            'get_priority_actions'
         ] if agent else []
     })
+
+
+@app.route('/api/agent/diagnose', methods=['GET'])
+@requires_api_auth
+def agent_diagnose():
+    """Diagnostic endpoint to test Anthropic API connectivity."""
+    import socket
+    import ssl
+    import os as diag_os
+    import urllib.request
+
+    diagnostics = {
+        'api_key_set': bool(diag_os.environ.get('ANTHROPIC_API_KEY')),
+        'api_key_length': len(diag_os.environ.get('ANTHROPIC_API_KEY', '')),
+        'api_key_prefix': diag_os.environ.get('ANTHROPIC_API_KEY', '')[:10] + '...' if diag_os.environ.get('ANTHROPIC_API_KEY') else None,
+        'dns_resolution': None,
+        'socket_test': None,
+        'https_test': None,
+        'api_test': None
+    }
+
+    # Test DNS resolution
+    try:
+        result = socket.gethostbyname('api.anthropic.com')
+        diagnostics['dns_resolution'] = {'success': True, 'ip': result}
+    except socket.gaierror as e:
+        diagnostics['dns_resolution'] = {'success': False, 'error': str(e)}
+
+    # Test raw socket connection
+    try:
+        sock = socket.create_connection(('api.anthropic.com', 443), timeout=10)
+        sock.close()
+        diagnostics['socket_test'] = {'success': True}
+    except Exception as e:
+        diagnostics['socket_test'] = {'success': False, 'error': str(e)}
+
+    # Test HTTPS with urllib
+    try:
+        req = urllib.request.Request('https://api.anthropic.com', method='HEAD')
+        ctx = ssl.create_default_context()
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+            diagnostics['https_test'] = {'success': True, 'status': resp.status}
+    except Exception as e:
+        diagnostics['https_test'] = {'success': False, 'error_type': type(e).__name__, 'error': str(e)[:200]}
+
+    # Test API connectivity with minimal call using requests
+    try:
+        import requests
+        api_key = diag_os.environ.get('ANTHROPIC_API_KEY', '')
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            },
+            json={
+                'model': 'claude-3-haiku-20240307',
+                'max_tokens': 10,
+                'messages': [{'role': 'user', 'content': 'Say OK'}]
+            },
+            timeout=30
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            diagnostics['api_test'] = {
+                'success': True,
+                'model': data.get('model'),
+                'response': data.get('content', [{}])[0].get('text')
+            }
+        else:
+            diagnostics['api_test'] = {
+                'success': False,
+                'status_code': resp.status_code,
+                'error': resp.text[:200]
+            }
+    except Exception as e:
+        diagnostics['api_test'] = {
+            'success': False,
+            'error_type': type(e).__name__,
+            'error': str(e)[:200]
+        }
+
+    return jsonify(diagnostics)
+
+
+@app.route('/api/agent/data-check', methods=['GET'])
+@requires_api_auth
+def agent_data_check():
+    """Check agent's sanitized data."""
+    agent = get_agent()
+    if agent is None:
+        return jsonify({'error': 'Agent not available'}), 503
+
+    try:
+        df = agent.sanitized_data
+        pharmacy_33 = df[df['id'] == 33]
+        sample_ids = df['id'].head(10).tolist()
+        id_dtype = str(df['id'].dtype)
+
+        return jsonify({
+            'total_pharmacies': len(df),
+            'columns': list(df.columns),
+            'sample_ids': sample_ids,
+            'id_dtype': id_dtype,
+            'pharmacy_33_found': not pharmacy_33.empty,
+            'pharmacy_33_data': pharmacy_33.iloc[0].to_dict() if not pharmacy_33.empty else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'error_type': type(e).__name__}), 500
 
 
 if __name__ == '__main__':

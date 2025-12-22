@@ -10,7 +10,9 @@
   | /api/model/info        | GET    | Basic + API Key | ML model information            |
   | /api/pharmacy/<id>     | GET    | Basic + API Key | Get specific pharmacy details   |
   | /api/benchmarks        | GET    | Basic + API Key | Segment benchmarks              |
-  | /api/chat              | POST   | Basic + API Key | AI assistant                    |
+  | /api/chat              | POST   | Basic + API Key | AI assistant (simple)           |
+  | /api/agent/analyze     | POST   | Basic + API Key | AI agent (multi-step analysis)  |
+  | /api/agent/status      | GET    | Basic           | Check agent availability        |
 
 
 # FTE Calculator API - Curl Examples
@@ -230,4 +232,130 @@ Prístup zamietnutý. Zadajte správne prihlasovacie údaje.
 ### Missing API Key (403)
 ```json
 {"error": "API key required. Use X-API-Key header."}
+```
+
+---
+
+## AI Agent Endpoint (Claude Opus 4.5)
+
+The agent endpoint uses a hybrid Opus + Haiku architecture for complex multi-step analysis.
+
+### 9. Agent Analyze
+Ask complex analytical questions. The agent autonomously plans and executes tool calls.
+
+```bash
+curl --user 'drmax:FteCalc2024!Rx#Secure' \
+  -H 'X-API-Key: fte-api-2024-xK9mP2vL8nQ4wR7y' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Z akého regiónu je ID 33?"}' \
+  'https://fte-calculator-638044991573.europe-west1.run.app/api/agent/analyze'
+```
+
+**Response:**
+```json
+{
+  "response": "Lekáreň ID 33 (Levice, TESCO) patrí do regiónu **RR11**.",
+  "tools_used": ["get_pharmacy_details"],
+  "tool_call_count": 1,
+  "duration_seconds": 6.83,
+  "request_id": "30e93356",
+  "model": "claude-opus-4-5"
+}
+```
+
+### Example Prompts
+
+**Get pharmacy details:**
+```bash
+-d '{"prompt":"Detaily lekárne ID 33"}'
+```
+
+**City-based FTE optimization (with staff transfer):**
+```bash
+-d '{"prompt":"Existuju v meste Kosice lekarne s ohrozenymi trzbami? Ak ano, je mozne optimalizaovat FTE v ramoci Kosic? Ak ano, uved aj lekarne v ktorych je mozne presunut personal. Dakujem"}'
+```
+
+**Compare to peers with higher FTE:**
+```bash
+-d '{"prompt":"Porovnaj ID 33 s podobnými lekárňami (pocet blokov), ktore maju viac FTE"}'
+```
+
+**Top understaffed with risk:**
+```bash
+-d '{"prompt":"Top 10 poddimenzovaných lekární s ohrozenými tržbami"}'
+```
+
+**Regional report:**
+```bash
+-d '{"prompt":"Report za všetky regióny so sumárom ohrozených tržieb, skutočným a optimálnym FTE"}'
+```
+
+**Compare to peers:**
+```bash
+-d '{"prompt":"Porovnaj ID 33 s podobnými lekárňami"}'
+```
+
+**Region-specific:**
+```bash
+-d '{"prompt":"Poddimenzované lekárne v RR15"}'
+```
+
+**High productivity + high risk:**
+```bash
+-d '{"prompt":"Lekárne s nadpriemernou produktivitou a ohrozenými tržbami"}'
+```
+
+**Network overview (health check):**
+```bash
+-d '{"prompt":"Ako je na tom celá sieť lekární?"}'
+```
+
+**Segment comparison:**
+```bash
+-d '{"prompt":"Ktorý segment má najväčšie problémy s ohrozenými tržbami?"}'
+```
+
+**Priority actions:**
+```bash
+-d '{"prompt":"Čo riešiť najskôr? Top 10 priorít."}'
+```
+
+**Trend analysis (growing/declining):**
+```bash
+-d '{"prompt":"Ktoré lekárne rastú a ktoré klesajú?"}'
+```
+
+**City summary:**
+```bash
+-d '{"prompt":"Ako je na tom Košice celkovo?"}'
+```
+
+### 10. Agent Status
+Check if the agent is available.
+
+```bash
+curl --user 'drmax:FteCalc2024!Rx#Secure' \
+  'https://fte-calculator-638044991573.europe-west1.run.app/api/agent/status'
+```
+
+**Response:**
+```json
+{
+  "available": true,
+  "model": "claude-opus-4-5",
+  "features": [
+    "search_pharmacies",
+    "compare_to_peers",
+    "get_understaffed",
+    "get_regional_summary",
+    "get_all_regions_summary",
+    "generate_report",
+    "get_segment_comparison",
+    "get_city_summary",
+    "get_network_overview",
+    "get_trend_analysis",
+    "get_priority_actions"
+  ]
+}
 ```

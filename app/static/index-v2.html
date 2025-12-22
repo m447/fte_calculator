@@ -9,6 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FTE Kalkulačka | Dr.Max</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 /* ============================================
    DR.MAX FTE CALCULATOR - CORPORATE STYLING
@@ -90,8 +91,9 @@ body {
 }
 
 .container {
-  max-width: 520px;
+  max-width: 680px;
   margin: 0 auto;
+  padding: 0 24px;
 }
 
 /* ============================================
@@ -1080,6 +1082,364 @@ input:checked + .toggle-slider:before {
   opacity: 1;
 }
 
+/* Agent tab button styling - unified with brand */
+.tab-btn.agent-tab {
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  position: relative;
+}
+.tab-btn.agent-tab::after {
+  content: '✦';
+  font-size: 0.6rem;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.tab-btn.agent-tab:hover {
+  background: rgba(120, 190, 32, 0.2);
+}
+.tab-btn.agent-tab.active {
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+}
+
+/* ============================================
+   AI AGENT TAB
+   ============================================ */
+.agent-container {
+  padding: 20px 0;
+}
+
+.agent-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--brand-green-light) 0%, rgba(120, 190, 32, 0.05) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(120, 190, 32, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle AI accent - animated shimmer */
+.agent-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: headerShimmer 4s ease-in-out infinite;
+}
+
+@keyframes headerShimmer {
+  0%, 100% { left: -100%; }
+  50% { left: 150%; }
+}
+
+.agent-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.3);
+  position: relative;
+}
+
+/* Subtle pulsing glow for AI indicator */
+.agent-icon::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
+  opacity: 0;
+  z-index: -1;
+  animation: iconGlow 3s ease-in-out infinite;
+}
+
+@keyframes iconGlow {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.05); }
+}
+
+.agent-title h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--text-primary);
+}
+
+.agent-title p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.agent-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #16a34a;
+}
+
+.agent-status .status-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.agent-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.quick-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.quick-action:hover {
+  border-color: var(--brand-green);
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+}
+
+.quick-icon {
+  font-size: 0.9rem;
+}
+
+.agent-input-area {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.agent-input-area textarea {
+  flex: 1;
+  padding: 14px 16px;
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.agent-input-area textarea:focus {
+  outline: none;
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px var(--brand-green-light);
+}
+
+.agent-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--btn-green) 0%, var(--brand-green) 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.agent-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-brand);
+}
+
+.agent-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.agent-results {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 24px;
+  min-height: 300px;
+}
+
+.agent-welcome {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px 20px;
+}
+
+.agent-welcome h3 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.agent-welcome ul {
+  text-align: left;
+  display: inline-block;
+  margin-top: 16px;
+}
+
+.agent-welcome li {
+  margin: 8px 0;
+}
+
+.agent-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.agent-loading .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-light);
+  border-top-color: var(--brand-green);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.agent-response {
+  line-height: 1.7;
+}
+
+.agent-response p {
+  margin: 0 0 12px 0;
+}
+
+.agent-response p:last-child {
+  margin-bottom: 0;
+}
+
+.agent-response h1, .agent-response h2, .agent-response h3 {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.agent-response h1:first-child,
+.agent-response h2:first-child,
+.agent-response h3:first-child {
+  margin-top: 0;
+}
+
+.agent-response ul, .agent-response ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.agent-response li {
+  margin-bottom: 6px;
+}
+
+.agent-response hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 20px 0;
+}
+
+.agent-response blockquote {
+  border-left: 3px solid var(--brand-green);
+  margin: 12px 0;
+  padding: 8px 16px;
+  background: var(--brand-green-light);
+  color: var(--text-secondary);
+}
+
+.agent-response code {
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.9em;
+}
+
+.agent-response table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.9rem;
+}
+
+.agent-response th, .agent-response td {
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  text-align: left;
+}
+
+.agent-response th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}
+
+.agent-response pre {
+  background: var(--bg-subtle);
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85rem;
+}
+
+.agent-tools-used {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.agent-tools-used span {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  border-radius: 4px;
+  margin-right: 8px;
+  margin-top: 8px;
+}
+
 /* ============================================
    NETWORK DASHBOARD
    ============================================ */
@@ -1775,7 +2135,7 @@ input:checked + .toggle-slider:before {
   position: fixed;
   bottom: 90px;
   right: 24px;
-  width: 360px;
+  width: 480px;
   max-width: calc(100vw - 48px);
   max-height: calc(100vh - 120px);
   background: var(--bg-card);
@@ -1893,6 +2253,21 @@ input:checked + .toggle-slider:before {
   color: var(--brand-green);
 }
 
+.chat-message .bar-empty {
+  color: var(--border-medium);
+  opacity: 0.6;
+}
+
+/* Also style bars in agent responses */
+.agent-response .bar-filled {
+  color: var(--brand-green);
+}
+
+.agent-response .bar-empty {
+  color: var(--border-medium);
+  opacity: 0.6;
+}
+
 .chat-input-area {
   padding: 12px 16px;
   border-top: 1px solid var(--border-light);
@@ -1984,16 +2359,16 @@ input:checked + .toggle-slider:before {
   color: var(--brand-green-dark);
 }
 
-/* Agent mode styling */
+/* Agent mode styling - unified with brand */
 .chat-suggestion.agent {
-  background: linear-gradient(135deg, #f0e6ff 0%, #e6f0ff 100%);
-  border-color: #8b5cf6;
-  color: #6d28d9;
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.15) 0%, rgba(120, 190, 32, 0.08) 100%);
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
 }
 
 .chat-suggestion.agent:hover {
-  background: linear-gradient(135deg, #e6d6ff 0%, #d6e6ff 100%);
-  border-color: #7c3aed;
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.25) 0%, rgba(120, 190, 32, 0.15) 100%);
+  border-color: var(--brand-green-dark);
 }
 
 .agent-toggle {
@@ -2016,13 +2391,13 @@ input:checked + .toggle-slider:before {
 }
 
 .agent-toggle.active {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-  border-color: #7c3aed;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-color: var(--brand-green-dark);
   color: white;
 }
 
 .agent-mode-indicator {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
   color: white;
   font-size: 0.65rem;
   padding: 2px 6px;
@@ -2245,36 +2620,35 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-new-pharmacy {
-  background: transparent;
-  border: 1px dashed var(--brand-green);
-  border-radius: 6px;
-  color: var(--brand-green);
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border: 1.5px dashed var(--border-medium);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
-  opacity: 0.7;
+  transition: all var(--transition-fast);
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-left: auto;
+  gap: 6px;
 }
 .btn-new-pharmacy:hover {
-  opacity: 1;
-  background: rgba(0, 128, 56, 0.08);
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
   border-style: solid;
+  color: var(--brand-green);
 }
 .btn-new-pharmacy svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }
 
 .sim-charts {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 560px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -2330,7 +2704,7 @@ input:checked + .toggle-slider:before {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 560px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -3171,6 +3545,7 @@ input:checked + .toggle-slider:before {
     <button class="tab-btn active" data-tab="calculator">Kalkulačka</button>
     <button class="tab-btn" data-tab="analyza">Porovnanie</button>
     <button class="tab-btn" data-tab="network">Prehľad</button>
+    <button class="tab-btn agent-tab" data-tab="agent">AI Asistent</button>
   </div>
 
   <!-- CALCULATOR TAB -->
@@ -3186,7 +3561,7 @@ input:checked + .toggle-slider:before {
       <button type="button" id="pharmacy-load-btn" class="btn-load">Načítať</button>
       <button type="button" class="btn-new-pharmacy" id="btn-new-pharmacy" title="Vymazať formulár a zadať parametre novej/plánovanej lekárne">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        Nová lekáreň
+        Nová
       </button>
       <span class="pharmacy-hint" id="pharmacy-hint"></span>
     </div>
@@ -3748,6 +4123,66 @@ input:checked + .toggle-slider:before {
     </div>
   </div>
   <!-- END ANALYZA TAB -->
+
+  <!-- AI AGENT TAB -->
+  <div id="tab-agent" class="tab-content">
+    <div class="agent-container">
+
+      <!-- Agent Header -->
+      <div class="agent-header">
+        <div class="agent-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <!-- Sparkle/AI icon -->
+            <path d="M12 2L13.09 8.26L19 7L14.74 10.91L19 17L13.09 15.74L12 22L10.91 15.74L5 17L9.26 10.91L5 7L10.91 8.26L12 2Z"/>
+          </svg>
+        </div>
+        <div class="agent-title">
+          <h2>AI Asistent</h2>
+          <p>Komplexná analýza personálneho obsadenia</p>
+        </div>
+        <div class="agent-status" id="agent-status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Online</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions - compact chips -->
+      <div class="agent-quick-actions">
+        <button class="quick-action" data-query="Report za všetky regióny so sumárom ohrozených tržieb, skutočným a optimálnym FTE">Report všetky regióny</button>
+        <button class="quick-action" data-query="Top 10 ohrozených tržieb s vysokou produktivitou">Top 10 riziko</button>
+        <button class="quick-action" data-query="Porovnaj ID 33 s podobnými lekárňami">Porovnaj ID 33</button>
+        <button class="quick-action" data-query="Poddimenzované lekárne v RR15">Poddimenz. RR15</button>
+      </div>
+
+      <!-- Input Area -->
+      <div class="agent-input-area">
+        <textarea id="agent-input" placeholder="Opýtajte sa na analýzu personálneho obsadenia..." rows="2"></textarea>
+        <button id="agent-submit" class="agent-submit-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+          Analyzovať
+        </button>
+      </div>
+
+      <!-- Results Area -->
+      <div class="agent-results" id="agent-results">
+        <div class="agent-welcome">
+          <h3>Vitajte v AI Asistentovi</h3>
+          <p>Môžete sa opýtať na:</p>
+          <ul>
+            <li>Analýzu konkrétnej lekárne podľa ID</li>
+            <li>Porovnanie s podobnými prevádzkami</li>
+            <li>Zoznam poddimenzovaných lekární v regióne</li>
+            <li>Regionálne súhrny a reporty</li>
+            <li>Identifikáciu ohrozených tržieb</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- END AGENT TAB -->
 
 </div>
 
@@ -4758,6 +5193,11 @@ const chatInput = document.getElementById('chat-input');
 const chatSend = document.getElementById('chat-send');
 const chatSuggestions = document.getElementById('chat-suggestions');
 
+// Question history for arrow up/down navigation
+const questionHistory = [];
+let historyIndex = -1;
+let tempInput = '';  // Store current input when navigating history
+
 // Store segment histograms for FTE chart
 let segmentHistograms = null;
 
@@ -5048,6 +5488,14 @@ chatClose.onclick = () => {
 async function sendChatMessage(question) {
   if (!question.trim()) return;
 
+  // Add to question history (avoid duplicates)
+  const trimmedQ = question.trim();
+  if (questionHistory.length === 0 || questionHistory[questionHistory.length - 1] !== trimmedQ) {
+    questionHistory.push(trimmedQ);
+  }
+  historyIndex = -1;  // Reset history navigation
+  tempInput = '';
+
   // If no context, provide a generic helpful message instead of failing silently
   if (!lastCalculationResult) {
     addChatMessage(question, 'user');
@@ -5122,8 +5570,9 @@ function formatAnswer(text) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     // Style revenue at risk lines in red
     .replace(/(⚠[^<\n]*(?:ohrozené|Ohrozené)[^<\n]*)/gi, '<span class="risk-text">$1</span>')
-    // Style bar characters (filled bars only)
+    // Style bar characters (filled and empty)
     .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
+    .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
     .replace(/\n/g, '<br>');
 }
 
@@ -5156,6 +5605,14 @@ document.querySelectorAll('.chat-suggestion.agent').forEach(btn => {
 
 async function sendAgentMessage(prompt) {
   if (!prompt.trim()) return;
+
+  // Add to question history (avoid duplicates)
+  const trimmedQ = prompt.trim();
+  if (questionHistory.length === 0 || questionHistory[questionHistory.length - 1] !== trimmedQ) {
+    questionHistory.push(trimmedQ);
+  }
+  historyIndex = -1;  // Reset history navigation
+  tempInput = '';
 
   // Add user message with agent indicator
   addChatMessage(prompt + ' <span class="agent-mode-indicator">Claude</span>', 'user');
@@ -5214,6 +5671,37 @@ function removeTypingIndicator(id) {
 chatSend.onclick = () => sendChatMessage(chatInput.value);
 chatInput.onkeypress = (e) => {
   if (e.key === 'Enter') sendChatMessage(chatInput.value);
+};
+
+// Arrow up/down for question history
+chatInput.onkeydown = (e) => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (questionHistory.length === 0) return;
+
+    // Save current input when starting to navigate
+    if (historyIndex === -1) {
+      tempInput = chatInput.value;
+    }
+
+    // Move up in history
+    if (historyIndex < questionHistory.length - 1) {
+      historyIndex++;
+      chatInput.value = questionHistory[questionHistory.length - 1 - historyIndex];
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIndex === -1) return;
+
+    // Move down in history
+    historyIndex--;
+    if (historyIndex === -1) {
+      // Back to current input
+      chatInput.value = tempInput;
+    } else {
+      chatInput.value = questionHistory[questionHistory.length - 1 - historyIndex];
+    }
+  }
 };
 
 // Suggestion buttons
@@ -5299,6 +5787,138 @@ function animateValue(elementId, start, end, duration) {
   }
 
   requestAnimationFrame(update);
+}
+
+// === AGENT TAB FUNCTIONALITY ===
+const agentInput = document.getElementById('agent-input');
+const agentSubmit = document.getElementById('agent-submit');
+const agentResults = document.getElementById('agent-results');
+const quickActions = document.querySelectorAll('.quick-action');
+
+// Query history for arrow-up
+let agentHistory = [];
+let agentHistoryIndex = -1;
+
+// Quick action buttons - populate input for review, don't auto-submit
+quickActions.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const query = btn.dataset.query;
+    agentInput.value = query;
+    agentInput.focus();
+    // Select all text so user can easily modify or press Enter to submit
+    agentInput.select();
+  });
+});
+
+// Submit button
+agentSubmit.addEventListener('click', submitAgentQuery);
+
+// Enter to submit, Shift+Enter for new line
+agentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitAgentQuery();
+  }
+  // Arrow up for history
+  if (e.key === 'ArrowUp' && agentInput.value === '') {
+    e.preventDefault();
+    if (agentHistory.length > 0) {
+      if (agentHistoryIndex < agentHistory.length - 1) {
+        agentHistoryIndex++;
+      }
+      agentInput.value = agentHistory[agentHistory.length - 1 - agentHistoryIndex];
+    }
+  }
+  // Arrow down for history
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (agentHistoryIndex > 0) {
+      agentHistoryIndex--;
+      agentInput.value = agentHistory[agentHistory.length - 1 - agentHistoryIndex];
+    } else {
+      agentHistoryIndex = -1;
+      agentInput.value = '';
+    }
+  }
+});
+
+async function submitAgentQuery() {
+  const query = agentInput.value.trim();
+  if (!query) return;
+
+  // Add to history
+  agentHistory.push(query);
+  agentHistoryIndex = -1;
+  agentInput.value = '';
+
+  // Show loading
+  agentResults.innerHTML = `
+    <div class="agent-loading">
+      <div class="spinner"></div>
+      <div>Analyzujem...</div>
+    </div>
+  `;
+  agentSubmit.disabled = true;
+
+  try {
+    const response = await fetch('/api/agent/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: query })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      agentResults.innerHTML = `
+        <div class="agent-response">
+          <p style="color: #dc2626;">Chyba: ${data.error}</p>
+          ${data.fallback ? `<p style="font-size: 0.9rem; color: var(--text-secondary);">${data.fallback}</p>` : ''}
+        </div>
+      `;
+    } else {
+      // Format response with markdown
+      const formattedResponse = formatAgentResponse(data.response || '');
+
+      agentResults.innerHTML = `
+        <div class="agent-response">${formattedResponse}</div>
+        ${data.tools_used && data.tools_used.length > 0 ? `
+          <div class="agent-tools-used">
+            Použité nástroje: ${data.tools_used.map(t => `<span>${t}</span>`).join('')}
+          </div>
+        ` : ''}
+      `;
+    }
+  } catch (error) {
+    agentResults.innerHTML = `
+      <div class="agent-response">
+        <p style="color: #dc2626;">Chyba pri komunikácii so serverom: ${error.message}</p>
+      </div>
+    `;
+  }
+
+  agentSubmit.disabled = false;
+}
+
+function formatAgentResponse(text) {
+  // Configure marked for clean rendering
+  marked.setOptions({
+    breaks: false,       // Don't convert single \n to <br>
+    gfm: true,           // GitHub flavored markdown (tables, etc.)
+    headerIds: false,    // No ID attributes on headers
+    mangle: false        // Don't escape autolinks
+  });
+
+  // Parse markdown to HTML
+  let html = marked.parse(text);
+
+  // Post-process: style bar characters and risk text
+  html = html
+    .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
+    .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
+    .replace(/(⚠[^<\n]*)/gi, '<span class="risk-text">$1</span>');
+
+  return html;
 }
 </script>
 

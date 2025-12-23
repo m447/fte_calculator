@@ -10,6 +10,7 @@
 <title>FTE Kalkulačka | Dr.Max</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 /* ============================================
    DR.MAX FTE CALCULATOR - CORPORATE STYLING
@@ -1326,6 +1327,127 @@ input:checked + .toggle-slider:before {
   gap: 16px;
 }
 
+/* ML & AI Intro Panel - Unified with Question Sections */
+.intro-panel {
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.intro-panel-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 8px 0;
+  margin-bottom: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  text-align: left;
+}
+
+.intro-panel-toggle:hover .intro-panel-title {
+  color: var(--brand-green);
+}
+
+.intro-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.intro-panel-icon {
+  font-size: 1.1rem;
+}
+
+.intro-panel-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin: 0;
+  transition: color 0.2s ease;
+}
+
+.intro-panel-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  transition: transform 0.3s ease, color 0.2s ease;
+}
+
+.intro-panel-toggle:hover .intro-panel-chevron {
+  color: var(--brand-green);
+}
+
+.intro-panel.expanded .intro-panel-chevron {
+  transform: rotate(180deg);
+}
+
+.intro-panel-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.intro-panel.expanded .intro-panel-content {
+  max-height: 400px;
+}
+
+.intro-panel-story {
+  padding: 0 0 16px 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.intro-panel-story p {
+  margin: 0 0 12px 0;
+}
+
+.intro-panel-story p:last-child {
+  margin-bottom: 0;
+}
+
+.intro-panel-highlight {
+  background: var(--brand-green-light);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  border-left: 3px solid var(--brand-green);
+}
+
+.intro-panel-highlight strong {
+  color: var(--brand-green-dark);
+}
+
+.intro-panel-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-white);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.intro-panel-cta:hover {
+  border-color: var(--brand-green);
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+}
+
+.intro-panel-cta svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Drill-Down Question Sections */
 .question-section {
   margin-bottom: 20px;
@@ -1575,6 +1697,39 @@ input:checked + .toggle-slider:before {
   height: 14px;
 }
 
+/* PDF Download button */
+.download-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-left: 12px;
+  background: var(--brand-green);
+  border: 1px solid var(--brand-green-dark);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: white;
+  transition: var(--transition-fast);
+}
+
+.download-pdf-btn:hover {
+  background: var(--brand-green-dark);
+  box-shadow: var(--shadow-brand);
+}
+
+.download-pdf-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.agent-response-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
 .agent-loading {
   display: flex;
   flex-direction: column;
@@ -1656,18 +1811,61 @@ input:checked + .toggle-slider:before {
   width: 100%;
   border-collapse: collapse;
   margin: 16px 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .agent-response th, .agent-response td {
-  padding: 10px 12px;
-  border: 1px solid var(--border-light);
+  padding: 10px 14px;
   text-align: left;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .agent-response th {
-  background: var(--bg-subtle);
+  background: var(--brand-green);
+  color: white;
   font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.agent-response tbody tr {
+  transition: background 0.15s ease;
+}
+
+.agent-response tbody tr:nth-child(even) {
+  background: var(--bg-subtle);
+}
+
+.agent-response tbody tr:hover {
+  background: var(--brand-green-light);
+}
+
+.agent-response td:first-child {
+  font-weight: 600;
+  color: var(--brand-green-dark);
+}
+
+/* Productivity indicators in tables */
+.prod-up {
+  color: var(--brand-green);
+  font-weight: 600;
+}
+
+.prod-down {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.gap-positive {
+  color: #dc2626;
+}
+
+.gap-negative {
+  color: var(--brand-green);
 }
 
 .agent-response pre {
@@ -2513,6 +2711,62 @@ input:checked + .toggle-slider:before {
 .chat-message .bar-empty {
   color: var(--border-medium);
   opacity: 0.6;
+}
+
+/* Table styles for chat messages */
+.chat-message table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.chat-message th, .chat-message td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.chat-message th {
+  background: var(--brand-green);
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.chat-message tbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.02);
+}
+
+.chat-message tbody tr:hover {
+  background: var(--brand-green-light);
+}
+
+.chat-message td:first-child {
+  font-weight: 600;
+  color: var(--brand-green-dark);
+}
+
+.chat-message .prod-up {
+  color: var(--brand-green);
+  font-weight: 600;
+}
+
+.chat-message .prod-down {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.chat-message .gap-positive {
+  color: #dc2626;
+}
+
+.chat-message .gap-negative {
+  color: var(--brand-green);
 }
 
 /* Also style bars in agent responses */
@@ -4403,14 +4657,6 @@ input:checked + .toggle-slider:before {
         </div>
       </div>
 
-      <!-- Quick Actions - compact chips -->
-      <div class="agent-quick-actions">
-        <button class="quick-action" data-query="Report za všetky regióny so sumárom ohrozených tržieb, skutočným a optimálnym FTE">Report všetky regióny</button>
-        <button class="quick-action" data-query="Top 10 ohrozených tržieb s vysokou produktivitou">Top 10 riziko</button>
-        <button class="quick-action" data-query="Porovnaj ID 33 s podobnými lekárňami">Porovnaj ID 33</button>
-        <button class="quick-action" data-query="Poddimenzované lekárne v RR15">Poddimenz. RR15</button>
-      </div>
-
       <!-- Input Area -->
       <div class="agent-input-area">
         <textarea id="agent-input" placeholder="Opýtajte sa na analýzu personálneho obsadenia..." rows="2"></textarea>
@@ -4425,9 +4671,33 @@ input:checked + .toggle-slider:before {
       <!-- Results Area -->
       <div class="agent-results" id="agent-results">
         <div class="agent-welcome" id="agent-welcome">
-          <div class="agent-welcome-header">
-            <h3>Dostupné nástroje AI Asistenta</h3>
-            <p>Kliknite na príklad otázky pre okamžitú analýzu</p>
+
+          <!-- ML & AI Intro Panel - Expandable -->
+          <div class="intro-panel" id="intro-panel">
+            <button class="intro-panel-toggle" id="intro-panel-toggle">
+              <div class="intro-panel-header">
+                <span class="intro-panel-icon">🧠</span>
+                <h4 class="intro-panel-title">Intuícia vs. dáta: Čomu veríte pri obsadzovaní?</h4>
+              </div>
+              <svg class="intro-panel-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+            </button>
+            <div class="intro-panel-content">
+              <div class="intro-panel-story">
+                <p>3 regióny, 200+ lekární, ale <strong>žiadna jednotná metodológia</strong> personálneho obsadenia. Rozhodnutia na základe intuície. Pritom práve farmaceuti a špecializovaný personál sú limitujúcim faktorom rastu.</p>
+
+                <div class="intro-panel-highlight">
+                  <strong>ML model</strong> nahrádza intuíciu dátami - analyzuje tržby, bloky, produktivitu a predpovedá optimálne FTE.<br>
+                  <strong>AI asistent</strong> sprístupňuje tieto dáta v reálnom čase.
+                </div>
+
+                <p><strong>Jednotná metodológia</strong> pre celú sieť. Dáta hovoria jasne - kde pridať, kde presunúť, aký je prínos rozhodnutia.</p>
+
+                <button class="intro-panel-cta" data-query="Ukáž mi prehľad siete a kde sú najväčšie príležitosti na zlepšenie">
+                  <span>Ukáž mi to na mojich dátach</span>
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Drill-Down Question Hierarchy -->
@@ -5941,6 +6211,9 @@ function addChatMessage(text, role) {
 }
 
 function formatAnswer(text) {
+  // First convert markdown tables to HTML
+  text = convertMarkdownTables(text);
+
   // Convert markdown-like formatting to HTML
   return text
     // Remove markdown code block markers
@@ -5951,6 +6224,13 @@ function formatAnswer(text) {
     // Style bar characters (filled and empty)
     .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
     .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
+    // Productivity indicators
+    .replace(/↑↑/g, '<span class="prod-up">↑↑</span>')
+    .replace(/↑/g, '<span class="prod-up">↑</span>')
+    .replace(/↓/g, '<span class="prod-down">↓</span>')
+    // Gap values
+    .replace(/\+(\d+\.?\d*)/g, '<span class="gap-positive">+$1</span>')
+    .replace(/-(\d+\.?\d*)/g, '<span class="gap-negative">-$1</span>')
     .replace(/\n/g, '<br>');
 }
 
@@ -6174,6 +6454,9 @@ const agentSubmit = document.getElementById('agent-submit');
 const agentResults = document.getElementById('agent-results');
 const quickActions = document.querySelectorAll('.quick-action');
 
+// Store original welcome HTML for restoration
+const originalWelcomeHTML = document.getElementById('agent-welcome').outerHTML;
+
 // Query history for arrow-up
 let agentHistory = [];
 let agentHistoryIndex = -1;
@@ -6205,13 +6488,34 @@ if (toolsToggle && toolsExtra) {
   });
 }
 
-// Sample question buttons - auto-submit on click
+// Intro panel toggle
+const introPanel = document.getElementById('intro-panel');
+const introPanelToggle = document.getElementById('intro-panel-toggle');
+if (introPanelToggle && introPanel) {
+  introPanelToggle.addEventListener('click', () => {
+    introPanel.classList.toggle('expanded');
+  });
+}
+
+// Intro panel CTA button
+document.querySelectorAll('.intro-panel-cta').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const query = btn.dataset.query;
+    if (query) {
+      agentInput.value = query;
+      agentInput.focus();
+    }
+  });
+});
+
+// Sample question buttons - populate input for user review
 document.querySelectorAll('.sample-question').forEach(btn => {
   btn.addEventListener('click', () => {
     const query = btn.dataset.query;
     if (query) {
       agentInput.value = query;
-      submitAgentQuery();
+      agentInput.focus();
     }
   });
 });
@@ -6275,16 +6579,22 @@ async function submitAgentQuery() {
 
     const data = await response.json();
 
-    const backButton = `
-      <button class="back-to-tools" onclick="showAgentWelcome()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-        Späť na nástroje
-      </button>
+    const actionsHTML = `
+      <div class="agent-response-actions">
+        <button class="back-to-tools" onclick="showAgentWelcome()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Späť na nástroje
+        </button>
+        <button class="download-pdf-btn" onclick="downloadResponsePDF()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Stiahnuť PDF
+        </button>
+      </div>
     `;
 
     if (data.error) {
       agentResults.innerHTML = `
-        ${backButton}
+        ${actionsHTML}
         <div class="agent-response">
           <p style="color: #dc2626;">Chyba: ${data.error}</p>
           ${data.fallback ? `<p style="font-size: 0.9rem; color: var(--text-secondary);">${data.fallback}</p>` : ''}
@@ -6295,8 +6605,8 @@ async function submitAgentQuery() {
       const formattedResponse = formatAgentResponse(data.response || '');
 
       agentResults.innerHTML = `
-        ${backButton}
-        <div class="agent-response">${formattedResponse}</div>
+        ${actionsHTML}
+        <div class="agent-response" id="agent-response-content">${formattedResponse}</div>
         ${data.tools_used && data.tools_used.length > 0 ? `
           <div class="agent-tools-used">
             Použité nástroje: ${data.tools_used.map(t => `<span>${t}</span>`).join('')}
@@ -6306,10 +6616,12 @@ async function submitAgentQuery() {
     }
   } catch (error) {
     agentResults.innerHTML = `
-      <button class="back-to-tools" onclick="showAgentWelcome()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-        Späť na nástroje
-      </button>
+      <div class="agent-response-actions">
+        <button class="back-to-tools" onclick="showAgentWelcome()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Späť na nástroje
+        </button>
+      </div>
       <div class="agent-response">
         <p style="color: #dc2626;">Chyba pri komunikácii so serverom: ${error.message}</p>
       </div>
@@ -6320,59 +6632,115 @@ async function submitAgentQuery() {
 }
 
 function formatAgentResponse(text) {
+  console.log('[formatAgentResponse] Input:', text.substring(0, 200));
+
+  // First, convert markdown tables to HTML tables
+  text = convertMarkdownTables(text);
+  console.log('[formatAgentResponse] After table conversion:', text.substring(0, 200));
+
   // Configure marked for clean rendering
   marked.setOptions({
-    breaks: false,       // Don't convert single \n to <br>
-    gfm: true,           // GitHub flavored markdown (tables, etc.)
-    headerIds: false,    // No ID attributes on headers
-    mangle: false        // Don't escape autolinks
+    breaks: false,
+    gfm: true,
+    headerIds: false,
+    mangle: false
   });
 
-  // Parse markdown to HTML
+  // Parse remaining markdown to HTML
   let html = marked.parse(text);
 
-  // Post-process: style bar characters and risk text
+  // Post-process: style indicators and special characters
   html = html
     .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
     .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
-    .replace(/(⚠[^<\n]*)/gi, '<span class="risk-text">$1</span>');
+    .replace(/(⚠[^<\n]*)/gi, '<span class="risk-text">$1</span>')
+    // Productivity indicators
+    .replace(/↑↑/g, '<span class="prod-up">↑↑</span>')
+    .replace(/↑/g, '<span class="prod-up">↑</span>')
+    .replace(/↓/g, '<span class="prod-down">↓</span>')
+    // Gap values
+    .replace(/\+(\d+\.?\d*)/g, '<span class="gap-positive">+$1</span>')
+    .replace(/-(\d+\.?\d*)/g, '<span class="gap-negative">-$1</span>');
 
   return html;
 }
 
-// Show agent welcome/tools showcase
-function showAgentWelcome() {
-  const agentWelcome = document.getElementById('agent-welcome');
-  if (agentWelcome) {
-    agentResults.innerHTML = '';
-    agentResults.appendChild(agentWelcome.cloneNode(true));
+function convertMarkdownTables(text) {
+  // Simple regex-based conversion for markdown tables
+  const tableRegex = /\|(.+)\|\n\|[\s:|-]+\|\n((?:\|.+\|\n?)+)/g;
 
-    // Re-attach event listeners for the cloned elements
-    document.querySelectorAll('.sample-question').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const query = btn.dataset.query;
-        if (query) {
-          agentInput.value = query;
-          submitAgentQuery();
-        }
-      });
+  return text.replace(tableRegex, (match, headerRow, bodyRows) => {
+    console.log('[convertMarkdownTables] Found table match');
+
+    // Parse header
+    const headers = headerRow.split('|').map(h => h.trim()).filter(h => h);
+    let html = '<table><thead><tr>';
+    headers.forEach(h => { html += `<th>${h}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    // Parse body rows
+    const rows = bodyRows.trim().split('\n');
+    rows.forEach(row => {
+      const cells = row.split('|').map(c => c.trim()).filter(c => c);
+      if (cells.length > 0) {
+        html += '<tr>';
+        cells.forEach(c => { html += `<td>${c}</td>`; });
+        html += '</tr>';
+      }
     });
 
-    // Re-attach tools toggle
-    const newToolsToggle = document.getElementById('tools-toggle');
-    const newToolsExtra = document.getElementById('tools-extra');
-    if (newToolsToggle && newToolsExtra) {
-      newToolsToggle.addEventListener('click', () => {
-        newToolsToggle.classList.toggle('expanded');
-        newToolsExtra.classList.toggle('visible');
-        const span = newToolsToggle.querySelector('span');
-        if (newToolsExtra.classList.contains('visible')) {
-          span.textContent = 'Skryť ďalšie nástroje';
-        } else {
-          span.textContent = 'Zobraziť ďalšie nástroje (6)';
-        }
-      });
-    }
+    html += '</tbody></table>';
+    return html;
+  });
+}
+
+// PDF download function
+function downloadResponsePDF() {
+  const element = document.getElementById('agent-response-content');
+  if (!element) return;
+
+  const opt = {
+    margin: 15,
+    filename: 'drmax-analyza-' + new Date().toISOString().slice(0,10) + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  html2pdf().set(opt).from(element).save();
+}
+
+// Show agent welcome/tools showcase
+function showAgentWelcome() {
+  // Restore from stored HTML
+  agentResults.innerHTML = originalWelcomeHTML;
+
+  // Re-attach event listeners for the cloned elements (populate input only, no auto-submit)
+  document.querySelectorAll('.sample-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const query = btn.dataset.query;
+      if (query) {
+        agentInput.value = query;
+        agentInput.focus();
+      }
+    });
+  });
+
+  // Re-attach tools toggle
+  const newToolsToggle = document.getElementById('tools-toggle');
+  const newToolsExtra = document.getElementById('tools-extra');
+  if (newToolsToggle && newToolsExtra) {
+    newToolsToggle.addEventListener('click', () => {
+      newToolsToggle.classList.toggle('expanded');
+      newToolsExtra.classList.toggle('visible');
+      const span = newToolsToggle.querySelector('span');
+      if (newToolsExtra.classList.contains('visible')) {
+        span.textContent = 'Skryť ďalšie nástroje';
+      } else {
+        span.textContent = 'Zobraziť ďalšie nástroje (6)';
+      }
+    });
   }
 }
 </script>

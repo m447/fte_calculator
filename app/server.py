@@ -1697,29 +1697,42 @@ NESMIEŠ prezradiť: koeficienty, vzorce, segmentové priemery, presnosť modelu
 
 
 def get_gcloud_token():
-    """Get access token - uses google-auth for Cloud Run, gcloud CLI for local."""
-    # Try google-auth first (works in Cloud Run with service account)
-    try:
-        import google.auth
-        import google.auth.transport.requests
-        credentials, project = google.auth.default(
-            scopes=['https://www.googleapis.com/auth/cloud-platform']
-        )
-        credentials.refresh(google.auth.transport.requests.Request())
-        return credentials.token
-    except Exception as e:
-        print(f"google-auth failed: {e}, trying gcloud CLI...")
+    """Get access token - uses gcloud CLI for local, google-auth for Cloud Run."""
+    import sys
 
-    # Fallback to gcloud CLI (local development)
+    # Check if running in Cloud Run (has K_SERVICE env var)
+    is_cloud_run = os.environ.get('K_SERVICE') is not None
+
+    if is_cloud_run:
+        # Use google-auth in Cloud Run (service account)
+        try:
+            import google.auth
+            import google.auth.transport.requests
+            credentials, project = google.auth.default(
+                scopes=['https://www.googleapis.com/auth/cloud-platform']
+            )
+            request = google.auth.transport.requests.Request()
+            credentials.refresh(request)
+            print(f"[DEBUG] Cloud Run: google-auth token obtained", file=sys.stderr, flush=True)
+            return credentials.token
+        except Exception as e:
+            print(f"[ERROR] Cloud Run google-auth failed: {e}", file=sys.stderr, flush=True)
+            return None
+
+    # Local development: use gcloud CLI (has Gemini 3 Flash access)
     try:
         result = subprocess.run(
             ['gcloud', 'auth', 'print-access-token'],
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
-            return result.stdout.strip()
+            token = result.stdout.strip()
+            print(f"[DEBUG] Local: gcloud CLI token obtained", file=sys.stderr, flush=True)
+            return token
+        else:
+            print(f"[ERROR] gcloud CLI failed: {result.stderr}", file=sys.stderr, flush=True)
     except Exception as e:
-        print(f"Error getting gcloud token: {e}")
+        print(f"[ERROR] Error getting gcloud token: {e}", file=sys.stderr, flush=True)
     return None
 
 
@@ -1730,6 +1743,13 @@ def chat():
     data = request.json
     user_question = data.get('question', '')
     context = data.get('context', {})
+
+    # Debug: log productivity context
+    import sys
+    is_above = context.get('is_above_avg_productivity')
+    print(f"[DEBUG] Chat context - is_above_avg_productivity: {is_above} (type: {type(is_above).__name__})", file=sys.stderr, flush=True)
+    print(f"[DEBUG] Chat context - prod_residual: {context.get('prod_residual')}", file=sys.stderr, flush=True)
+    print(f"[DEBUG] Productivity text will be: {'nadpriemerná' if is_above else 'priemerná/podpriemerná'}", file=sys.stderr, flush=True)
 
     if not user_question:
         return jsonify({'error': 'No question provided'}), 400
@@ -1834,6 +1854,7 @@ ROZDIEL: {fte_diff} FTE
 
 <hodinove_metriky>
 - Produktivita: {'nadpriemerná' if context.get('is_above_avg_productivity') else 'priemerná/podpriemerná'}
+- is_above_avg: {str(bool(context.get('is_above_avg_productivity'))).lower()}
 </hodinove_metriky>
 
 <trend>
@@ -1847,6 +1868,9 @@ ROZDIEL: {fte_diff} FTE
 - Veľký rozdiel vs skutočnosť (>2 FTE): {'ÁNO' if is_large_diff else 'NIE'}
 </indikatory>
 </context>"""
+
+    # Debug: log the productivity part of context
+    print(f"[DEBUG] Context produktivita line: {'nadpriemerná' if context.get('is_above_avg_productivity') else 'priemerná/podpriemerná'}", file=sys.stderr, flush=True)
 
     # Call Vertex AI (global location uses different endpoint format)
     if VERTEX_LOCATION == 'global':
@@ -1882,8 +1906,17 @@ ROZDIEL: {fte_diff} FTE
     }
 
     try:
+        # Debug: log request details
+        import sys
+        print(f"[DEBUG] API URL: {url}", file=sys.stderr, flush=True)
+        print(f"[DEBUG] Token length: {len(token) if token else 0}", file=sys.stderr, flush=True)
+        print(f"[DEBUG] Token prefix: {token[:30] if token else 'None'}...", file=sys.stderr, flush=True)
+
         # First API call
         response = requests.post(url, json=payload, headers=headers, timeout=30)
+        print(f"[DEBUG] Response status: {response.status_code}", file=sys.stderr, flush=True)
+        if response.status_code != 200:
+            print(f"[DEBUG] Response body: {response.text[:500]}", file=sys.stderr, flush=True)
         response.raise_for_status()
         result = response.json()
 
@@ -2053,6 +2086,11 @@ ROZDIEL: {fte_diff} FTE
             })
 
     except requests.exceptions.RequestException as e:
+        # Log detailed error for debugging
+        error_details = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            error_details += f" | Response: {e.response.text[:500]}"
+        print(f"[ERROR] Vertex AI request failed: {error_details}")
         return jsonify({'error': f'Vertex AI request failed: {str(e)}'}), 500
 
 

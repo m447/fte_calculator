@@ -194,10 +194,12 @@ DOSTUPNÉ NÁSTROJE A PARAMETRE:
 2. get_pharmacy_details
    - pharmacy_id: ID lekárne (required)
 
-3. compare_to_peers
+3. compare_to_peers ⚠️ PRE POROVNANIE S PODOBNÝMI LEKÁRŇAMI
    - pharmacy_id: ID lekárne (required)
    - n_peers: Počet podobných lekární (default 5)
-   - higher_fte_only: Len lekárne s VYŠŠÍM FTE (bool) ⚠️ POUŽIŤ ak user chce porovnanie s vyšším FTE
+   - higher_fte_only: Len lekárne s VYŠŠÍM FTE (bool) ⚠️ POUŽIŤ pre hľadanie zdrojov na presun
+   - Nájde lekárne s podobnými bloky A tržbami (±20%) v rovnakom segmente
+   - Vráti štatistiky peers (avg FTE, produktivita) a porovnanie s cieľovou lekárňou
 
 4. get_understaffed
    - mesto: Mesto/lokalita (partial match) ⚠️ PRE OTÁZKY O KONKRÉTNOM MESTE
@@ -444,7 +446,7 @@ class DrMaxAgent:
         n_peers: int = 5,
         higher_fte_only: bool = False
     ) -> dict:
-        """Compare pharmacy to similar peers."""
+        """Compare pharmacy to similar peers in the same segment."""
         # Ensure types (AI might pass strings)
         pharmacy_id = int(pharmacy_id)
         n_peers = int(n_peers)
@@ -456,29 +458,94 @@ class DrMaxAgent:
             return {'error': f'Pharmacy {pharmacy_id} not found'}
 
         target = target.iloc[0]
+        target_bloky = target['bloky']
+        target_trzby = target['trzby']
 
-        # Find peers in same segment with similar bloky (±20%)
+        # Find peers in same segment with similar bloky AND trzby (±20%)
         same_segment = df[df['typ'] == target['typ']]
-        bloky_range = target['bloky'] * 0.2
+        bloky_range = target_bloky * 0.2
+        trzby_range = target_trzby * 0.2
+
         peers = same_segment[
-            (same_segment['bloky'] >= target['bloky'] - bloky_range) &
-            (same_segment['bloky'] <= target['bloky'] + bloky_range) &
+            (same_segment['bloky'] >= target_bloky - bloky_range) &
+            (same_segment['bloky'] <= target_bloky + bloky_range) &
+            (same_segment['trzby'] >= target_trzby - trzby_range) &
+            (same_segment['trzby'] <= target_trzby + trzby_range) &
             (same_segment['id'] != pharmacy_id)
         ].copy()
 
         if higher_fte_only:
             peers = peers[peers['fte_actual'] > target['fte_actual']]
 
-        # Sort by bloky similarity
-        peers['bloky_diff'] = abs(peers['bloky'] - target['bloky'])
-        peers = peers.sort_values('bloky_diff').head(n_peers)
-        peers = peers.drop(columns=['bloky_diff'])
+        # Sort by combined similarity (bloky + trzby difference)
+        peers['bloky_diff'] = abs(peers['bloky'] - target_bloky) / target_bloky
+        peers['trzby_diff'] = abs(peers['trzby'] - target_trzby) / target_trzby
+        peers['similarity_score'] = peers['bloky_diff'] + peers['trzby_diff']
+        peers = peers.sort_values('similarity_score').head(n_peers)
+
+        # Calculate peer statistics
+        peer_count = len(peers)
+        if peer_count > 0:
+            avg_fte = round(peers['fte_actual'].mean(), 1)
+            avg_fte_recommended = round(peers['fte_recommended'].mean(), 1)
+            avg_productivity = int(peers['productivity_index'].mean())
+            avg_gap = round(peers['fte_gap'].mean(), 1)
+
+            # Comparison with target
+            fte_vs_peers = round(target['fte_actual'] - avg_fte, 1)
+            productivity_vs_peers = int(target['productivity_index'] - avg_productivity)
+            gap_vs_peers = round(target['fte_gap'] - avg_gap, 1)
+        else:
+            avg_fte = avg_fte_recommended = avg_productivity = avg_gap = 0
+            fte_vs_peers = productivity_vs_peers = gap_vs_peers = 0
+
+        # Format peers for output (remove temp columns)
+        peers_output = peers.drop(columns=['bloky_diff', 'trzby_diff', 'similarity_score']).to_dict('records')
+
+        # Format each peer with key metrics
+        formatted_peers = []
+        for p in peers_output:
+            formatted_peers.append({
+                'id': int(p['id']),
+                'mesto': p['mesto'],
+                'bloky': int(p['bloky']),
+                'trzby': int(p['trzby']),
+                'fte_actual': round(p['fte_actual'], 1),
+                'fte_recommended': round(p['fte_recommended'], 1),
+                'fte_gap': round(p['fte_gap'], 1),
+                'productivity_index': int(p['productivity_index']),
+                'revenue_at_risk_eur': int(p['revenue_at_risk_eur'])
+            })
 
         return {
-            'target': target.to_dict(),
-            'peers': peers.to_dict('records'),
+            'target': {
+                'id': int(target['id']),
+                'mesto': target['mesto'],
+                'bloky': int(target_bloky),
+                'trzby': int(target_trzby),
+                'fte_actual': round(target['fte_actual'], 1),
+                'fte_recommended': round(target['fte_recommended'], 1),
+                'fte_gap': round(target['fte_gap'], 1),
+                'productivity_index': int(target['productivity_index']),
+                'revenue_at_risk_eur': int(target['revenue_at_risk_eur'])
+            },
             'segment': target['typ'],
-            'comparison_note': f"Porovnanie s {len(peers)} lekárňami s podobným objemom ({int(target['bloky']/1000)}k ± 20% blokov)"
+            'peer_count': peer_count,
+            'peers': formatted_peers,
+            'peer_statistics': {
+                'avg_fte': avg_fte,
+                'avg_fte_recommended': avg_fte_recommended,
+                'avg_productivity_index': avg_productivity,
+                'avg_fte_gap': avg_gap
+            },
+            'comparison': {
+                'fte_vs_peers': fte_vs_peers,
+                'productivity_vs_peers': productivity_vs_peers,
+                'gap_vs_peers': gap_vs_peers,
+                'fte_assessment': 'vyššie' if fte_vs_peers > 0.5 else ('nižšie' if fte_vs_peers < -0.5 else 'porovnateľné'),
+                'productivity_assessment': 'vyššia' if productivity_vs_peers > 5 else ('nižšia' if productivity_vs_peers < -5 else 'porovnateľná')
+            },
+            'comparison_note': f"Porovnanie s {peer_count} lekárňami segmentu {target['typ']} s podobným objemom ({int(target_bloky/1000)}k blokov, {int(target_trzby/1000000)}M€ tržieb ± 20%)"
         }
 
     def tool_get_understaffed(
@@ -958,7 +1025,7 @@ class DrMaxAgent:
             },
             {
                 "name": "compare_to_peers",
-                "description": "Porovnaj lekáreň s podobnými prevádzkami v segmente (podobný objem blokov).",
+                "description": "Porovnaj lekáreň s podobnými prevádzkami v segmente (podobný objem blokov A tržieb ±20%). Vráti štatistiky peers a porovnanie s priemerom.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -972,7 +1039,7 @@ class DrMaxAgent:
                         },
                         "higher_fte_only": {
                             "type": "boolean",
-                            "description": "Len lekárne s vyšším FTE"
+                            "description": "Len lekárne s vyšším FTE - pre hľadanie zdrojov na presun personálu"
                         }
                     },
                     "required": ["pharmacy_id"]

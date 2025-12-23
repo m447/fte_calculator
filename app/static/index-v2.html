@@ -1297,25 +1297,218 @@ input:checked + .toggle-slider:before {
   min-height: 300px;
 }
 
+/* Tools Showcase - Welcome State */
 .agent-welcome {
+  padding: 20px 0;
+}
+
+.agent-welcome-header {
   text-align: center;
-  color: var(--text-secondary);
-  padding: 40px 20px;
+  margin-bottom: 24px;
 }
 
-.agent-welcome h3 {
+.agent-welcome-header h3 {
   color: var(--text-primary);
-  margin-bottom: 16px;
+  margin: 0 0 8px 0;
+  font-size: 1.2rem;
 }
 
-.agent-welcome ul {
+.agent-welcome-header p {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Tools Grid */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* Tool Card */
+.tool-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.tool-card:hover {
+  border-color: var(--brand-green);
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.15);
+}
+
+.tool-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tool-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* Icon color variants */
+.tool-icon.search { background: #e0f2fe; color: #0284c7; }
+.tool-icon.details { background: #fef3c7; color: #d97706; }
+.tool-icon.compare { background: #f3e8ff; color: #9333ea; }
+.tool-icon.understaffed { background: #fee2e2; color: #dc2626; }
+.tool-icon.region { background: #d1fae5; color: #059669; }
+.tool-icon.segment { background: #fce7f3; color: #db2777; }
+.tool-icon.network { background: #e0e7ff; color: #4f46e5; }
+.tool-icon.trend { background: #ccfbf1; color: #0d9488; }
+.tool-icon.priority { background: #ffedd5; color: #ea580c; }
+.tool-icon.report { background: #f1f5f9; color: #475569; }
+.tool-icon.city { background: #fef9c3; color: #ca8a04; }
+.tool-icon.overview { background: var(--brand-green-light); color: var(--brand-green-dark); }
+
+.tool-card-title {
+  flex: 1;
+}
+
+.tool-card-title h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tool-card-title p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Sample Questions */
+.tool-samples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sample-question {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
   text-align: left;
-  display: inline-block;
+  width: 100%;
+}
+
+.sample-question:hover {
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+}
+
+.sample-question:hover .sample-arrow {
+  transform: translateX(3px);
+  opacity: 1;
+}
+
+.sample-icon {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.sample-text {
+  flex: 1;
+  line-height: 1.3;
+}
+
+.sample-arrow {
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+/* Collapsible tools section */
+.tools-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  margin-top: 16px;
+  background: transparent;
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  width: 100%;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.tools-toggle:hover {
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
+  background: var(--brand-green-light);
+}
+
+.tools-toggle svg {
+  transition: transform 0.2s;
+}
+
+.tools-toggle.expanded svg {
+  transform: rotate(180deg);
+}
+
+.tools-extra {
+  display: none;
   margin-top: 16px;
 }
 
-.agent-welcome li {
-  margin: 8px 0;
+.tools-extra.visible {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* Back to tools button */
+.back-to-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.back-to-tools:hover {
+  border-color: var(--brand-green);
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+}
+
+.back-to-tools svg {
+  width: 14px;
+  height: 14px;
 }
 
 .agent-loading {
@@ -4167,16 +4360,302 @@ input:checked + .toggle-slider:before {
 
       <!-- Results Area -->
       <div class="agent-results" id="agent-results">
-        <div class="agent-welcome">
-          <h3>Vitajte v AI Asistentovi</h3>
-          <p>Môžete sa opýtať na:</p>
-          <ul>
-            <li>Analýzu konkrétnej lekárne podľa ID</li>
-            <li>Porovnanie s podobnými prevádzkami</li>
-            <li>Zoznam poddimenzovaných lekární v regióne</li>
-            <li>Regionálne súhrny a reporty</li>
-            <li>Identifikáciu ohrozených tržieb</li>
-          </ul>
+        <div class="agent-welcome" id="agent-welcome">
+          <div class="agent-welcome-header">
+            <h3>Dostupné nástroje AI Asistenta</h3>
+            <p>Kliknite na príklad otázky pre okamžitú analýzu</p>
+          </div>
+
+          <!-- Primary Tools Grid -->
+          <div class="tools-grid">
+            <!-- Network Overview -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon overview">🌐</div>
+                <div class="tool-card-title">
+                  <h4>Prehľad siete</h4>
+                  <p>Celkový stav všetkých lekární</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Aký je celkový prehľad siete lekární?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Aký je celkový prehľad siete?</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Koľko máme poddimenzovaných a naddimenzovaných lekární?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Koľko lekární je pod/naddimenzovaných?</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Priority Actions -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon priority">🎯</div>
+                <div class="tool-card-title">
+                  <h4>Prioritné akcie</h4>
+                  <p>Čo riešiť ako prvé</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Ktoré lekárne by sme mali riešiť ako prvé?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Čo riešiť najskôr?</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Top 10 lekární podľa priority s najvyšším rizikom">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Top 10 priorít podľa rizika</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Compare to Peers -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon compare">⚖️</div>
+                <div class="tool-card-title">
+                  <h4>Porovnanie s peers</h4>
+                  <p>Benchmarking s podobnými lekárňami</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Porovnaj lekáreň ID 33 s podobnými lekárňami v segmente">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Porovnaj ID 33 s podobnými</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Nájdi lekárne podobné ID 33, ktoré majú vyššie FTE">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Podobné s vyšším FTE</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Understaffed -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon understaffed">⚠️</div>
+                <div class="tool-card-title">
+                  <h4>Poddimenzované lekárne</h4>
+                  <p>Lekárne s nedostatkom personálu</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Ktoré lekárne s vysokou produktivitou sú poddimenzované?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Poddimenz. s vysokou produktivitou</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Zoznam poddimenzovaných lekární zoradených podľa ohrozených tržieb">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Poddimenz. podľa ohrozených tržieb</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Regions -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon region">📍</div>
+                <div class="tool-card-title">
+                  <h4>Regionálna analýza</h4>
+                  <p>Porovnanie regiónov</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Porovnaj všetky regióny podľa ohrozených tržieb">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Porovnaj regióny podľa rizika</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Aká je situácia v regióne RR15?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Situácia v regióne RR15</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Segments -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon segment">📊</div>
+                <div class="tool-card-title">
+                  <h4>Segmenty A-E</h4>
+                  <p>Porovnanie typov lekární</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Porovnaj segmenty A až E podľa ohrozených tržieb a produktivity">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Porovnaj segmenty A-E</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Ktorý segment má najvyššie ohrozené tržby?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Segment s najvyšším rizikom</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle for more tools -->
+          <button class="tools-toggle" id="tools-toggle">
+            <span>Zobraziť ďalšie nástroje (6)</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 10l5 5 5-5H7z"/>
+            </svg>
+          </button>
+
+          <!-- Extra Tools (hidden by default) -->
+          <div class="tools-extra" id="tools-extra">
+            <!-- Search Pharmacies -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon search">🔍</div>
+                <div class="tool-card-title">
+                  <h4>Vyhľadávanie</h4>
+                  <p>Filtrovanie lekární</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Nájdi B lekárne s viac ako 120k blokmi, ktoré sú poddimenzované">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">B lekárne nad 120k blokov</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Lekárne v Košiciach">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Lekárne v Košiciach</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Pharmacy Details -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon details">📋</div>
+                <div class="tool-card-title">
+                  <h4>Detail lekárne</h4>
+                  <p>Kompletné informácie o prevádzke</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Aké sú detaily lekárne ID 33?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Detail lekárne ID 33</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Analyzuj lekáreň ID 74 vrátane FTE a produktivity">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Analýza ID 74</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- City Summary -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon city">🏙️</div>
+                <div class="tool-card-title">
+                  <h4>Mestá</h4>
+                  <p>Súhrn za mesto</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Ako sú na tom lekárne v Bratislave?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Lekárne v Bratislave</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Je možný presun personálu medzi lekárňami v Košiciach?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Presun v rámci Košíc</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Trends -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon trend">📈</div>
+                <div class="tool-card-title">
+                  <h4>Trendy</h4>
+                  <p>Rastúce a klesajúce lekárne</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Ktoré lekárne rastú najrýchlejšie?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Najrýchlejšie rastúce</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Lekárne s klesajúcim trendom transakcií">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Klesajúce lekárne</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Report -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon report">📄</div>
+                <div class="tool-card-title">
+                  <h4>Generovanie reportov</h4>
+                  <p>Markdown reporty</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Vygeneruj report za región RR11 s odporúčaniami">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Report za región RR11</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Vytvor report pre lekárne ID 33, 36, 54">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Report pre vybrané lekárne</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Overstaffed -->
+            <div class="tool-card">
+              <div class="tool-card-header">
+                <div class="tool-icon network">👥</div>
+                <div class="tool-card-title">
+                  <h4>Naddimenzované</h4>
+                  <p>Lekárne s prebytkom FTE</p>
+                </div>
+              </div>
+              <div class="tool-samples">
+                <button class="sample-question" data-query="Ktoré lekárne majú prebytok personálu?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Lekárne s prebytkom FTE</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+                <button class="sample-question" data-query="Odkiaľ by sme mohli presunúť personál?">
+                  <span class="sample-icon">💡</span>
+                  <span class="sample-text">Zdroje na presun</span>
+                  <span class="sample-arrow">→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -5440,6 +5919,7 @@ function storeCalculationResult(result, inputs, displayedFteTotal = null) {
     fte_diff: window.selectedPharmacyData ? window.selectedPharmacyData.fte_diff : null,
     revenue_at_risk: window.selectedPharmacyData ? window.selectedPharmacyData.revenue_at_risk : null,
     bloky_trend: window.selectedPharmacyData ? window.selectedPharmacyData.bloky_trend : null,
+    is_above_avg_productivity: window.selectedPharmacyIsAboveAvgProd || false,
     typ: inputs.typ,
     bloky: inputs.bloky,
     trzby: inputs.trzby,
@@ -5728,6 +6208,7 @@ function analyzeOutlier(jsonStr) {
     fte_diff: p.diff,
     revenue_at_risk: p.revenue_at_risk || 0,
     bloky_trend: p.bloky_trend || 0,
+    is_above_avg_productivity: p.is_above_avg_productivity || false,
     fte_min: null,
     fte_max: null,
     fte_F: null,
@@ -5810,6 +6291,33 @@ quickActions.forEach(btn => {
   });
 });
 
+// Tools toggle button - show/hide extra tools
+const toolsToggle = document.getElementById('tools-toggle');
+const toolsExtra = document.getElementById('tools-extra');
+if (toolsToggle && toolsExtra) {
+  toolsToggle.addEventListener('click', () => {
+    toolsToggle.classList.toggle('expanded');
+    toolsExtra.classList.toggle('visible');
+    const span = toolsToggle.querySelector('span');
+    if (toolsExtra.classList.contains('visible')) {
+      span.textContent = 'Skryť ďalšie nástroje';
+    } else {
+      span.textContent = 'Zobraziť ďalšie nástroje (6)';
+    }
+  });
+}
+
+// Sample question buttons - auto-submit on click
+document.querySelectorAll('.sample-question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const query = btn.dataset.query;
+    if (query) {
+      agentInput.value = query;
+      submitAgentQuery();
+    }
+  });
+});
+
 // Submit button
 agentSubmit.addEventListener('click', submitAgentQuery);
 
@@ -5869,8 +6377,16 @@ async function submitAgentQuery() {
 
     const data = await response.json();
 
+    const backButton = `
+      <button class="back-to-tools" onclick="showAgentWelcome()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Späť na nástroje
+      </button>
+    `;
+
     if (data.error) {
       agentResults.innerHTML = `
+        ${backButton}
         <div class="agent-response">
           <p style="color: #dc2626;">Chyba: ${data.error}</p>
           ${data.fallback ? `<p style="font-size: 0.9rem; color: var(--text-secondary);">${data.fallback}</p>` : ''}
@@ -5881,6 +6397,7 @@ async function submitAgentQuery() {
       const formattedResponse = formatAgentResponse(data.response || '');
 
       agentResults.innerHTML = `
+        ${backButton}
         <div class="agent-response">${formattedResponse}</div>
         ${data.tools_used && data.tools_used.length > 0 ? `
           <div class="agent-tools-used">
@@ -5891,6 +6408,10 @@ async function submitAgentQuery() {
     }
   } catch (error) {
     agentResults.innerHTML = `
+      <button class="back-to-tools" onclick="showAgentWelcome()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Späť na nástroje
+      </button>
       <div class="agent-response">
         <p style="color: #dc2626;">Chyba pri komunikácii so serverom: ${error.message}</p>
       </div>
@@ -5919,6 +6440,42 @@ function formatAgentResponse(text) {
     .replace(/(⚠[^<\n]*)/gi, '<span class="risk-text">$1</span>');
 
   return html;
+}
+
+// Show agent welcome/tools showcase
+function showAgentWelcome() {
+  const agentWelcome = document.getElementById('agent-welcome');
+  if (agentWelcome) {
+    agentResults.innerHTML = '';
+    agentResults.appendChild(agentWelcome.cloneNode(true));
+
+    // Re-attach event listeners for the cloned elements
+    document.querySelectorAll('.sample-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const query = btn.dataset.query;
+        if (query) {
+          agentInput.value = query;
+          submitAgentQuery();
+        }
+      });
+    });
+
+    // Re-attach tools toggle
+    const newToolsToggle = document.getElementById('tools-toggle');
+    const newToolsExtra = document.getElementById('tools-extra');
+    if (newToolsToggle && newToolsExtra) {
+      newToolsToggle.addEventListener('click', () => {
+        newToolsToggle.classList.toggle('expanded');
+        newToolsExtra.classList.toggle('visible');
+        const span = newToolsToggle.querySelector('span');
+        if (newToolsExtra.classList.contains('visible')) {
+          span.textContent = 'Skryť ďalšie nástroje';
+        } else {
+          span.textContent = 'Zobraziť ďalšie nástroje (6)';
+        }
+      });
+    }
+  }
 }
 </script>
 

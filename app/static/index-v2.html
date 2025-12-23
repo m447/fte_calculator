@@ -1326,6 +1326,70 @@ input:checked + .toggle-slider:before {
   gap: 16px;
 }
 
+/* Drill-Down Question Sections */
+.question-section {
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.section-icon {
+  font-size: 1.1rem;
+}
+
+.section-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.question-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.question-buttons .sample-question {
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.question-buttons .sample-question:hover {
+  border-color: var(--brand-green);
+  background: var(--brand-green-light);
+}
+
+.question-buttons .sample-question .sample-arrow {
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.question-buttons .sample-question:hover .sample-arrow {
+  opacity: 1;
+  color: var(--brand-green);
+}
+
+.extra-questions {
+  padding-top: 12px;
+}
+
 /* Tool Card */
 .tool-card {
   background: var(--bg-white);
@@ -4366,150 +4430,103 @@ input:checked + .toggle-slider:before {
             <p>Kliknite na príklad otázky pre okamžitú analýzu</p>
           </div>
 
-          <!-- Primary Tools Grid -->
-          <div class="tools-grid">
-            <!-- Network Overview -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon overview">🌐</div>
-                <div class="tool-card-title">
-                  <h4>Prehľad siete</h4>
-                  <p>Celkový stav všetkých lekární</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Aký je celkový prehľad siete lekární?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Aký je celkový prehľad siete?</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Koľko máme poddimenzovaných a naddimenzovaných lekární?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Koľko lekární je pod/naddimenzovaných?</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
+          <!-- Drill-Down Question Hierarchy -->
 
-            <!-- Priority Actions -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon priority">🎯</div>
-                <div class="tool-card-title">
-                  <h4>Prioritné akcie</h4>
-                  <p>Čo riešiť ako prvé</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Ktoré lekárne by sme mali riešiť ako prvé?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Čo riešiť najskôr?</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Top 10 lekární podľa priority s najvyšším rizikom">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Top 10 priorít podľa rizika</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+          <!-- Level 1: SIEŤ -->
+          <div class="question-section">
+            <div class="section-header">
+              <span class="section-icon">🌐</span>
+              <span class="section-title">Sieť</span>
             </div>
-
-            <!-- Compare to Peers -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon compare">⚖️</div>
-                <div class="tool-card-title">
-                  <h4>Porovnanie s peers</h4>
-                  <p>Benchmarking s podobnými lekárňami</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Porovnaj lekáreň ID 33 s podobnými lekárňami v segmente">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Porovnaj ID 33 s podobnými</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Nájdi lekárne podobné ID 33, ktoré majú vyššie FTE">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Podobné s vyšším FTE</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+            <div class="question-buttons">
+              <button class="sample-question" data-query="Celkový prehľad siete">
+                <span class="sample-text">Celkový prehľad siete</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Kde sú najväčšie problémy s kapacitou?">
+                <span class="sample-text">Kde sú najväčšie problémy?</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Koľko máme ohrozených tržieb celkovo?">
+                <span class="sample-text">Ohrozené tržby celkovo</span>
+                <span class="sample-arrow">→</span>
+              </button>
             </div>
+          </div>
 
-            <!-- Understaffed -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon understaffed">⚠️</div>
-                <div class="tool-card-title">
-                  <h4>Poddimenzované lekárne</h4>
-                  <p>Lekárne s nedostatkom personálu</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Ktoré lekárne s vysokou produktivitou sú poddimenzované?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Poddimenz. s vysokou produktivitou</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Zoznam poddimenzovaných lekární zoradených podľa ohrozených tržieb">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Poddimenz. podľa ohrozených tržieb</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+          <!-- Level 2: SEGMENTY -->
+          <div class="question-section">
+            <div class="section-header">
+              <span class="section-icon">📊</span>
+              <span class="section-title">Segmenty</span>
             </div>
-
-            <!-- Regions -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon region">📍</div>
-                <div class="tool-card-title">
-                  <h4>Regionálna analýza</h4>
-                  <p>Porovnanie regiónov</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Porovnaj všetky regióny podľa ohrozených tržieb">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Porovnaj regióny podľa rizika</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Aká je situácia v regióne RR15?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Situácia v regióne RR15</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+            <div class="question-buttons">
+              <button class="sample-question" data-query="Porovnanie segmentov A-E">
+                <span class="sample-text">Porovnanie segmentov A-E</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Ktorý segment má najväčšie riziko?">
+                <span class="sample-text">Ktorý segment má najväčšie riziko?</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Produktivita podľa segmentov">
+                <span class="sample-text">Produktivita podľa segmentov</span>
+                <span class="sample-arrow">→</span>
+              </button>
             </div>
+          </div>
 
-            <!-- Segments -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon segment">📊</div>
-                <div class="tool-card-title">
-                  <h4>Segmenty A-E</h4>
-                  <p>Porovnanie typov lekární</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Porovnaj segmenty A až E podľa ohrozených tržieb a produktivity">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Porovnaj segmenty A-E</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Ktorý segment má najvyššie ohrozené tržby?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Segment s najvyšším rizikom</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+          <!-- Level 3: REGIÓNY -->
+          <div class="question-section">
+            <div class="section-header">
+              <span class="section-icon">📍</span>
+              <span class="section-title">Regióny</span>
+            </div>
+            <div class="question-buttons">
+              <button class="sample-question" data-query="Prehľad všetkých regiónov">
+                <span class="sample-text">Prehľad všetkých regiónov</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Ktoré regióny potrebujú pozornosť?">
+                <span class="sample-text">Ktoré regióny potrebujú pozornosť?</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Top 5 regiónov podľa ohrozených tržieb">
+                <span class="sample-text">Top 5 regiónov podľa ohrozených tržieb</span>
+                <span class="sample-arrow">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Level 4: LEKÁRNE -->
+          <div class="question-section">
+            <div class="section-header">
+              <span class="section-icon">💊</span>
+              <span class="section-title">Lekárne</span>
+            </div>
+            <div class="question-buttons">
+              <button class="sample-question" data-query="Top 10 lekární na riešenie">
+                <span class="sample-text">Top 10 lekární na riešenie</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Detail lekárne ID 33">
+                <span class="sample-text">Detail lekárne ID 33</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Porovnaj lekáreň ID 33 s podobnými">
+                <span class="sample-text">Porovnanie s podobnými lekárňami</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Poddimenzované lekárne v Bratislave">
+                <span class="sample-text">Poddimenzované lekárne v Bratislave</span>
+                <span class="sample-arrow">→</span>
+              </button>
             </div>
           </div>
 
           <!-- Toggle for more tools -->
           <button class="tools-toggle" id="tools-toggle">
-            <span>Zobraziť ďalšie nástroje (6)</span>
+            <span>Ďalšie možnosti</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <path d="M7 10l5 5 5-5H7z"/>
             </svg>
@@ -4517,142 +4534,23 @@ input:checked + .toggle-slider:before {
 
           <!-- Extra Tools (hidden by default) -->
           <div class="tools-extra" id="tools-extra">
-            <!-- Search Pharmacies -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon search">🔍</div>
-                <div class="tool-card-title">
-                  <h4>Vyhľadávanie</h4>
-                  <p>Filtrovanie lekární</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Nájdi B lekárne s viac ako 120k blokmi, ktoré sú poddimenzované">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">B lekárne nad 120k blokov</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Lekárne v Košiciach">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Lekárne v Košiciach</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Pharmacy Details -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon details">📋</div>
-                <div class="tool-card-title">
-                  <h4>Detail lekárne</h4>
-                  <p>Kompletné informácie o prevádzke</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Aké sú detaily lekárne ID 33?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Detail lekárne ID 33</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Analyzuj lekáreň ID 74 vrátane FTE a produktivity">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Analýza ID 74</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- City Summary -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon city">🏙️</div>
-                <div class="tool-card-title">
-                  <h4>Mestá</h4>
-                  <p>Súhrn za mesto</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Ako sú na tom lekárne v Bratislave?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Lekárne v Bratislave</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Je možný presun personálu medzi lekárňami v Košiciach?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Presun v rámci Košíc</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Trends -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon trend">📈</div>
-                <div class="tool-card-title">
-                  <h4>Trendy</h4>
-                  <p>Rastúce a klesajúce lekárne</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Ktoré lekárne rastú najrýchlejšie?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Najrýchlejšie rastúce</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Lekárne s klesajúcim trendom transakcií">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Klesajúce lekárne</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Report -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon report">📄</div>
-                <div class="tool-card-title">
-                  <h4>Generovanie reportov</h4>
-                  <p>Markdown reporty</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Vygeneruj report za región RR11 s odporúčaniami">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Report za región RR11</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Vytvor report pre lekárne ID 33, 36, 54">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Report pre vybrané lekárne</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Overstaffed -->
-            <div class="tool-card">
-              <div class="tool-card-header">
-                <div class="tool-icon network">👥</div>
-                <div class="tool-card-title">
-                  <h4>Naddimenzované</h4>
-                  <p>Lekárne s prebytkom FTE</p>
-                </div>
-              </div>
-              <div class="tool-samples">
-                <button class="sample-question" data-query="Ktoré lekárne majú prebytok personálu?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Lekárne s prebytkom FTE</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-                <button class="sample-question" data-query="Odkiaľ by sme mohli presunúť personál?">
-                  <span class="sample-icon">💡</span>
-                  <span class="sample-text">Zdroje na presun</span>
-                  <span class="sample-arrow">→</span>
-                </button>
-              </div>
+            <div class="question-buttons extra-questions">
+              <button class="sample-question" data-query="Lekárne s prebytkom personálu">
+                <span class="sample-text">Naddimenzované lekárne</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Ktoré lekárne rastú najrýchlejšie?">
+                <span class="sample-text">Rastúce lekárne</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Lekárne s klesajúcim trendom">
+                <span class="sample-text">Klesajúce lekárne</span>
+                <span class="sample-arrow">→</span>
+              </button>
+              <button class="sample-question" data-query="Vygeneruj report za región RR11">
+                <span class="sample-text">Report za región</span>
+                <span class="sample-arrow">→</span>
+              </button>
             </div>
           </div>
 

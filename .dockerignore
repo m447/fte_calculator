@@ -10,3 +10,5 @@ notebooks/
 data/*.xlsx
 data/*.csv
 !data/ml_ready_v3.csv
+!data/revenue_monthly.csv
+!data/revenue_annual.csv

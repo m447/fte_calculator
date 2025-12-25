@@ -98,6 +98,165 @@ body {
 }
 
 /* ============================================
+   INTRO/WELCOME PAGE - Two Phase Drama
+   ============================================ */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #f8faf6 0%, #e8f5e0 50%, #f0f7eb 100%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.intro-overlay.hidden {
+  opacity: 0;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.intro-content {
+  max-width: 480px;
+  text-align: center;
+  position: relative;
+}
+
+/* PHASE 1: The Dramatic Question */
+.intro-question {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: questionPhase 4.5s ease-out forwards;
+}
+
+.intro-question-text {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  margin: 0;
+  animation: fadeInUp 0.8s ease-out backwards;
+}
+
+@keyframes questionPhase {
+  0%, 75% { opacity: 1; transform: scale(1); }
+  90% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 0; transform: scale(0.98); pointer-events: none; }
+}
+
+/* PHASE 2: The Solution */
+.intro-solution {
+  opacity: 0;
+  animation: solutionReveal 0.8s ease-out 3.8s forwards;
+}
+
+@keyframes solutionReveal {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.intro-headline {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin: 0 0 32px;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out 3.9s forwards;
+}
+
+.intro-headline strong {
+  color: var(--brand-green-dark);
+}
+
+.intro-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 36px;
+  text-align: left;
+}
+
+.intro-feature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  opacity: 0;
+}
+
+.intro-feature:nth-child(1) { animation: fadeInUp 0.4s ease-out 4.1s forwards; }
+.intro-feature:nth-child(2) { animation: fadeInUp 0.4s ease-out 4.25s forwards; }
+.intro-feature:nth-child(3) { animation: fadeInUp 0.4s ease-out 4.4s forwards; }
+
+.intro-feature-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.intro-feature-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--brand-green);
+}
+
+.intro-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  padding: 14px 32px;
+  border-radius: 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(120, 190, 32, 0.35);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out 4.6s forwards;
+}
+
+.intro-cta:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 28px rgba(120, 190, 32, 0.45);
+}
+
+.intro-cta svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.intro-cta:hover svg {
+  transform: translateX(3px);
+}
+
+.intro-footer {
+  margin-top: 32px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out 4.8s forwards;
+}
+
+/* ============================================
    HEADER
    ============================================ */
 .header {
@@ -990,6 +1149,48 @@ input:checked + .toggle-slider:before {
   text-decoration: underline;
 }
 
+/* Next Action - Gentle ending prompt */
+.next-action {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-light);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  animation: fadeUp 0.5s ease-out 0.6s backwards;
+}
+
+.next-action a {
+  color: var(--brand-green);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  margin-left: 4px;
+  transition: color 0.2s ease;
+}
+
+.next-action a:hover {
+  color: var(--brand-green-dark);
+  text-decoration: underline;
+}
+
+/* Staggered result reveals */
+.result-stagger-1 { animation: fadeUp 0.4s ease-out backwards; }
+.result-stagger-2 { animation: fadeUp 0.4s ease-out 0.15s backwards; }
+.result-stagger-3 { animation: fadeUp 0.4s ease-out 0.3s backwards; }
+.result-stagger-4 { animation: fadeUp 0.4s ease-out 0.45s backwards; }
+.result-stagger-5 { animation: fadeUp 0.4s ease-out 0.6s backwards; }
+
+/* AI Tab pulse animation */
+.tab-btn.agent-tab.pulse-hint {
+  animation: tabPulse 2s ease-in-out 3;
+}
+
+@keyframes tabPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--brand-green-light); }
+  50% { box-shadow: 0 0 0 8px rgba(120, 190, 32, 0.15); }
+}
+
 /* ============================================
    ANIMATIONS
    ============================================ */
@@ -1031,42 +1232,70 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================
-   TAB NAVIGATION
+   TAB NAVIGATION - Icon Based
    ============================================ */
 .tab-nav {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 20px;
   background: var(--bg-card);
-  padding: 6px;
-  border-radius: 12px;
+  padding: 10px 16px;
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
+  justify-content: center;
 }
 
 .tab-btn {
-  flex: 1;
-  padding: 12px 16px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  border-radius: 12px;
   cursor: pointer;
-  transition: var(--transition-fast);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tab-btn:hover {
   background: var(--bg-subtle);
+}
+
+.tab-btn:hover .tab-icon {
+  opacity: 1;
   color: var(--text-primary);
+  transform: scale(1.08);
 }
 
 .tab-btn.active {
   background: var(--brand-green);
-  color: white;
   box-shadow: var(--shadow-brand);
+}
+
+.tab-btn.active .tab-icon {
+  color: white;
+  opacity: 1;
+  transform: scale(1.15);
+  animation: iconPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes iconPop {
+  0% { transform: scale(0.7); opacity: 0.5; }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1.15); opacity: 1; }
 }
 
 .tab-content {
@@ -1083,211 +1312,111 @@ input:checked + .toggle-slider:before {
   opacity: 1;
 }
 
-/* Agent tab button styling - unified with brand */
+/* Agent tab button styling - subtle highlight */
 .tab-btn.agent-tab {
   background: var(--brand-green-light);
+}
+
+.tab-btn.agent-tab .tab-icon {
   color: var(--brand-green-dark);
-  position: relative;
+  opacity: 0.9;
 }
-.tab-btn.agent-tab::after {
-  content: '✦';
-  font-size: 0.6rem;
-  margin-left: 4px;
-  opacity: 0.7;
-}
+
 .tab-btn.agent-tab:hover {
   background: rgba(120, 190, 32, 0.2);
 }
+
 .tab-btn.agent-tab.active {
   background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+}
+
+.tab-btn.agent-tab.active .tab-icon {
   color: white;
 }
 
 /* ============================================
-   AI AGENT TAB
+   AI AGENT TAB - Clean & Simple Design
    ============================================ */
 .agent-container {
-  padding: 20px 0;
+  padding: 16px 0;
 }
 
-.agent-header {
+/* Search bar style input */
+.agent-search-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, var(--brand-green-light) 0%, rgba(120, 190, 32, 0.05) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(120, 190, 32, 0.25);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Subtle AI accent - animated shimmer */
-.agent-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  animation: headerShimmer 4s ease-in-out infinite;
-}
-
-@keyframes headerShimmer {
-  0%, 100% { left: -100%; }
-  50% { left: 150%; }
-}
-
-.agent-icon {
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }
 
-/* Subtle pulsing glow for AI indicator */
-.agent-icon::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 17px;
-  background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
-  opacity: 0;
-  z-index: -1;
-  animation: iconGlow 3s ease-in-out infinite;
+.agent-search-bar:focus-within {
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px var(--brand-green-light), 0 4px 12px rgba(120, 190, 32, 0.15);
+  transform: translateY(-1px);
 }
 
-@keyframes iconGlow {
-  0%, 100% { opacity: 0; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.05); }
-}
-
-.agent-title h2 {
-  margin: 0;
-  font-size: 1.4rem;
+.agent-search-bar input {
+  flex: 1;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.95rem;
   color: var(--text-primary);
 }
 
-.agent-title p {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.agent-status {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(34, 197, 94, 0.1);
-  border-radius: 20px;
-  font-size: 0.75rem;
-  color: #16a34a;
-}
-
-.agent-status .status-dot {
-  width: 8px;
-  height: 8px;
-  background: #22c55e;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.agent-quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.quick-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.quick-action:hover {
-  border-color: var(--brand-green);
-  background: var(--brand-green-light);
-  color: var(--brand-green-dark);
-}
-
-.quick-icon {
-  font-size: 0.9rem;
-}
-
-.agent-input-area {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.agent-input-area textarea {
-  flex: 1;
-  padding: 14px 16px;
-  border: 2px solid var(--border-light);
-  border-radius: 12px;
-  font-family: inherit;
-  font-size: 0.95rem;
-  resize: none;
-  transition: border-color 0.2s;
-}
-
-.agent-input-area textarea:focus {
+.agent-search-bar input:focus {
   outline: none;
-  border-color: var(--brand-green);
-  box-shadow: 0 0 0 3px var(--brand-green-light);
 }
 
-.agent-submit-btn {
+.agent-search-bar input::placeholder {
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.agent-search-bar:focus-within input::placeholder {
+  color: var(--text-secondary);
+}
+
+.agent-search-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 24px;
-  background: linear-gradient(135deg, var(--btn-green) 0%, var(--brand-green) 100%);
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: var(--brand-green);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.agent-submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-brand);
+.agent-search-btn:hover {
+  background: var(--brand-green-dark);
+  transform: scale(1.05);
 }
 
-.agent-submit-btn:disabled {
-  opacity: 0.6;
+.agent-search-btn:active {
+  transform: scale(0.95);
+}
+
+.agent-search-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.agent-search-btn:hover svg {
+  transform: translateX(2px);
+}
+
+.agent-search-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .agent-results {
@@ -1331,6 +1460,13 @@ input:checked + .toggle-slider:before {
 .intro-panel {
   margin-bottom: 20px;
   overflow: hidden;
+  opacity: 0;
+  animation: panelReveal 0.6s ease-out forwards;
+}
+
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .intro-panel-toggle {
@@ -1425,32 +1561,63 @@ input:checked + .toggle-slider:before {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--bg-white);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  border: 1px solid var(--brand-green);
   border-radius: 20px;
-  padding: 8px 16px;
+  padding: 10px 20px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-top: 8px;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-top: 12px;
+  box-shadow: 0 2px 8px rgba(120, 190, 32, 0.15);
+  animation: ctaGlow 3s ease-in-out infinite;
+}
+
+@keyframes ctaGlow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(120, 190, 32, 0.15); }
+  50% { box-shadow: 0 4px 16px rgba(120, 190, 32, 0.3); }
 }
 
 .intro-panel-cta:hover {
-  border-color: var(--brand-green);
-  background: var(--brand-green-light);
+  background: #d4edbc;
   color: var(--brand-green-dark);
+  border-color: var(--brand-green);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(120, 190, 32, 0.25);
+  animation: none;
+}
+
+.intro-panel-cta:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .intro-panel-cta svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.intro-panel-cta:hover svg {
+  transform: translateX(3px);
 }
 
 /* Drill-Down Question Sections */
 .question-section {
   margin-bottom: 20px;
+  opacity: 0;
+  animation: sectionReveal 0.5s ease-out forwards;
+}
+
+.question-section:nth-child(2) { animation-delay: 0.1s; }
+.question-section:nth-child(3) { animation-delay: 0.2s; }
+.question-section:nth-child(4) { animation-delay: 0.3s; }
+.question-section:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes sectionReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .section-header {
@@ -1464,6 +1631,11 @@ input:checked + .toggle-slider:before {
 
 .section-icon {
   font-size: 1.1rem;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.section-header:hover .section-icon {
+  transform: scale(1.2);
 }
 
 .section-title {
@@ -1489,23 +1661,52 @@ input:checked + .toggle-slider:before {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.question-buttons .sample-question::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--brand-green-light) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .question-buttons .sample-question:hover {
   border-color: var(--brand-green);
-  background: var(--brand-green-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.2);
+}
+
+.question-buttons .sample-question:hover::before {
+  opacity: 1;
+}
+
+.question-buttons .sample-question:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.question-buttons .sample-question .sample-text {
+  position: relative;
+  z-index: 1;
 }
 
 .question-buttons .sample-question .sample-arrow {
   color: var(--text-secondary);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transform: translateX(-4px);
+  transition: all 0.25s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .question-buttons .sample-question:hover .sample-arrow {
   opacity: 1;
   color: var(--brand-green);
+  transform: translateX(0);
 }
 
 .extra-questions {
@@ -1669,56 +1870,31 @@ input:checked + .toggle-slider:before {
   gap: 16px;
 }
 
-/* Back to tools button */
-.back-to-tools {
+/* Back to tools & PDF Download buttons */
+.back-to-tools,
+.download-pdf-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  margin-bottom: 16px;
   background: var(--bg-subtle);
   border: 1px solid var(--border-light);
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
-.back-to-tools:hover {
+.back-to-tools:hover,
+.download-pdf-btn:hover {
   border-color: var(--brand-green);
   background: var(--brand-green-light);
   color: var(--brand-green-dark);
 }
 
-.back-to-tools svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* PDF Download button */
-.download-pdf-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  margin-left: 12px;
-  background: var(--brand-green);
-  border: 1px solid var(--brand-green-dark);
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.8rem;
-  color: white;
-  transition: var(--transition-fast);
-}
-
-.download-pdf-btn:hover {
-  background: var(--brand-green-dark);
-  box-shadow: var(--shadow-brand);
-}
-
+.back-to-tools svg,
 .download-pdf-btn svg {
   width: 14px;
   height: 14px;
@@ -1727,6 +1903,8 @@ input:checked + .toggle-slider:before {
 .agent-response-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
@@ -1748,8 +1926,86 @@ input:checked + .toggle-slider:before {
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Streaming progress UI */
+.agent-streaming {
+  padding: 24px;
+}
+
+.streaming-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.streaming-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.streaming-step.active {
+  opacity: 1;
+  background: rgba(120, 190, 32, 0.1);
+  border-left: 3px solid var(--brand-green);
+}
+
+.streaming-step.done {
+  opacity: 0.8;
+}
+
+.streaming-step .step-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.streaming-step.done .step-icon {
+  color: var(--brand-green);
+  font-weight: bold;
+}
+
+.streaming-step .step-text {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.streaming-step .step-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tool-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--brand-green);
+  color: white;
+  border-radius: 12px;
+  animation: toolFadeIn 0.3s ease;
+}
+
+@keyframes toolFadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--brand-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .agent-response {
@@ -2826,24 +3082,34 @@ input:checked + .toggle-slider:before {
 
 .chat-typing {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 5px;
   padding: 10px 14px;
 }
 
 .chat-typing span {
   width: 8px;
   height: 8px;
-  background: var(--border-medium);
+  background: var(--brand-green);
   border-radius: 50%;
-  animation: typingDot 1.4s infinite ease-in-out;
+  animation: typingBounce 1.4s infinite ease-in-out;
 }
 
-.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
-.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+.chat-typing span:nth-child(1) { animation-delay: 0s; }
+.chat-typing span:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.3s; }
 
-@keyframes typingDot {
-  0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-  40% { transform: scale(1); opacity: 1; }
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0.4;
+    background: var(--border-medium);
+  }
+  30% {
+    transform: translateY(-6px) scale(1);
+    opacity: 1;
+    background: var(--brand-green);
+  }
 }
 
 .chat-suggestions {
@@ -2880,40 +3146,6 @@ input:checked + .toggle-slider:before {
 .chat-suggestion.agent:hover {
   background: linear-gradient(135deg, rgba(120, 190, 32, 0.25) 0%, rgba(120, 190, 32, 0.15) 100%);
   border-color: var(--brand-green-dark);
-}
-
-.agent-toggle {
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  padding: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.agent-toggle:hover {
-  background: var(--brand-green-light);
-  border-color: var(--brand-green);
-  color: var(--brand-green);
-}
-
-.agent-toggle.active {
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-  border-color: var(--brand-green-dark);
-  color: white;
-}
-
-.agent-mode-indicator {
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-  color: white;
-  font-size: 0.65rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 8px;
 }
 
 /* ============================================
@@ -3222,7 +3454,7 @@ input:checked + .toggle-slider:before {
 .position-row {
   display: grid;
   grid-template-columns: 80px 1fr 100px;
-  align-items: center;
+  align-items: start;
   gap: 12px;
 }
 
@@ -3230,6 +3462,8 @@ input:checked + .toggle-slider:before {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
+  line-height: 1;
+  padding-top: 2px;
 }
 
 .position-track-wrapper {
@@ -3330,6 +3564,8 @@ input:checked + .toggle-slider:before {
   justify-content: flex-end;
   gap: 8px;
   position: relative;
+  padding-top: 0;
+  line-height: 1;
   cursor: help;
 }
 
@@ -3521,7 +3757,30 @@ input:checked + .toggle-slider:before {
 }
 
 .pharmacy-id-row input {
-  width: 100px;
+  width: 120px;
+  transition: all 0.3s ease;
+}
+
+/* Ready state animation for pharmacy ID input */
+.pharmacy-id-row input.ready {
+  animation: inputReady 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px var(--brand-green-light), var(--shadow-sm);
+}
+
+@keyframes inputReady {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--brand-green-light);
+  }
+  40% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 6px var(--brand-green-light);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px var(--brand-green-light);
+  }
 }
 
 .btn-load {
@@ -3557,17 +3816,50 @@ input:checked + .toggle-slider:before {
   color: #dc2626;
 }
 
-/* Revenue Loss Display - only shown for above-average productivity pharmacies */
+/* Revenue Loss Display - THE PEAK MOMENT */
 .revenue-loss {
-  margin: 16px 0 20px 0;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%);
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  border-radius: 12px;
-  color: #b91c1c;
+  margin: 20px 0 24px 0;
+  padding: 24px 20px 20px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fecaca 100%);
+  border: 2px solid rgba(220, 38, 38, 0.35);
+  border-radius: 16px;
+  color: #991b1b;
   text-align: center;
-  animation: fadeUp 0.5s ease-out 0.1s backwards, heartbeat 0.8s ease-in-out 0.7s;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+  animation: peakReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation-delay: 0.4s;
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.15), 0 0 0 4px rgba(220, 38, 38, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.revenue-loss::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: peakShine 1.2s ease-out 1s forwards;
+}
+
+@keyframes peakShine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes peakReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  60% {
+    transform: scale(1.03) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Heartbeat animation - single dramatic pulse */
@@ -3595,33 +3887,57 @@ input:checked + .toggle-slider:before {
 }
 
 .revenue-loss-header {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  opacity: 0.9;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 8px;
 }
 
-.revenue-loss-header::before {
-  content: '⚠';
-  font-size: 0.85rem;
+.revenue-loss-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(220, 38, 38, 0.15);
+  border-radius: 50%;
+  margin-bottom: 10px;
+  font-size: 1rem;
 }
 
 .revenue-loss-value {
-  font-size: 1.25rem;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.revenue-loss-value .currency {
+  font-size: 1.4rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  opacity: 0.8;
+}
+
+.revenue-loss-percent {
+  font-size: 1rem;
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 8px;
 }
 
 .revenue-loss-note {
-  font-size: 0.7rem;
-  opacity: 0.75;
-  margin-top: 6px;
-  font-style: italic;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+/* Counting animation for revenue */
+@keyframes countPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
 /* Revenue Teaser - show problem, hide solution */
@@ -3981,14 +4297,271 @@ input:checked + .toggle-slider:before {
   to { opacity: 0; }
 }
 
+/* ============================================
+   REVENUE TREND CHART
+   ============================================ */
+.trend-chart-container {
+  position: relative;
+  width: 100%;
+  height: 240px;
+}
+
+.trend-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Chart Lines */
+.trend-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: trendLineReveal 1.2s ease-out forwards;
+}
+
+.trend-line-2019 {
+  stroke: rgba(120, 190, 32, 0.25);
+  stroke-width: 1.5;
+  animation-delay: 0.1s;
+}
+
+.trend-line-2020 {
+  stroke: rgba(120, 190, 32, 0.55);
+  stroke-width: 1.75;
+  animation-delay: 0.25s;
+}
+
+.trend-line-2021 {
+  stroke: rgba(120, 190, 32, 1);
+  stroke-width: 2.25;
+  animation-delay: 0.4s;
+}
+
+/* Forecast Line */
+.trend-line-forecast {
+  fill: none;
+  stroke: rgba(120, 190, 32, 1);
+  stroke-width: 2;
+  stroke-dasharray: 6, 4;
+  opacity: 0;
+  animation: trendForecastReveal 0.6s ease-out forwards;
+  animation-delay: 0.8s;
+}
+
+@keyframes trendForecastReveal {
+  to { opacity: 0.7; }
+}
+
+.trend-forecast-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  animation: trendForecastReveal 0.6s ease-out forwards;
+  animation-delay: 0.8s;
+}
+
+@keyframes trendLineReveal {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Chart Areas */
+.trend-area {
+  opacity: 0;
+  animation: trendAreaFadeIn 0.8s ease-out forwards;
+}
+
+.trend-area-2019 { fill: rgba(120, 190, 32, 0.03); animation-delay: 0.1s; }
+.trend-area-2020 { fill: rgba(120, 190, 32, 0.06); animation-delay: 0.2s; }
+.trend-area-2021 { fill: rgba(120, 190, 32, 0.12); animation-delay: 0.3s; }
+
+@keyframes trendAreaFadeIn {
+  to { opacity: 1; }
+}
+
+/* Current Month Marker */
+.trend-current-marker {
+  opacity: 0;
+  animation: trendMarkerPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: 1s;
+}
+
+@keyframes trendMarkerPop {
+  0% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Axis Labels */
+.trend-axis-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  font-weight: 500;
+}
+
+.trend-axis-label-month {
+  text-anchor: middle;
+}
+
+.trend-axis-label-value {
+  text-anchor: end;
+}
+
+/* Grid Lines */
+.trend-grid-line {
+  stroke: var(--border-light);
+  stroke-width: 1;
+  stroke-dasharray: 2, 4;
+}
+
+/* YoY Stats */
+.trend-yoy-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  margin-left: 50px;
+  margin-right: 20px;
+}
+
+.trend-yoy-item {
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.trend-yoy-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.trend-yoy-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.trend-yoy-value.positive {
+  color: var(--brand-green-dark);
+}
+
+.trend-yoy-value.negative {
+  color: #dc2626;
+}
+
+/* Tooltip */
+.trend-tooltip {
+  position: absolute;
+  background: var(--text-primary);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.trend-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--text-primary);
+}
+
+/* No data state */
+.trend-no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
 </style>
 </head>
 <body>
+<!-- INTRO OVERLAY -->
+<div class="intro-overlay" id="intro-overlay">
+  <div class="intro-content">
+    <!-- PHASE 1: The Dramatic Question -->
+    <div class="intro-question" id="intro-question">
+      <p class="intro-question-text">
+        Viete, kde strácate tržby<br>kvôli nesprávnemu obsadeniu?
+      </p>
+    </div>
+
+    <!-- PHASE 2: The Solution (hidden initially) -->
+    <div class="intro-solution" id="intro-solution">
+      <h1 class="intro-headline">
+        Teraz to zistíte<br><strong>za pár sekúnd</strong>
+      </h1>
+      <div class="intro-features">
+        <div class="intro-feature">
+          <span class="intro-feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </span>
+          <span>Jasná odpoveď namiesto intuície</span>
+        </div>
+        <div class="intro-feature">
+          <span class="intro-feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </span>
+          <span>Odhaľte ohrozené tržby</span>
+        </div>
+        <div class="intro-feature">
+          <span class="intro-feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          <span>Rozhodnutie za minútu</span>
+        </div>
+      </div>
+      <button class="intro-cta" onclick="dismissIntro()">
+        Začať analýzu
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+      <p class="intro-footer">FTE Kalkulačka v5.1</p>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 <div class="container">
   <div class="header animate-in">
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> FTE Kalkulačka</h1>
-    <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast?</p>
+    <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast</p>
     <button onclick="document.getElementById('about-modal').style.display='flex'" style="
       position: absolute;
       top: 12px;
@@ -4051,12 +4624,34 @@ input:checked + .toggle-slider:before {
     </div>
   </div>
 
-  <!-- TAB NAVIGATION -->
+  <!-- TAB NAVIGATION - Icon Based -->
   <div class="tab-nav animate-in">
-    <button class="tab-btn active" data-tab="calculator">Kalkulačka</button>
-    <button class="tab-btn" data-tab="analyza">Porovnanie</button>
-    <button class="tab-btn" data-tab="network">Prehľad</button>
-    <button class="tab-btn agent-tab" data-tab="agent">AI Asistent</button>
+    <button class="tab-btn active" data-tab="calculator" title="Kalkulačka">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </button>
+    <button class="tab-btn" data-tab="analyza" title="Porovnanie">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+    </button>
+    <button class="tab-btn" data-tab="network" title="Prehľad">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    </button>
+    <button class="tab-btn agent-tab" data-tab="agent" title="AI Asistent">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </button>
   </div>
 
   <!-- CALCULATOR TAB -->
@@ -4066,9 +4661,9 @@ input:checked + .toggle-slider:before {
   <div class="card animate-in">
     <div class="card-title">Parametre lekárne</div>
 
-    <label>Lekáreň ID</label>
+    <label for="pharmacy-id-input">Zadajte ID lekárne</label>
     <div class="pharmacy-id-row">
-      <input type="number" id="pharmacy-id-input" placeholder="ID" min="1">
+      <input type="number" id="pharmacy-id-input" placeholder="napr. 33" min="1">
       <button type="button" id="pharmacy-load-btn" class="btn-load">Načítať</button>
       <button type="button" class="btn-new-pharmacy" id="btn-new-pharmacy" title="Vymazať formulár a zadať parametre novej/plánovanej lekárne">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
@@ -4131,7 +4726,7 @@ input:checked + .toggle-slider:before {
   <div id="result" style="display:none;">
     <div class="result-divider"></div>
     
-    <div class="result-main">
+    <div class="result-main result-stagger-1">
       <div class="val-row">
         <div class="val" id="fte-total">-</div>
         <div class="val-vs" id="val-vs" style="display:none;">
@@ -4143,15 +4738,15 @@ input:checked + .toggle-slider:before {
       <div class="range" id="fte-range"></div>
     </div>
 
-    <!-- Revenue Loss Display (Kahneman loss framing) -->
-    <div class="revenue-loss" id="revenue-loss" style="display:none; position: relative;">
+    <!-- Revenue Loss Display (Kahneman loss framing) - THE PEAK -->
+    <div class="revenue-loss result-stagger-2" id="revenue-loss" style="display:none; position: relative;">
       <button onclick="this.parentElement.style.display='none'" style="position: absolute; top: 8px; right: 12px; background: transparent; border: none; cursor: pointer; color: #b91c1c; font-size: 20px; font-weight: 700; opacity: 0.5;">×</button>
       <div id="revenue-loss-content"></div>
     </div>
 
 
     <!-- Distribution comparison -->
-    <div class="distribution-box" id="distribution-box" style="display:none;">
+    <div class="distribution-box result-stagger-3" id="distribution-box" style="display:none;">
       <div class="dist-header">
         <span class="dist-label">Podobné lekárne (<span id="dist-count">0</span>)</span>
       </div>
@@ -4167,7 +4762,7 @@ input:checked + .toggle-slider:before {
       </div>
     </div>
 
-    <div class="breakdown">
+    <div class="breakdown result-stagger-4">
       <div class="breakdown-item">
         <div class="breakdown-val" id="fte-zf">-</div>
         <div class="breakdown-lbl">Zodp. farm.</div>
@@ -4185,24 +4780,30 @@ input:checked + .toggle-slider:before {
       </div>
     </div>
 
-    <div class="trust-box" id="trust-box">
+    <div class="trust-box result-stagger-5" id="trust-box">
       <div class="trust-title">Overené proti podobným lekárňam</div>
       <div class="trust-content">Nájdené prevádzky: <span id="trust-count"></span></div>
       <div class="trust-content">ID: <span id="trust-ids"></span><span id="trust-expand" class="trust-link" style="display:none;" onclick="expandIds()"> zobraziť všetky</span></div>
       <div id="trust-all-ids" style="display:none;margin-top:8px;font-size:0.8rem;color:#6b7280;word-break:break-word;"></div>
     </div>
+
+    <!-- Next Action - Gentle ending -->
+    <div class="next-action result-stagger-5" id="next-action">
+      Chcete skontrolovať ďalšiu lekáreň?<a href="javascript:void(0)" onclick="analyzeAnother()">Vybrať →</a>
+    </div>
+
   </div>
   </div>
   <!-- END CALCULATOR TAB -->
 
   <!-- NETWORK TAB (Priority Dashboard) -->
   <div id="tab-network" class="tab-content">
-    <div id="network-loading" class="loading-spinner">Načítavam dáta...</div>
+    <div id="network-loading" class="loading-spinner">Pripravujem prehľad siete...</div>
 
     <div id="network-content" style="display:none;">
       <!-- Hero Stat - Revenue at Risk -->
       <div class="hero-stat" id="hero-revenue">
-        <div class="hero-stat-label">Potential Revenue at Risk</div>
+        <div class="hero-stat-label">Ohrozené tržby</div>
         <div class="hero-stat-value" id="net-revenue-at-risk">-</div>
         <div class="hero-stat-detail" id="hero-revenue-detail">-</div>
       </div>
@@ -4211,15 +4812,15 @@ input:checked + .toggle-slider:before {
       <div class="quick-stats">
         <div class="quick-stat urgent">
           <div class="quick-stat-value" id="net-urgent-count">-</div>
-          <div class="quick-stat-label">Revenue at Risk</div>
+          <div class="quick-stat-label">Ohrozené tržby</div>
         </div>
         <div class="quick-stat monitor">
           <div class="quick-stat-value" id="net-monitor-count">-</div>
-          <div class="quick-stat-label">Growth Alert</div>
+          <div class="quick-stat-label">Rastový signál</div>
         </div>
         <div class="quick-stat optimize">
           <div class="quick-stat-value" id="net-optimize-count">-</div>
-          <div class="quick-stat-label">Potential FTE Surplus</div>
+          <div class="quick-stat-label">Prebytok FTE</div>
         </div>
       </div>
 
@@ -4233,11 +4834,11 @@ input:checked + .toggle-slider:before {
             <span class="priority-icon urgent">!</span>
             <div class="priority-header-content">
               <h4 class="priority-title">
-                REVENUE AT RISK
+                OHROZENÉ TRŽBY
                 <span class="priority-count" id="priority-urgent-count">0</span>
                 <button class="btn-export-csv" onclick="event.stopPropagation(); exportCSV('urgent')">CSV</button>
               </h4>
-              <span class="priority-subtitle">Understaffed with high productivity</span>
+              <span class="priority-subtitle">Nedostatok personálu pri vysokej produktivite</span>
             </div>
             <span class="priority-total urgent" id="priority-urgent-total">-</span>
             <span class="priority-arrow" id="urgent-arrow">▼</span>
@@ -4251,11 +4852,11 @@ input:checked + .toggle-slider:before {
             <span class="priority-icon monitor">↑</span>
             <div class="priority-header-content">
               <h4 class="priority-title">
-                GROWTH ALERT
+                RASTOVÝ SIGNÁL
                 <span class="priority-count" id="priority-monitor-count">0</span>
                 <button class="btn-export-csv" onclick="event.stopPropagation(); exportCSV('monitor')">CSV</button>
               </h4>
-              <span class="priority-subtitle">Fast-growing pharmacies - prepare for future needs</span>
+              <span class="priority-subtitle">Rýchlo rastúce lekárne — pripravte sa na budúce potreby</span>
             </div>
             <span class="priority-total monitor" id="priority-monitor-total">-</span>
             <span class="priority-arrow" id="monitor-arrow">▼</span>
@@ -4269,11 +4870,11 @@ input:checked + .toggle-slider:before {
             <span class="priority-icon optimize">↓</span>
             <div class="priority-header-content">
               <h4 class="priority-title">
-                POTENTIAL FTE SURPLUS
+                PREBYTOK FTE
                 <span class="priority-count" id="priority-optimize-count">0</span>
                 <button class="btn-export-csv" onclick="event.stopPropagation(); exportCSV('optimize')">CSV</button>
               </h4>
-              <span class="priority-subtitle">Overstaffed - reallocation opportunity</span>
+              <span class="priority-subtitle">Prebytok personálu — príležitosť na prerozdelenie</span>
             </div>
             <span class="priority-total optimize" id="priority-optimize-total">-</span>
             <span class="priority-arrow" id="optimize-arrow">▼</span>
@@ -4348,14 +4949,58 @@ input:checked + .toggle-slider:before {
     </div>
 
     <div id="analyza-content" style="display:none;">
+      <!-- Revenue Trend Chart -->
+      <div class="card" id="trend-chart-card" style="display:none;">
+        <div class="card-title">TREND TRŽIEB</div>
+
+        <!-- YoY Stats -->
+        <div class="trend-yoy-stats">
+          <div class="trend-yoy-item">
+            <div class="trend-yoy-label">2021 vs 2020</div>
+            <div class="trend-yoy-value" id="trend-yoy-2021">-</div>
+          </div>
+          <div class="trend-yoy-item">
+            <div class="trend-yoy-label">2020 vs 2019</div>
+            <div class="trend-yoy-value" id="trend-yoy-2020">-</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="trend-chart-container">
+          <svg class="trend-chart-svg" id="trend-chart" viewBox="0 0 580 240" preserveAspectRatio="xMidYMid meet">
+          </svg>
+          <div class="trend-tooltip" id="trend-tooltip"></div>
+        </div>
+      </div>
+
       <!-- Segment Position Charts -->
       <div class="card">
         <div class="card-title">Pozícia v segmente</div>
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
-          Kde sa nachádza vaša lekáreň v rámci segmentu <strong id="segment-name">-</strong>
-        </p>
 
         <div class="position-charts">
+          <!-- Produktivita zone indicator (moved to top) -->
+          <div class="position-row" id="row-efficiency">
+            <div class="position-label">Produktivita</div>
+            <div class="position-track-wrapper">
+              <div class="position-track zone-track">
+                <div class="zone zone-low"></div>
+                <div class="zone zone-avg"></div>
+                <div class="zone zone-high"></div>
+                <div class="position-marker you" id="pos-efficiency-you"></div>
+              </div>
+              <div class="track-labels">
+                <span>Nízka</span>
+                <span>Priemerná</span>
+                <span>Vysoká</span>
+              </div>
+            </div>
+            <div class="position-result" id="pos-efficiency-result">
+              <div class="position-value zone-label" id="pos-efficiency-value">-</div>
+              <div class="position-indicator neutral" id="pos-efficiency-indicator">≈</div>
+              <div class="position-tooltip" id="pos-efficiency-tooltip"></div>
+            </div>
+          </div>
+
           <!-- Bloky position -->
           <div class="position-row" id="row-bloky">
             <div class="position-label">Bloky</div>
@@ -4443,58 +5088,6 @@ input:checked + .toggle-slider:before {
               <div class="position-tooltip" id="pos-fte-tooltip"></div>
             </div>
           </div>
-
-          <!-- Separator -->
-          <div class="position-separator"></div>
-
-          <!-- Produktivita zone indicator -->
-          <div class="position-row" id="row-efficiency">
-            <div class="position-label">Produktivita</div>
-            <div class="position-track-wrapper">
-              <div class="position-track zone-track">
-                <div class="zone zone-low"></div>
-                <div class="zone zone-avg"></div>
-                <div class="zone zone-high"></div>
-                <div class="position-marker you" id="pos-efficiency-you"></div>
-              </div>
-              <div class="track-labels">
-                <span>Nízka</span>
-                <span>Priemerná</span>
-                <span>Vysoká</span>
-              </div>
-            </div>
-            <div class="position-result" id="pos-efficiency-result">
-              <div class="position-value zone-label" id="pos-efficiency-value">-</div>
-              <div class="position-indicator neutral" id="pos-efficiency-indicator">≈</div>
-              <div class="position-tooltip" id="pos-efficiency-tooltip"></div>
-            </div>
-          </div>
-
-          <!-- Trend zone indicator -->
-          <div class="position-row" id="row-trend">
-            <div class="position-label">Trend</div>
-            <div class="position-track-wrapper">
-              <div class="position-track zone-track">
-                <div class="zone zone-declining"></div>
-                <div class="zone zone-stable"></div>
-                <div class="zone zone-growing"></div>
-                <div class="position-marker you" id="pos-trend-you"></div>
-              </div>
-              <div class="track-labels">
-                <span>Klesajúci</span>
-                <span>Stabilný</span>
-                <span>Rastúci</span>
-              </div>
-            </div>
-            <div class="position-result" id="pos-trend-result">
-              <div class="position-value zone-label" id="pos-trend-value">-</div>
-              <div class="position-indicator neutral" id="pos-trend-indicator">≈</div>
-              <div class="position-tooltip" id="pos-trend-tooltip"></div>
-            </div>
-          </div>
-
-          <!-- Separator -->
-          <div class="position-separator"></div>
 
           <!-- Bloky/hod position -->
           <div class="position-row" id="row-blokyhod">
@@ -4639,32 +5232,13 @@ input:checked + .toggle-slider:before {
   <div id="tab-agent" class="tab-content">
     <div class="agent-container">
 
-      <!-- Agent Header -->
-      <div class="agent-header">
-        <div class="agent-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-            <!-- Sparkle/AI icon -->
-            <path d="M12 2L13.09 8.26L19 7L14.74 10.91L19 17L13.09 15.74L12 22L10.91 15.74L5 17L9.26 10.91L5 7L10.91 8.26L12 2Z"/>
-          </svg>
-        </div>
-        <div class="agent-title">
-          <h2>AI Asistent</h2>
-          <p>Komplexná analýza personálneho obsadenia</p>
-        </div>
-        <div class="agent-status" id="agent-status-indicator">
-          <span class="status-dot"></span>
-          <span class="status-text">Online</span>
-        </div>
-      </div>
-
-      <!-- Input Area -->
-      <div class="agent-input-area">
-        <textarea id="agent-input" placeholder="Opýtajte sa na analýzu personálneho obsadenia..." rows="2"></textarea>
-        <button id="agent-submit" class="agent-submit-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <!-- Simplified Input Area -->
+      <div class="agent-search-bar">
+        <input type="text" id="agent-input" placeholder="Opýtajte sa na čokoľvek o personálnom obsadení...">
+        <button id="agent-submit" class="agent-search-btn" title="Odoslať">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
           </svg>
-          Analyzovať
         </button>
       </div>
 
@@ -4862,9 +5436,6 @@ input:checked + .toggle-slider:before {
     <button class="chat-suggestion agent" data-q="Vytvor report porovnania lekární ID 33, 36, 54 vrátane odporúčaní">Porovnávací report</button>
   </div>
   <div class="chat-input-area">
-    <button class="agent-toggle" id="agent-toggle" title="Prepnúť na pokročilú analýzu (Claude)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-    </button>
     <input type="text" class="chat-input" id="chat-input" placeholder="Napíšte otázku...">
     <button class="chat-send" id="chat-send">&#10148;</button>
   </div>
@@ -5040,7 +5611,7 @@ const TYPE_DEFAULTS = {
 async function loadPharmacyById(pharmacyId) {
   const hint = document.getElementById('pharmacy-hint');
   hint.classList.remove('loaded', 'error');
-  hint.textContent = 'Načítavam...';
+  hint.textContent = 'Hľadám lekáreň...';
 
   try {
     const response = await fetch(`/api/pharmacy/${pharmacyId}`);
@@ -5098,6 +5669,9 @@ async function loadPharmacyById(pharmacyId) {
     // Update hint with success
     hint.textContent = `${data.mesto}`;
     hint.classList.add('loaded');
+
+    // Load trend chart
+    loadTrendChart(pharmacyId);
 
     // Auto-calculate
     calcBtn.click();
@@ -5207,8 +5781,8 @@ function updateActualFteCompare(recommendedFte) {
   labelEl.innerHTML = 'Odporúčané vs <span style="color:rgba(0,0,0,0.5)">skutočné</span> FTE';
 }
 
-// Show revenue loss with Kahneman loss framing
-// Now uses centralized calculation from API
+// Show revenue loss with Kahneman loss framing - THE PEAK MOMENT
+// Enhanced with counting animation for dramatic effect
 function showRevenueLoss(revenueAtRisk, trzby) {
   const lossEl = document.getElementById('revenue-loss');
   const contentEl = document.getElementById('revenue-loss-content');
@@ -5219,18 +5793,45 @@ function showRevenueLoss(revenueAtRisk, trzby) {
   }
 
   const lossPercent = ((revenueAtRisk / trzby) * 100).toFixed(1);
-  const lossK = Math.round(revenueAtRisk / 1000);
+  const targetValue = Math.round(revenueAtRisk);
+
+  // Set up the HTML structure with placeholder for counting
   contentEl.innerHTML = `
-    <div class="revenue-loss-header">REVENUE AT RISK</div>
-    <div class="revenue-loss-value">€${lossK}K | ${lossPercent}% per year</div>
-    <div class="revenue-loss-note">Staff capacity exceeded</div>
+    <div class="revenue-loss-icon">⚠</div>
+    <div class="revenue-loss-header">Ohrozené tržby</div>
+    <div class="revenue-loss-value"><span class="currency">€</span><span id="revenue-count">0</span></div>
+    <div class="revenue-loss-percent">${lossPercent}% ročných tržieb</div>
+    <div class="revenue-loss-note">Kapacita tímu je prekročená</div>
   `;
 
-  // Restart heartbeat animation by forcing reflow
+  // Restart animation by forcing reflow
   lossEl.style.animation = 'none';
-  lossEl.offsetHeight; // Trigger reflow
+  lossEl.offsetHeight;
   lossEl.style.animation = '';
   lossEl.style.display = 'block';
+
+  // Count-up animation for the revenue value
+  const countEl = document.getElementById('revenue-count');
+  const duration = 1200; // 1.2 seconds
+  const startTime = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function animateCount(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easedProgress = easeOutQuart(progress);
+    const current = Math.round(targetValue * easedProgress);
+
+    // Format with thousands separator
+    countEl.textContent = current.toLocaleString('sk-SK');
+
+    if (progress < 1) {
+      requestAnimationFrame(animateCount);
+    }
+  }
+
+  // Start counting after a brief delay for the card to appear
+  setTimeout(() => requestAnimationFrame(animateCount), 500);
 }
 
 // Mark result as stale when inputs change (but keep visible)
@@ -5276,6 +5877,53 @@ rxInput.oninput = () => {
 
 // Initialize with type-specific defaults
 updateDefaults();
+
+// Dismiss intro overlay and focus on pharmacy ID input
+function dismissIntro() {
+  const intro = document.getElementById('intro-overlay');
+  intro.classList.add('hidden');
+
+  // After transition, focus on pharmacy ID input with ready animation
+  setTimeout(() => {
+    intro.style.display = 'none';
+    const input = document.getElementById('pharmacy-id-input');
+    input.classList.add('ready');
+    input.focus();
+    setTimeout(() => input.classList.remove('ready'), 2000);
+  }, 500);
+
+  // Remember user has seen intro (session only)
+  sessionStorage.setItem('introSeen', 'true');
+}
+
+// Check if user has already seen intro this session
+window.addEventListener('load', () => {
+  if (sessionStorage.getItem('introSeen')) {
+    const intro = document.getElementById('intro-overlay');
+    intro.style.display = 'none';
+    // Focus on pharmacy ID input
+    setTimeout(() => {
+      const input = document.getElementById('pharmacy-id-input');
+      input.classList.add('ready');
+      input.focus();
+      setTimeout(() => input.classList.remove('ready'), 2000);
+    }, 600);
+  }
+});
+
+// Navigate back to pharmacy ID input
+function analyzeAnother() {
+  const input = document.getElementById('pharmacy-id-input');
+  input.value = '';
+  input.classList.add('ready');
+  input.focus();
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => input.classList.remove('ready'), 2000);
+
+  // Clear previous data
+  document.getElementById('pharmacy-hint').textContent = '';
+  document.getElementById('pharmacy-hint').classList.remove('loaded', 'error');
+}
 
 function expandIds() {
   document.getElementById("trust-ids").textContent = allIds.join(', ');
@@ -5424,7 +6072,7 @@ calcBtn.onclick = async () => {
     // Update actual FTE comparison (if pharmacy loaded)
     updateActualFteCompare(fteTotal);
 
-    // Show revenue loss (Kahneman loss framing)
+    // Show revenue loss (Kahneman loss framing) - THE PEAK
     // Use pre-calculated revenue_at_risk from pharmacy API when available
     const revenueAtRisk = window.selectedPharmacyData
       ? window.selectedPharmacyData.revenue_at_risk
@@ -5450,9 +6098,19 @@ calcBtn.onclick = async () => {
     // Scroll to result smoothly
     document.getElementById("result").scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    // Pulse AI tab after a delay to suggest deeper exploration
+    setTimeout(() => {
+      const agentTab = document.querySelector('.tab-btn.agent-tab');
+      if (agentTab) {
+        agentTab.classList.add('pulse-hint');
+        // Remove pulse after animation completes
+        setTimeout(() => agentTab.classList.remove('pulse-hint'), 6000);
+      }
+    }, 2000);
+
   } catch (error) {
     console.error('Error:', error);
-    showToast('Chyba pri výpočte FTE');
+    showToast('Výpočet sa nepodaril. Skúste to znova.');
   } finally {
     // Remove loading state
     calcBtn.classList.remove('loading');
@@ -5480,6 +6138,18 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (tabId === 'network' && !networkDataLoaded) {
       loadNetworkData();
     }
+
+    // Focus on pharmacy ID input when switching to calculator tab
+    if (tabId === 'calculator') {
+      const input = document.getElementById('pharmacy-id-input');
+      // Small delay to let tab animation complete
+      setTimeout(() => {
+        input.classList.add('ready');
+        input.focus();
+        // Remove ready class after animation
+        setTimeout(() => input.classList.remove('ready'), 2000);
+      }, 150);
+    }
   };
 });
 
@@ -5491,7 +6161,7 @@ async function loadNetworkData() {
   const contentEl = document.getElementById('network-content');
   
   loadingEl.style.display = 'flex';
-  loadingEl.innerHTML = 'Načítavam dáta...';
+  loadingEl.innerHTML = 'Pripravujem prehľad siete...';
   contentEl.style.display = 'none';
 
   try {
@@ -5516,15 +6186,15 @@ async function loadNetworkData() {
           : `${Math.round(totalRevenueAtRisk / 1000)}K €`)
       : '0 €';
 
-    // Hero stat
+    // Hero stat with counting animation
     const heroValueEl = document.getElementById('net-revenue-at-risk');
-    heroValueEl.textContent = revenueText;
+    animateCurrency(heroValueEl, totalRevenueAtRisk, 1200);
     heroValueEl.classList.add('pulse');
-    setTimeout(() => heroValueEl.classList.remove('pulse'), 600);
+    setTimeout(() => heroValueEl.classList.remove('pulse'), 1200);
 
     // Hero detail
     document.getElementById('hero-revenue-detail').textContent =
-      `${urgentCount} pharmacies with high productivity and understaffing`;
+      `${urgentCount} lekární s vysokou produktivitou a nedostatkom personálu`;
 
     // Quick stats row
     document.getElementById('net-urgent-count').textContent = urgentCount;
@@ -5592,11 +6262,11 @@ async function loadNetworkData() {
     console.error('Error loading network data:', error);
     document.getElementById('network-loading').innerHTML = `
       <div style="text-align:center;">
-        <p style="margin-bottom:10px;">Chyba pri načítaní dát siete</p>
+        <p style="margin-bottom:10px;">Nepodarilo sa načítať prehľad</p>
         <button onclick="loadNetworkData()" class="btn-load">⟳ Skúsiť znova</button>
       </div>
     `;
-    showToast('Chyba pri načítaní dát siete');
+    showToast('Nepodarilo sa načítať prehľad. Skúste to znova.');
   }
 }
 
@@ -5610,7 +6280,7 @@ function renderPriorityList(type, items) {
   list.innerHTML = '';
 
   if (items.length === 0) {
-    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">No pharmacies in this category</div>';
+    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">Žiadne lekárne v tejto kategórii</div>';
     return;
   }
 
@@ -5665,7 +6335,7 @@ function renderPriorityList(type, items) {
   if (totalCount > DISPLAY_LIMIT) {
     list.innerHTML += `
       <div style="padding:10px 14px;color:var(--text-muted);font-size:0.75rem;text-align:center;font-style:italic;">
-        Showing ${DISPLAY_LIMIT} of ${totalCount} · Complete list in CSV export
+        Zobrazených ${DISPLAY_LIMIT} z ${totalCount} · Kompletný zoznam v CSV exporte
       </div>
     `;
   }
@@ -5793,7 +6463,7 @@ function renderOutlierList(type, outliers) {
   list.innerHTML = '';
 
   if (outliers.length === 0) {
-    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">No pharmacies</div>';
+    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">Žiadne lekárne</div>';
     return;
   }
 
@@ -5858,8 +6528,6 @@ function renderFteComparison(fteValue, benchmark, comparable, isActual) {
 
 // Segment position chart
 function renderPositionCharts(segment, hourly, inputs, typ) {
-  // Update segment name
-  document.getElementById('segment-name').textContent = typ;
 
   // Convert inputs to display units
   const yourBloky = inputs.bloky / 1000;  // to thousands
@@ -6235,23 +6903,7 @@ function formatAnswer(text) {
 }
 
 // === AGENT MODE ===
-let agentModeEnabled = false;
-const agentToggle = document.getElementById('agent-toggle');
 const agentSuggestions = document.getElementById('agent-suggestions');
-
-agentToggle.addEventListener('click', () => {
-  agentModeEnabled = !agentModeEnabled;
-  agentToggle.classList.toggle('active', agentModeEnabled);
-
-  // Toggle suggestion visibility
-  chatSuggestions.style.display = agentModeEnabled ? 'none' : 'flex';
-  agentSuggestions.style.display = agentModeEnabled ? 'flex' : 'none';
-
-  // Update placeholder
-  chatInput.placeholder = agentModeEnabled
-    ? 'Pokročilá analýza (Claude)...'
-    : 'Napíšte otázku...';
-});
 
 // Handle agent suggestion clicks
 document.querySelectorAll('.chat-suggestion.agent').forEach(btn => {
@@ -6272,8 +6924,8 @@ async function sendAgentMessage(prompt) {
   historyIndex = -1;  // Reset history navigation
   tempInput = '';
 
-  // Add user message with agent indicator
-  addChatMessage(prompt + ' <span class="agent-mode-indicator">Claude</span>', 'user');
+  // Add user message
+  addChatMessage(prompt, 'user');
   chatInput.value = '';
   chatSend.disabled = true;
   agentSuggestions.style.display = 'none';
@@ -6448,6 +7100,39 @@ function animateValue(elementId, start, end, duration) {
   requestAnimationFrame(update);
 }
 
+// Animate currency value with K/M suffix
+function animateCurrency(element, targetValue, duration = 1000) {
+  if (!element || targetValue <= 0) {
+    element.textContent = '0 €';
+    return;
+  }
+
+  const startTime = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function formatCurrency(value) {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M €`;
+    }
+    return `${Math.round(value / 1000)}K €`;
+  }
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easedProgress = easeOutQuart(progress);
+    const current = targetValue * easedProgress;
+
+    element.textContent = formatCurrency(current);
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
 // === AGENT TAB FUNCTIONALITY ===
 const agentInput = document.getElementById('agent-input');
 const agentSubmit = document.getElementById('agent-submit');
@@ -6523,9 +7208,9 @@ document.querySelectorAll('.sample-question').forEach(btn => {
 // Submit button
 agentSubmit.addEventListener('click', submitAgentQuery);
 
-// Enter to submit, Shift+Enter for new line
+// Enter to submit
 agentInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter') {
     e.preventDefault();
     submitAgentQuery();
   }
@@ -6561,57 +7246,82 @@ async function submitAgentQuery() {
   agentHistoryIndex = -1;
   agentInput.value = '';
 
-  // Show loading
+  // Show streaming progress UI
   agentResults.innerHTML = `
-    <div class="agent-loading">
-      <div class="spinner"></div>
-      <div>Analyzujem...</div>
+    <div class="agent-streaming">
+      <div class="streaming-steps">
+        <div class="streaming-step active" id="step-planning">
+          <div class="step-icon"><div class="spinner-small"></div></div>
+          <div class="step-text">Plánovanie analýzy...</div>
+        </div>
+        <div class="streaming-step" id="step-tools">
+          <div class="step-icon">○</div>
+          <div class="step-text">Zber dát</div>
+          <div class="step-tools" id="tools-list"></div>
+        </div>
+        <div class="streaming-step" id="step-synthesis">
+          <div class="step-icon">○</div>
+          <div class="step-text">Generovanie odpovede</div>
+        </div>
+      </div>
     </div>
   `;
   agentSubmit.disabled = true;
 
+  const toolsCollected = [];
+  let finalResponse = null;
+  let finalError = null;
+
   try {
-    const response = await fetch('/api/agent/analyze', {
+    // Use streaming endpoint
+    const response = await fetch('/api/agent/analyze/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: query })
     });
 
-    const data = await response.json();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    const actionsHTML = `
-      <div class="agent-response-actions">
-        <button class="back-to-tools" onclick="showAgentWelcome()">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-          Späť na nástroje
-        </button>
-        <button class="download-pdf-btn" onclick="downloadResponsePDF()">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-          Stiahnuť PDF
-        </button>
-      </div>
-    `;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    if (data.error) {
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6));
+            handleStreamEvent(event, toolsCollected);
+
+            if (event.type === 'result') {
+              finalResponse = event;
+            } else if (event.type === 'error') {
+              finalError = event;
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE event:', line);
+          }
+        }
+      }
+    }
+
+    // Handle errors (result is rendered immediately via handleStreamEvent)
+    if (finalError && !finalResponse) {
       agentResults.innerHTML = `
-        ${actionsHTML}
-        <div class="agent-response">
-          <p style="color: #dc2626;">Chyba: ${data.error}</p>
-          ${data.fallback ? `<p style="font-size: 0.9rem; color: var(--text-secondary);">${data.fallback}</p>` : ''}
+        <div class="agent-response-actions">
+          <button class="back-to-tools" onclick="showAgentWelcome()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Späť na nástroje
+          </button>
         </div>
-      `;
-    } else {
-      // Format response with markdown
-      const formattedResponse = formatAgentResponse(data.response || '');
-
-      agentResults.innerHTML = `
-        ${actionsHTML}
-        <div class="agent-response" id="agent-response-content">${formattedResponse}</div>
-        ${data.tools_used && data.tools_used.length > 0 ? `
-          <div class="agent-tools-used">
-            Použité nástroje: ${data.tools_used.map(t => `<span>${t}</span>`).join('')}
-          </div>
-        ` : ''}
+        <div class="agent-response">
+          <p style="color: #dc2626;">Chyba: ${finalError.message || finalError.content || 'Neznáma chyba'}</p>
+        </div>
       `;
     }
   } catch (error) {
@@ -6629,6 +7339,88 @@ async function submitAgentQuery() {
   }
 
   agentSubmit.disabled = false;
+}
+
+function handleStreamEvent(event, toolsCollected) {
+  const stepPlanning = document.getElementById('step-planning');
+  const stepTools = document.getElementById('step-tools');
+  const stepSynthesis = document.getElementById('step-synthesis');
+  const toolsList = document.getElementById('tools-list');
+
+  switch (event.type) {
+    case 'status':
+      if (event.phase === 'planning') {
+        stepPlanning.classList.add('active');
+        stepPlanning.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+      } else if (event.phase === 'executing') {
+        // Planning done
+        stepPlanning.classList.remove('active');
+        stepPlanning.classList.add('done');
+        stepPlanning.querySelector('.step-icon').textContent = '✓';
+        stepPlanning.querySelector('.step-text').textContent = 'Plán pripravený';
+        // Tools active
+        stepTools.classList.add('active');
+        stepTools.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+      } else if (event.phase === 'synthesizing') {
+        // Tools done
+        stepTools.classList.remove('active');
+        stepTools.classList.add('done');
+        stepTools.querySelector('.step-icon').textContent = '✓';
+        // Synthesis active
+        stepSynthesis.classList.add('active');
+        stepSynthesis.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+      }
+      break;
+
+    case 'tool':
+      toolsCollected.push(event.tool);
+      if (toolsList) {
+        const toolSpan = document.createElement('span');
+        toolSpan.className = 'tool-badge';
+        toolSpan.textContent = event.tool;
+        toolsList.appendChild(toolSpan);
+      }
+      break;
+
+    case 'result':
+      // All steps done
+      if (stepSynthesis) {
+        stepSynthesis.classList.remove('active');
+        stepSynthesis.classList.add('done');
+        stepSynthesis.querySelector('.step-icon').textContent = '✓';
+      }
+      // Render immediately - don't wait for stream to end
+      renderAgentResult(event, toolsCollected);
+      break;
+  }
+}
+
+function renderAgentResult(event, toolsCollected) {
+  const actionsHTML = `
+    <div class="agent-response-actions">
+      <button class="back-to-tools" onclick="showAgentWelcome()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Späť na nástroje
+      </button>
+      <button class="download-pdf-btn" onclick="downloadResponsePDF()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        Stiahnuť PDF
+      </button>
+    </div>
+  `;
+
+  const formattedResponse = formatAgentResponse(event.response || '');
+  const toolsUsed = event.tools_used || toolsCollected;
+
+  agentResults.innerHTML = `
+    ${actionsHTML}
+    <div class="agent-response" id="agent-response-content">${formattedResponse}</div>
+    ${toolsUsed.length > 0 ? `
+      <div class="agent-tools-used">
+        Použité nástroje: ${toolsUsed.map(t => `<span>${t}</span>`).join('')}
+      </div>
+    ` : ''}
+  `;
 }
 
 function formatAgentResponse(text) {
@@ -6741,6 +7533,259 @@ function showAgentWelcome() {
         span.textContent = 'Zobraziť ďalšie nástroje (6)';
       }
     });
+  }
+}
+
+// ============================================
+// REVENUE TREND CHART
+// ============================================
+const trendMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+const trendMargin = { top: 20, right: 20, bottom: 30, left: 50 };
+const trendWidth = 580 - trendMargin.left - trendMargin.right;
+const trendHeight = 240 - trendMargin.top - trendMargin.bottom;
+
+function trendScaleX(month) {
+  return trendMargin.left + ((month - 1) / 11) * trendWidth;
+}
+
+function trendScaleY(value, minVal, maxVal) {
+  return trendMargin.top + trendHeight - ((value - minVal) / (maxVal - minVal)) * trendHeight;
+}
+
+function formatTrendCurrency(value) {
+  return new Intl.NumberFormat('sk-SK', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+function createTrendPath(data, minVal, maxVal) {
+  return data.map((d, i) => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minVal, maxVal);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+}
+
+function createTrendAreaPath(data, minVal, maxVal) {
+  const linePath = data.map((d, i) => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minVal, maxVal);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+
+  const lastX = trendScaleX(data[data.length - 1].month);
+  const firstX = trendScaleX(data[0].month);
+  const bottomY = trendMargin.top + trendHeight;
+
+  return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+}
+
+function renderTrendChart(revenueData, currentMonth, forecastData = []) {
+  const svg = document.getElementById('trend-chart');
+  const chartCard = document.getElementById('trend-chart-card');
+
+  if (!svg || !chartCard) return;
+
+  // Check if we have data
+  const hasData = revenueData && (revenueData[2019]?.length > 0 || revenueData[2020]?.length > 0 || revenueData[2021]?.length > 0);
+
+  if (!hasData) {
+    chartCard.style.display = 'none';
+    return;
+  }
+
+  chartCard.style.display = 'block';
+
+  // Find min/max values for scaling (including forecast)
+  const allValues = [...Object.values(revenueData).flat().map(d => d.revenue), ...forecastData.map(d => d.revenue)];
+  const minValue = Math.min(...allValues) * 0.9;
+  const maxValue = Math.max(...allValues) * 1.05;
+
+  let svgContent = '';
+
+  // Grid lines
+  const gridStep = (maxValue - minValue) / 4;
+  for (let i = 0; i <= 4; i++) {
+    const value = minValue + gridStep * i;
+    const y = trendScaleY(value, minValue, maxValue);
+    svgContent += `<line class="trend-grid-line" x1="${trendMargin.left}" y1="${y}" x2="${trendMargin.left + trendWidth}" y2="${y}" />`;
+    svgContent += `<text class="trend-axis-label trend-axis-label-value" x="${trendMargin.left - 8}" y="${y + 3}">${(value/1000).toFixed(0)}k</text>`;
+  }
+
+  // Month labels
+  trendMonthNames.forEach((name, i) => {
+    const x = trendScaleX(i + 1);
+    svgContent += `<text class="trend-axis-label trend-axis-label-month" x="${x}" y="${trendMargin.top + trendHeight + 18}">${name}</text>`;
+  });
+
+  // Areas (back to front)
+  if (revenueData[2019]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2019" d="${createTrendAreaPath(revenueData[2019], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2020]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2020" d="${createTrendAreaPath(revenueData[2020], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2021]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2021" d="${createTrendAreaPath(revenueData[2021], minValue, maxValue)}" />`;
+  }
+
+  // Lines (back to front)
+  if (revenueData[2019]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2019" d="${createTrendPath(revenueData[2019], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2020]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2020" d="${createTrendPath(revenueData[2020], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2021]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2021" d="${createTrendPath(revenueData[2021], minValue, maxValue)}" />`;
+  }
+
+  // Forecast line (dashed, continuing from last 2021 data point)
+  if (forecastData.length > 0 && revenueData[2021]?.length > 0) {
+    const lastActual = revenueData[2021][revenueData[2021].length - 1];
+    const forecastWithConnection = [lastActual, ...forecastData];
+    const forecastLinePath = forecastWithConnection.map((d, i) => {
+      const x = trendScaleX(d.month);
+      const y = trendScaleY(d.revenue, minValue, maxValue);
+      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+    svgContent += `<path class="trend-line-forecast" d="${forecastLinePath}" />`;
+  }
+
+  // Current month marker on 2021 line
+  if (revenueData[2021]?.length > 0) {
+    const currentData = revenueData[2021].find(d => d.month === currentMonth);
+    if (currentData) {
+      const cx = trendScaleX(currentData.month);
+      const cy = trendScaleY(currentData.revenue, minValue, maxValue);
+      svgContent += `<g class="trend-current-marker" style="transform-origin: ${cx}px ${cy}px;">
+        <circle cx="${cx}" cy="${cy}" r="5" fill="var(--brand-green)" />
+        <circle cx="${cx}" cy="${cy}" r="3" fill="white" />
+      </g>`;
+    }
+  }
+
+  // Interactive hover points
+  Object.entries(revenueData).forEach(([year, data]) => {
+    data.forEach(d => {
+      const x = trendScaleX(d.month);
+      const y = trendScaleY(d.revenue, minValue, maxValue);
+      svgContent += `<circle
+        class="trend-hover-point"
+        cx="${x}"
+        cy="${y}"
+        r="12"
+        fill="transparent"
+        data-year="${year}"
+        data-month="${d.month}"
+        data-revenue="${d.revenue}"
+        style="cursor: pointer;"
+      />`;
+    });
+  });
+
+  // Forecast hover points
+  forecastData.forEach(d => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minValue, maxValue);
+    svgContent += `<circle
+      class="trend-hover-point"
+      cx="${x}"
+      cy="${y}"
+      r="12"
+      fill="transparent"
+      data-year="2021"
+      data-month="${d.month}"
+      data-revenue="${d.revenue}"
+      data-forecast="true"
+      style="cursor: pointer;"
+    />`;
+  });
+
+  svg.innerHTML = svgContent;
+
+  // Add hover interactions
+  const tooltip = document.getElementById('trend-tooltip');
+  const hoverPoints = svg.querySelectorAll('.trend-hover-point');
+
+  hoverPoints.forEach(point => {
+    point.addEventListener('mouseenter', (e) => {
+      const year = e.target.getAttribute('data-year');
+      const month = parseInt(e.target.getAttribute('data-month'));
+      const revenue = parseFloat(e.target.getAttribute('data-revenue'));
+      const isForecast = e.target.getAttribute('data-forecast') === 'true';
+
+      const label = isForecast ? `${trendMonthNames[month - 1]} ${year} (prognóza)` : `${trendMonthNames[month - 1]} ${year}`;
+      tooltip.innerHTML = `${label}: ${formatTrendCurrency(revenue)}`;
+      tooltip.style.opacity = '1';
+
+      const rect = svg.getBoundingClientRect();
+      const x = parseFloat(e.target.getAttribute('cx'));
+      const y = parseFloat(e.target.getAttribute('cy'));
+
+      const tooltipX = (x / 580) * rect.width;
+      const tooltipY = (y / 240) * rect.height;
+
+      tooltip.style.left = `${tooltipX}px`;
+      tooltip.style.top = `${tooltipY - 35}px`;
+      tooltip.style.transform = 'translateX(-50%)';
+    });
+
+    point.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+  });
+}
+
+function updateTrendYoY(yoy2020, yoy2021) {
+  const el2020 = document.getElementById('trend-yoy-2020');
+  const el2021 = document.getElementById('trend-yoy-2021');
+
+  if (el2020) {
+    if (yoy2020 !== null && !isNaN(yoy2020)) {
+      el2020.textContent = (yoy2020 >= 0 ? '+' : '') + yoy2020.toFixed(1) + '%';
+      el2020.classList.toggle('positive', yoy2020 >= 0);
+      el2020.classList.toggle('negative', yoy2020 < 0);
+    } else {
+      el2020.textContent = '-';
+      el2020.classList.remove('positive', 'negative');
+    }
+  }
+
+  if (el2021) {
+    if (yoy2021 !== null && !isNaN(yoy2021)) {
+      el2021.textContent = (yoy2021 >= 0 ? '+' : '') + yoy2021.toFixed(1) + '%';
+      el2021.classList.toggle('positive', yoy2021 >= 0);
+      el2021.classList.toggle('negative', yoy2021 < 0);
+    } else {
+      el2021.textContent = '-';
+      el2021.classList.remove('positive', 'negative');
+    }
+  }
+}
+
+async function loadTrendChart(pharmacyId) {
+  try {
+    const response = await fetch(`/api/pharmacy/${pharmacyId}/revenue`);
+    if (!response.ok) {
+      document.getElementById('trend-chart-card').style.display = 'none';
+      return;
+    }
+
+    const data = await response.json();
+
+    // Update YoY values
+    updateTrendYoY(data.yoy_growth_2020, data.yoy_growth_2021);
+
+    // Render chart with forecast
+    renderTrendChart(data.monthly, data.current_month || 8, data.forecast || []);
+
+  } catch (error) {
+    console.error('Error loading trend chart:', error);
+    document.getElementById('trend-chart-card').style.display = 'none';
   }
 }
 </script>

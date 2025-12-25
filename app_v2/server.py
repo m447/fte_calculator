@@ -135,7 +135,7 @@ def check_api_key():
 def is_browser_request():
     """Check if request is from browser (has Referer from our app)."""
     referer = request.headers.get('Referer', '')
-    return 'fte-calculator' in referer or 'localhost' in referer
+    return 'fte-calc' in referer or 'localhost' in referer
 
 
 def authenticate():

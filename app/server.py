@@ -165,6 +165,13 @@ SEGMENT_PROPORTIONS = model_pkg.get('proportions', {
     'E - poliklinika': {'prop_F': 0.4715, 'prop_L': 0.3734, 'prop_ZF': 0.2243},
 })
 
+# FTE gap thresholds - single source of truth
+# These define what counts as "notable" vs "significant" staffing gaps
+FTE_GAP_NOTABLE = 0.5     # Threshold for counting as understaffed/overstaffed
+FTE_GAP_URGENT = 0.5      # Threshold for urgent priority (with productivity check)
+FTE_GAP_OPTIMIZE = 0.7    # Threshold for optimize priority (overstaffed)
+FTE_GAP_OUTLIER = 1.0     # Threshold for significant outliers
+
 # Load reference data
 df = pd.read_csv(DATA_PATH)
 defaults = df.median(numeric_only=True).to_dict()
@@ -175,6 +182,100 @@ with open(GROSS_FACTORS_PATH, 'r') as f:
     gross_factors_data = json.load(f)
 PHARMACY_GROSS_FACTORS = {int(k): v for k, v in gross_factors_data['factors'].items()}
 NETWORK_MEDIAN_FACTORS = gross_factors_data['network_medians']
+
+# Type-based GROSS conversion factors (NET to GROSS)
+# Used when pharmacy-specific factors are not available
+GROSS_CONVERSION = {
+    'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
+    'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
+    'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
+    'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
+    'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
+}
+GROSS_CONVERSION_DEFAULT = {'F': 1.21, 'L': 1.22, 'ZF': 1.20}
+
+
+def get_gross_factors(pharmacy_id, typ):
+    """Get gross conversion factors - pharmacy-specific if available, otherwise type-based."""
+    if pharmacy_id and int(pharmacy_id) in PHARMACY_GROSS_FACTORS:
+        return PHARMACY_GROSS_FACTORS[int(pharmacy_id)]
+    return GROSS_CONVERSION.get(typ, GROSS_CONVERSION_DEFAULT)
+
+
+def calculate_pharmacy_fte(row):
+    """
+    Single source of truth for pharmacy FTE calculation.
+
+    Args:
+        row: DataFrame row or dict with pharmacy data
+
+    Returns:
+        dict with predicted_fte, actual_fte, fte_diff, and breakdown
+    """
+    pharmacy_id = int(row['id'])
+    typ = row['typ']
+
+    # Get conversion factors (pharmacy-specific or type-based)
+    conv = get_gross_factors(pharmacy_id, typ)
+    props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+
+    # Build features for prediction
+    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
+    effective_bloky = row['bloky'] * (1 + rx_time_factor * row['podiel_rx'])
+
+    features = {col: row.get(col, 0) for col in model_pkg['feature_cols']}
+    features['effective_bloky'] = effective_bloky
+    # CRITICAL: Clip prod_residual to 0 (v5 asymmetric model)
+    features['prod_residual'] = max(0, features.get('prod_residual', 0))
+
+    # Predict NET FTE
+    X = pd.DataFrame([features])
+    predicted_fte_net = model_pkg['models']['fte'].predict(X)[0]
+
+    # Convert predicted NET to GROSS
+    fte_F_pred = predicted_fte_net * props['prop_F'] * conv['F']
+    fte_L_pred = predicted_fte_net * props['prop_L'] * conv['L']
+    fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
+    predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
+
+    # Calculate actual GROSS FTE from role breakdown
+    fte_F_actual = float(row['fte_F']) * conv['F']
+    fte_L_actual = float(row['fte_L']) * conv['L']
+    fte_ZF_actual = float(row['fte_ZF']) * conv['ZF']
+    actual_fte = fte_F_actual + fte_L_actual + fte_ZF_actual
+
+    # Calculate difference
+    fte_diff = predicted_fte - actual_fte
+
+    return {
+        'predicted_fte': predicted_fte,
+        'predicted_fte_net': predicted_fte_net,
+        'predicted_fte_F': fte_F_pred,
+        'predicted_fte_L': fte_L_pred,
+        'predicted_fte_ZF': fte_ZF_pred,
+        'actual_fte': actual_fte,
+        'actual_fte_F': fte_F_actual,
+        'actual_fte_L': fte_L_actual,
+        'actual_fte_ZF': fte_ZF_actual,
+        'fte_diff': fte_diff,
+        'gross_factors': conv,
+    }
+
+
+def is_above_avg_productivity(row):
+    """Single source of truth for determining above-average productivity."""
+    return float(row.get('prod_residual', 0)) > 0
+
+
+def calculate_prod_pct(row):
+    """
+    Single source of truth for productivity percentage calculation.
+    Returns productivity percentage above/below segment average.
+    """
+    prod_residual = float(row.get('prod_residual', 0))
+    typ = row.get('typ', 'D - street')
+    segment_mean = SEGMENT_PROD_MEANS.get(typ, 8.0)
+    return round(prod_residual / segment_mean * 100, 0)
 
 
 @app.route('/')
@@ -477,12 +578,9 @@ def predict():
             pharmacy_matches = df[df['id'] == pharmacy_id_int]
             if not pharmacy_matches.empty:
                 p_row = pharmacy_matches.iloc[0]
-                # Determine factors for actuals (specific or default)
-                if pharmacy_id_int in PHARMACY_GROSS_FACTORS:
-                    a_conv = PHARMACY_GROSS_FACTORS[pharmacy_id_int]
-                else:
-                    a_conv = GROSS_CONVERSION.get(p_row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-                
+                # Use shared get_gross_factors() - single source of truth
+                a_conv = get_gross_factors(pharmacy_id_int, p_row['typ'])
+
                 actual_fte = p_row['fte_F'] * a_conv['F'] + \
                              p_row['fte_L'] * a_conv['L'] + \
                              p_row['fte_ZF'] * a_conv['ZF']
@@ -600,45 +698,22 @@ def get_network():
     # This matches how the model was trained
     df_calc['prod_residual'] = df_calc['prod_residual'].clip(lower=0)
 
-    # Build features and predict
+    # Build features and predict (bulk for performance)
     X = pd.DataFrame([{col: row.get(col, 0) for col in model_pkg['feature_cols']}
                       for _, row in df_calc.iterrows()])
     df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-    # Role-specific GROSS conversion (same as /api/predict)
-    GROSS_CONVERSION = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-
+    # Use shared functions for gross conversion (single source of truth)
     def calc_gross_fte_predicted(fte_net, typ, pharmacy_id):
-        """Calculate GROSS FTE for predicted using pharmacy-specific or type-based factors."""
+        """Calculate GROSS FTE for predicted using shared get_gross_factors()."""
         props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        # Use pharmacy-specific factors if available, otherwise type-based
-        if int(pharmacy_id) in PHARMACY_GROSS_FACTORS:
-            conv = PHARMACY_GROSS_FACTORS[int(pharmacy_id)]
-        else:
-            conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        fte_F = fte_net * props['prop_F'] * conv['F']
-        fte_L = fte_net * props['prop_L'] * conv['L']
-        fte_ZF = fte_net * props['prop_ZF'] * conv['ZF']
-        return fte_F + fte_L + fte_ZF
+        conv = get_gross_factors(pharmacy_id, typ)
+        return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
     def calc_gross_fte_actual(row):
-        """Calculate actual GROSS FTE using pharmacy-specific or type-based factors."""
-        # Use pharmacy-specific factors if available, otherwise type-based
-        if int(row['id']) in PHARMACY_GROSS_FACTORS:
-            conv = PHARMACY_GROSS_FACTORS[int(row['id'])]
-        else:
-            conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        # Use actual role breakdown from data, not segment proportions
-        fte_F = row['fte_F'] * conv['F']
-        fte_L = row['fte_L'] * conv['L']
-        fte_ZF = row['fte_ZF'] * conv['ZF']
-        return fte_F + fte_L + fte_ZF
+        """Calculate actual GROSS FTE using shared get_gross_factors()."""
+        conv = get_gross_factors(row['id'], row['typ'])
+        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
     df_calc['predicted_fte'] = df_calc.apply(
         lambda row: calc_gross_fte_predicted(row['predicted_fte_net'], row['typ'], row['id']), axis=1)
@@ -681,10 +756,8 @@ def get_network():
     overstaffed = df_calc[df_calc['fte_diff'] < -1.0].nsmallest(15, 'fte_diff')
 
     def pharmacy_to_dict(row, include_priority_data=False):
-        # Always compute productivity status using prod_residual
-        # prod_residual > 0 means above segment average productivity
-        prod_residual = row.get('prod_residual', 0)
-        is_above_avg = prod_residual > 0
+        # Use shared helper function - single source of truth
+        is_above_avg = is_above_avg_productivity(row)
 
         result = {
             'id': int(row['id']),
@@ -700,21 +773,15 @@ def get_network():
         }
         if include_priority_data:
             # Add fields needed for priority dashboard
-            # Use prod_residual for productivity calculation (already normalized by segment)
-            prod_residual = row.get('prod_residual', 0)
-            is_above_avg = prod_residual > 0
-            prod_pct = round(prod_residual * 100, 0)  # prod_residual is already a ratio
+            # Use shared helper functions - single source of truth
+            is_above_avg = is_above_avg_productivity(row)
+            prod_pct = calculate_prod_pct(row)
             bloky_trend = round(row.get('bloky_trend', 0) * 100, 0)
 
-            # Revenue at risk calculation (from utilization.html formula)
-            # Loss = (Overload_ratio - 1) × 50% × Revenue
-            # IMPORTANT: Use rounded values (same as displayed) for consistency
-            revenue_at_risk = 0
-            actual_fte_rounded = round(row['actual_fte'], 1)
-            predicted_fte_rounded = round(row['predicted_fte'], 1)
-            if predicted_fte_rounded > actual_fte_rounded and is_above_avg:  # understaffed + productive
-                overload_ratio = predicted_fte_rounded / actual_fte_rounded if actual_fte_rounded > 0 else 1
-                revenue_at_risk = int((overload_ratio - 1) * 0.5 * row['trzby'])
+            # Revenue at risk - use shared function
+            revenue_at_risk = calculate_revenue_at_risk(
+                row['predicted_fte'], row['actual_fte'], row['trzby'], is_above_avg
+            )
 
             result.update({
                 'is_above_avg_productivity': is_above_avg,
@@ -733,13 +800,10 @@ def get_network():
     # Priority categories for dashboard
     # Compute priority fields for each pharmacy
     def get_priority_data(row):
-        # Use prod_residual for productivity (positive = above segment average)
-        prod_residual = row.get('prod_residual', 0)
-        is_above_avg = prod_residual > 0
-        bloky_trend = row.get('bloky_trend', 0)
+        # Use shared helper function - single source of truth
         return {
-            'is_above_avg': is_above_avg,
-            'bloky_trend': bloky_trend
+            'is_above_avg': is_above_avg_productivity(row),
+            'bloky_trend': row.get('bloky_trend', 0)
         }
 
     # Urgent: understaffed (gap > 0.5) + above-avg productivity (losing revenue)
@@ -840,26 +904,17 @@ def search_pharmacies():
                       for _, row in df_calc.iterrows()])
     df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-    GROSS_CONVERSION = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-
-    def calc_gross(fte_net, typ):
+    # Use shared get_gross_factors() - single source of truth
+    def calc_gross(fte_net, typ, pharmacy_id):
         props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        return fte_net * props['prop_F'] * conv['F'] + \
-               fte_net * props['prop_L'] * conv['L'] + \
-               fte_net * props['prop_ZF'] * conv['ZF']
+        conv = get_gross_factors(pharmacy_id, typ)
+        return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
     def calc_actual_gross(row):
-        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        conv = get_gross_factors(row['id'], row['typ'])
         return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
-    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
@@ -904,7 +959,7 @@ def search_pharmacies():
     limit = request.args.get('limit', 10, type=int)
     result = result.head(limit)
 
-    # Format output
+    # Format output using shared helper functions
     pharmacies = []
     for _, row in result.iterrows():
         pharmacies.append({
@@ -917,7 +972,7 @@ def search_pharmacies():
             'actual_fte': round(row['actual_fte'], 1),
             'predicted_fte': round(row['predicted_fte'], 1),
             'fte_gap': round(row['fte_gap'], 1),
-            'is_above_avg': row['prod_residual'] > 0,
+            'is_above_avg': is_above_avg_productivity(row),
             'revenue_at_risk': int(row.get('revenue_at_risk', 0))
         })
 
@@ -1012,58 +1067,15 @@ def get_pharmacy(pharmacy_id):
         return jsonify({'error': 'Pharmacy not found'}), 404
 
     row = pharmacy.iloc[0]
-    typ = row['typ']
-    pharmacy_id = int(row['id'])
 
-    # Use pharmacy-specific gross factors if available, otherwise fall back to type-based
-    TYPE_GROSS_CONV = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
+    # Use shared calculate_pharmacy_fte() - single source of truth
+    fte_result = calculate_pharmacy_fte(row)
 
-    if pharmacy_id in PHARMACY_GROSS_FACTORS:
-        conv = PHARMACY_GROSS_FACTORS[pharmacy_id]
-    else:
-        conv = TYPE_GROSS_CONV.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-
-    props = model_pkg['proportions'].get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-
-    # Calculate actual GROSS FTE using actual role breakdown and pharmacy-specific factors
-    fte_F_gross = float(row['fte_F']) * conv['F']
-    fte_L_gross = float(row['fte_L']) * conv['L']
-    fte_ZF_gross = float(row['fte_ZF']) * conv['ZF']
-    actual_fte = fte_F_gross + fte_L_gross + fte_ZF_gross
-
-    # Calculate PREDICTED FTE (same as /api/network for consistency)
-    rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
-    effective_bloky = row['bloky'] * (1 + rx_time_factor * row['podiel_rx'])
-
-    # Build features for prediction (same as network)
-    features = {col: row.get(col, 0) for col in model_pkg['feature_cols']}
-    features['effective_bloky'] = effective_bloky  # Must be calculated, not from row
-    X = pd.DataFrame([features])
-    predicted_fte_net = model_pkg['models']['fte'].predict(X)[0]
-
-    # Convert predicted NET to GROSS using pharmacy-specific factors (same conv as actual)
-    fte_F_pred = predicted_fte_net * props['prop_F'] * conv['F']
-    fte_L_pred = predicted_fte_net * props['prop_L'] * conv['L']
-    fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
-    predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
-
-    # Calculate difference
-    fte_diff = predicted_fte - actual_fte
-
-    # Revenue at risk calculation (same as in get_network)
-    revenue_at_risk = 0
-    actual_fte_rounded = round(actual_fte, 1)
-    predicted_fte_rounded = round(predicted_fte, 1)
-    is_above_avg = float(row.get('prod_residual', 0)) > 0
-    if predicted_fte_rounded > actual_fte_rounded and is_above_avg:
-        overload_ratio = predicted_fte_rounded / actual_fte_rounded if actual_fte_rounded > 0 else 1
-        revenue_at_risk = int((overload_ratio - 1) * 0.5 * row['trzby'])
+    # Use shared helper functions - single source of truth
+    is_above_avg = is_above_avg_productivity(row)
+    revenue_at_risk = calculate_revenue_at_risk(
+        fte_result['predicted_fte'], fte_result['actual_fte'], row['trzby'], is_above_avg
+    )
 
     return jsonify({
         'id': int(row['id']),
@@ -1072,23 +1084,115 @@ def get_pharmacy(pharmacy_id):
         'bloky': int(row['bloky']),
         'trzby': float(row['trzby']),
         'podiel_rx': float(row['podiel_rx']),
-        'actual_fte': round(actual_fte, 1),
-        'actual_fte_F': round(fte_F_gross, 1),
-        'actual_fte_L': round(fte_L_gross, 1),
-        'actual_fte_ZF': round(fte_ZF_gross, 1),
-        'predicted_fte': round(predicted_fte, 1),
-        'predicted_fte_F': round(fte_F_pred, 1),
-        'predicted_fte_L': round(fte_L_pred, 1),
-        'predicted_fte_ZF': round(fte_ZF_pred, 1),
-        'fte_diff': round(fte_diff, 1),
+        'actual_fte': round(fte_result['actual_fte'], 1),
+        'actual_fte_F': round(fte_result['actual_fte_F'], 1),
+        'actual_fte_L': round(fte_result['actual_fte_L'], 1),
+        'actual_fte_ZF': round(fte_result['actual_fte_ZF'], 1),
+        'predicted_fte': round(fte_result['predicted_fte'], 1),
+        'predicted_fte_F': round(fte_result['predicted_fte_F'], 1),
+        'predicted_fte_L': round(fte_result['predicted_fte_L'], 1),
+        'predicted_fte_ZF': round(fte_result['predicted_fte_ZF'], 1),
+        'fte_diff': round(fte_result['fte_diff'], 1),
         'revenue_at_risk': revenue_at_risk,
-        'gross_factors': conv,  # Pharmacy-specific or type-based factors
+        'gross_factors': fte_result['gross_factors'],
         'prod_residual': round(float(row.get('prod_residual', 0)), 2),
-        'is_above_avg_productivity': float(row.get('prod_residual', 0)) > 0,
-        # Productivity percentage above/below segment average
-        'prod_pct': round(float(row.get('prod_residual', 0)) / SEGMENT_PROD_MEANS.get(row['typ'], 8.0) * 100, 0),
-        # Trend: bloky growth rate (already stored as percentage in data)
-        'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0)  # Convert to percentage points
+        'is_above_avg_productivity': is_above_avg,
+        'prod_pct': calculate_prod_pct(row),
+        'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0)
+    })
+
+
+# Load historical revenue data for trend charts
+REVENUE_MONTHLY_PATH = PROJECT_ROOT / "data" / "revenue_monthly.csv"
+REVENUE_ANNUAL_PATH = PROJECT_ROOT / "data" / "revenue_annual.csv"
+
+if REVENUE_MONTHLY_PATH.exists() and REVENUE_ANNUAL_PATH.exists():
+    df_revenue_monthly = pd.read_csv(REVENUE_MONTHLY_PATH)
+    df_revenue_annual = pd.read_csv(REVENUE_ANNUAL_PATH)
+    REVENUE_DATA_AVAILABLE = True
+else:
+    df_revenue_monthly = None
+    df_revenue_annual = None
+    REVENUE_DATA_AVAILABLE = False
+
+
+@app.route('/api/pharmacy/<int:pharmacy_id>/revenue', methods=['GET'])
+@requires_api_auth
+def get_pharmacy_revenue(pharmacy_id):
+    """Get historical revenue data for a pharmacy (for trend chart)."""
+    if not REVENUE_DATA_AVAILABLE:
+        return jsonify({'error': 'Revenue data not available'}), 404
+
+    # Get monthly data for this pharmacy
+    pharm_monthly = df_revenue_monthly[df_revenue_monthly['id'] == pharmacy_id]
+    if len(pharm_monthly) == 0:
+        return jsonify({'error': 'No revenue data for this pharmacy'}), 404
+
+    # Organize by year
+    monthly = {}
+    for year in [2019, 2020, 2021]:
+        year_data = pharm_monthly[pharm_monthly['year'] == year].sort_values('month')
+        if len(year_data) > 0:
+            monthly[year] = [
+                {'month': int(row['month']), 'revenue': float(row['revenue'])}
+                for _, row in year_data.iterrows()
+            ]
+
+    # Get YoY growth data
+    pharm_annual = df_revenue_annual[df_revenue_annual['id'] == pharmacy_id]
+    yoy_2020 = None
+    yoy_2021 = None
+    if len(pharm_annual) > 0:
+        annual_row = pharm_annual.iloc[0]
+        yoy_2020 = annual_row['yoy_growth_2020'] if pd.notna(annual_row['yoy_growth_2020']) else None
+        yoy_2021 = annual_row['yoy_growth_2021'] if pd.notna(annual_row['yoy_growth_2021']) else None
+
+    # Determine current month (last month with 2021 data)
+    current_month = 8  # Default to August (last month in data)
+    if 2021 in monthly and len(monthly[2021]) > 0:
+        current_month = max(d['month'] for d in monthly[2021])
+
+    # Calculate 3-month forecast using 55% seasonal adjustment (optimal from backtest: 11.1% MAPE)
+    # Formula: forecast = recent_avg × (0.45 + 0.55 × relative_seasonal_factor)
+    # Seasonal factors from 2019 (pre-COVID baseline), normalized to annual avg = 1.0
+    forecast = []
+    seasonal_factors = {
+        1: 1.003, 2: 0.981, 3: 0.990, 4: 0.959, 5: 0.992, 6: 0.962,
+        7: 0.954, 8: 0.887, 9: 1.028, 10: 1.082, 11: 1.026, 12: 1.135
+    }
+
+    if 2021 in monthly and len(monthly[2021]) >= 3:
+        # Get last 3 months of data
+        sorted_2021 = sorted(monthly[2021], key=lambda x: x['month'])
+        last_3_months = sorted_2021[-3:]
+        recent_avg = sum(d['revenue'] for d in last_3_months) / 3
+
+        # Calculate base period seasonal strength
+        base_months = [d['month'] for d in last_3_months]
+        base_seasonal = sum(seasonal_factors.get(m, 1.0) for m in base_months) / 3
+
+        # Forecast next 3 months with relative seasonal adjustment
+        seasonal_weight = 0.55
+        for i in range(1, 4):  # Next 3 months
+            forecast_month = current_month + i
+            if forecast_month > 12:
+                forecast_month -= 12  # Wrap to next year
+
+            target_seasonal = seasonal_factors.get(forecast_month, 1.0)
+            relative_factor = target_seasonal / base_seasonal if base_seasonal > 0 else 1.0
+
+            adjusted = recent_avg * ((1 - seasonal_weight) + seasonal_weight * relative_factor)
+            forecast.append({
+                'month': forecast_month,
+                'revenue': round(adjusted, 2)
+            })
+
+    return jsonify({
+        'monthly': monthly,
+        'yoy_growth_2020': yoy_2020,
+        'yoy_growth_2021': yoy_2021,
+        'current_month': current_month,
+        'forecast': forecast
     })
 
 
@@ -1252,42 +1356,23 @@ def execute_search_pharmacies(args):
                       for _, row in df_calc.iterrows()])
     df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-    GROSS_CONVERSION = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-
-    def calc_gross(fte_net, typ):
+    # Use shared get_gross_factors() - single source of truth
+    def calc_gross(fte_net, typ, pharmacy_id):
         props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        return fte_net * props['prop_F'] * conv['F'] + \
-               fte_net * props['prop_L'] * conv['L'] + \
-               fte_net * props['prop_ZF'] * conv['ZF']
+        conv = get_gross_factors(pharmacy_id, typ)
+        return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
     def calc_actual_gross(row):
-        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        conv = get_gross_factors(row['id'], row['typ'])
         return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
-    def calc_revenue_at_risk(row):
-        is_above_avg = row['prod_residual'] > 0
-        actual_rounded = round(row['actual_fte'], 1)
-        predicted_rounded = round(row['predicted_fte'], 1)
-        if predicted_rounded > actual_rounded and is_above_avg and actual_rounded > 0:
-            overload_ratio = predicted_rounded / actual_rounded
-            return int((overload_ratio - 1) * 0.5 * row['trzby'])
-        return 0
-
-    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
-    df_calc['revenue_at_risk'] = df_calc.apply(calc_revenue_at_risk, axis=1)
-
-    # Calculate productivity percentage
-    df_calc['prod_pct'] = df_calc.apply(
-        lambda r: round(r['prod_residual'] / SEGMENT_PROD_MEANS.get(r['typ'], 8.0) * 100, 0), axis=1)
+    # Use shared helper functions - single source of truth
+    df_calc['revenue_at_risk'] = df_calc.apply(
+        lambda r: calculate_revenue_at_risk(r['predicted_fte'], r['actual_fte'], r['trzby'], is_above_avg_productivity(r)), axis=1)
+    df_calc['prod_pct'] = df_calc.apply(calculate_prod_pct, axis=1)
 
     result = df_calc.copy()
 
@@ -1332,6 +1417,7 @@ def execute_search_pharmacies(args):
     limit = min(args.get('limit', 10), 20)
     result = result.head(limit)
 
+    # Format output using shared helper functions
     pharmacies = []
     for _, row in result.iterrows():
         pharmacies.append({
@@ -1343,7 +1429,7 @@ def execute_search_pharmacies(args):
             'actual_fte': round(row['actual_fte'], 1),
             'predicted_fte': round(row['predicted_fte'], 1),
             'fte_gap': round(row['fte_gap'], 1),
-            'is_above_avg': row['prod_residual'] > 0,
+            'is_above_avg': is_above_avg_productivity(row),
             'revenue_at_risk': int(row.get('revenue_at_risk', 0))
         })
 
@@ -1366,26 +1452,17 @@ def execute_get_network_summary():
                       for _, row in df_calc.iterrows()])
     df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-    GROSS_CONVERSION = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-
-    def calc_gross_pred(fte_net, typ):
+    # Use shared get_gross_factors() - single source of truth
+    def calc_gross_pred(fte_net, typ, pharmacy_id):
         props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        return fte_net * props['prop_F'] * conv['F'] + \
-               fte_net * props['prop_L'] * conv['L'] + \
-               fte_net * props['prop_ZF'] * conv['ZF']
+        conv = get_gross_factors(pharmacy_id, typ)
+        return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
     def calc_actual_gross(row):
-        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        conv = get_gross_factors(row['id'], row['typ'])
         return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
-    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross_pred(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross_pred(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
@@ -1450,7 +1527,8 @@ def execute_get_pharmacy_details(pharmacy_id):
                     predicted_fte_net * props['prop_L'] * conv['L'] + \
                     predicted_fte_net * props['prop_ZF'] * conv['ZF']
 
-    prod_pct = round(float(row.get('prod_residual', 0)) / SEGMENT_PROD_MEANS.get(typ, 8.0) * 100, 0)
+    # Use shared helper function - single source of truth
+    prod_pct = calculate_prod_pct(row)
 
     return {
         'id': int(row['id']),
@@ -1540,32 +1618,21 @@ def execute_detect_growth_opportunities(args):
                       for _, row in df_calc.iterrows()])
     df_calc['predicted_fte_net'] = model_pkg['models']['fte'].predict(X)
 
-    GROSS_CONVERSION = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-
-    def calc_gross(fte_net, typ):
+    # Use shared get_gross_factors() - single source of truth
+    def calc_gross(fte_net, typ, pharmacy_id):
         props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = GROSS_CONVERSION.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
-        return fte_net * props['prop_F'] * conv['F'] + \
-               fte_net * props['prop_L'] * conv['L'] + \
-               fte_net * props['prop_ZF'] * conv['ZF']
+        conv = get_gross_factors(pharmacy_id, typ)
+        return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
     def calc_actual_gross(row):
-        conv = GROSS_CONVERSION.get(row['typ'], {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+        conv = get_gross_factors(row['id'], row['typ'])
         return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
 
-    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ']), axis=1)
+    df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
     df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
-
-    # Calculate productivity percentage
-    df_calc['prod_pct'] = df_calc.apply(
-        lambda r: round(r['prod_residual'] / SEGMENT_PROD_MEANS.get(r['typ'], 8.0) * 100, 0), axis=1)
+    # Use shared helper function - single source of truth
+    df_calc['prod_pct'] = df_calc.apply(calculate_prod_pct, axis=1)
 
     # Filter for growth risk pattern: growing + high productivity
     # bloky_trend > min_growth AND prod_residual > 0 (above segment average)

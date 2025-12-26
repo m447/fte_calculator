@@ -3531,6 +3531,16 @@ input:checked + .toggle-slider:before {
   color: var(--brand-green);
 }
 
+/* Legend text after tables - smaller font */
+.chat-message p:has(+ table),
+.chat-message table + p,
+.chat-message small,
+.chat-message .legend {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
 /* Also style bars in agent responses */
 .agent-response .bar-filled {
   color: var(--brand-green);

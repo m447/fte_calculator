@@ -389,7 +389,7 @@ TABUĽKA PRE VIACERO LEKÁRNÍ (ID JE POVINNÉ!)
 </table>
 
 ⚠️ Stĺpec ID je POVINNÝ - bez neho nie je jasné, ktorú lekáreň používateľ má otvoriť!
-Legenda: Prod ↑=nadpriem. ↓=podpriem. | Risk€=ohrozené | Gap=chýba FTE
+<small>Legenda: Prod ↑=nadpriem. ↓=podpriem. =priem. | Risk€=ohrozené | Gap=chýba FTE</small>
 Na konci: "⚠ Celkovo ohrozené: €XXK" (ak súčet > 0)
 
 ═══════════════════════════════════════════════════════════════
@@ -451,7 +451,7 @@ class DrMaxAgent:
         overstaffed_only: bool = False,
         sort_by: str = None,
         sort_desc: bool = True,
-        limit: int = 10
+        limit: int = 15
     ) -> dict:
         """Search pharmacies with filters."""
         # Ensure types (AI might pass strings)
@@ -1441,7 +1441,7 @@ class DrMaxAgent:
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet výsledkov (default 10)"
+                            "description": "Max počet výsledkov (default 15, max 20)"
                         }
                     }
                 }
@@ -2036,9 +2036,9 @@ VÝSLEDKY Z NÁSTROJOV:
                         result_json['peers'] = result_json['peers'][:3]
                         result_json['_note'] = 'Zobrazené 3 z viacerých peers'
                     if 'pharmacies' in result_json:
-                        result_json['pharmacies'] = result_json['pharmacies'][:10]
-                        if result_json.get('count', 0) > 10:
-                            result_json['_note'] = f"Zobrazených 10 z {result_json.get('count', 'viacerých')}"
+                        result_json['pharmacies'] = result_json['pharmacies'][:20]
+                        if result_json.get('count', 0) > 20:
+                            result_json['_note'] = f"Zobrazených 20 z {result_json.get('count', 'viacerých')}"
                     result_str = json.dumps(result_json, ensure_ascii=False)
                 except (json.JSONDecodeError, KeyError):
                     # Fallback: just truncate but ensure valid ending

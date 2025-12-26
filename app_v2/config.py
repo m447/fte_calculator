@@ -163,8 +163,8 @@ PORT = int(get_optional_env('PORT', '5001'))
 # ============================================================
 
 # Claude Agent model configuration (easily upgradeable via env vars)
-AGENT_ARCHITECT_MODEL = get_optional_env('AGENT_ARCHITECT_MODEL', 'claude-sonnet-4-20250514')
-AGENT_WORKER_MODEL = get_optional_env('AGENT_WORKER_MODEL', 'claude-3-haiku-20240307')
+AGENT_ARCHITECT_MODEL = get_optional_env('AGENT_ARCHITECT_MODEL', 'claude-sonnet-4-5-20250929')
+AGENT_WORKER_MODEL = get_optional_env('AGENT_WORKER_MODEL', 'claude-haiku-4-5-20251001')
 AGENT_ARCHITECT_MAX_TOKENS = int(get_optional_env('AGENT_ARCHITECT_MAX_TOKENS', '4096'))
 AGENT_WORKER_MAX_TOKENS = int(get_optional_env('AGENT_WORKER_MAX_TOKENS', '2048'))
 AGENT_MAX_TOOL_CALLS = int(get_optional_env('AGENT_MAX_TOOL_CALLS', '10'))

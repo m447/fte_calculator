@@ -15,7 +15,7 @@ from typing import AsyncIterator, Optional
 from dataclasses import dataclass, field
 
 from app_v2.data_sanitizer import generate_sanitized_data
-from app_v2.core import calculate_fte_from_inputs
+from app_v2.core import calculate_fte_from_inputs, ensure_model_loaded
 from app_v2.config import (
     AGENT_ARCHITECT_MODEL,
     AGENT_WORKER_MODEL,
@@ -380,17 +380,23 @@ Odporúčaj pridanie FTE IBA ak SÚ SPLNENÉ OBE podmienky:
 Ak productivity_index < 100 → "Produktivita podpriemerná - najprv optimalizovať."
 
 ═══════════════════════════════════════════════════════════════
-TABUĽKA PRE VIACERO LEKÁRNÍ (ID JE POVINNÉ!)
+TABUĽKA PRE VIACERO LEKÁRNÍ
 ═══════════════════════════════════════════════════════════════
+FORMÁTOVANIE:
+- Mesto: LEN názov mesta (bez "Kaufland", "TESCO" atď.)
+- Čísla: použiť K/M (172K, 3.1M), nie 171,852
+- Risk: ak 0 → zobraziť "—", ak >100K → pridať 🔴, ak >0 → pridať ⚠️
+- Prod: ak >110 → pridať ▲, ak <90 → pridať ▼
+
 <table>
-<tr><th>ID</th><th>Mesto</th><th>FTE</th><th>Prod</th><th>Risk€</th><th>Gap</th></tr>
-<tr><td>33</td><td>Levice</td><td>6.5</td><td>↑</td><td>232K</td><td>+1.2</td></tr>
-<tr><td>74</td><td>Martin</td><td>6.9</td><td>↓</td><td>0</td><td>+0.4</td></tr>
+<tr><th>ID</th><th>Mesto</th><th>FTE</th><th>Prod</th><th>Bloky</th><th>Risk</th></tr>
+<tr><td>33</td><td>Levice</td><td>6.5/7.7</td><td>115 ▲</td><td>131K</td><td>232K 🔴</td></tr>
+<tr><td>71</td><td>Košice</td><td>8.0/8.3</td><td>133 ▲</td><td>158K</td><td>50K ⚠️</td></tr>
+<tr><td>74</td><td>Martin</td><td>6.9/6.5</td><td>92 ▼</td><td>98K</td><td>—</td></tr>
 </table>
 
-⚠️ Stĺpec ID je POVINNÝ - bez neho nie je jasné, ktorú lekáreň používateľ má otvoriť!
-<small>Legenda: Prod ↑=nadpriem. ↓=podpriem. =priem. | Risk€=ohrozené | Gap=chýba FTE</small>
-Na konci: "⚠ Celkovo ohrozené: €XXK" (ak súčet > 0)
+<small>Prod: index (100=Ø) | FTE: skutočné/odporúčané | Risk: ohrozené tržby</small>
+Ak celkový risk > 0: "⚠ Celkovo ohrozené: €XXK"
 
 ═══════════════════════════════════════════════════════════════
 CHRÁNENÉ INFORMÁCIE
@@ -799,7 +805,9 @@ class DrMaxAgent:
             current_recommended = None
 
         # Calculate new FTE using core function
+        # Lazy-load ML model only when simulate_fte is called
         try:
+            ensure_model_loaded()  # Only loads if not already loaded
             result = calculate_fte_from_inputs(
                 bloky=sim_bloky,
                 trzby=sim_trzby,
@@ -1845,20 +1853,36 @@ class DrMaxAgent:
             "total_rounds": max_rounds
         }
 
-    def analyze_sync(self, prompt: str, request_id: str = '') -> dict:
+    def analyze_sync(
+        self,
+        prompt: str,
+        request_id: str = '',
+        progress_callback=None
+    ) -> dict:
         """
-        Hybrid Opus + Haiku architecture for Flask.
+        Hybrid Sonnet + Haiku architecture for Flask.
 
-        1. Opus 4.5 (Architect) - Plans the approach
+        1. Sonnet 4.5 (Architect) - Plans the approach
         2. Haiku (Worker) - Executes tools
-        3. Opus 4.5 (Synthesizer) - Creates final response
+        3. Haiku (Synthesizer) - Creates final response
+
+        Args:
+            prompt: User's question
+            request_id: Request ID for logging
+            progress_callback: Optional callback(event_dict) for real-time progress events
 
         Returns final response and metadata.
         """
         import time
         start_time = time.time()
 
+        def emit(event):
+            """Emit progress event if callback is set."""
+            if progress_callback:
+                progress_callback(event)
+
         if not ANTHROPIC_AVAILABLE or not self.client:
+            emit({'phase': 'error', 'message': 'Anthropic SDK not available'})
             return {
                 "error": "Anthropic SDK not available",
                 "response": None
@@ -1868,8 +1892,12 @@ class DrMaxAgent:
         tool_results = []
         tool_call_count = 0
 
-        # === STEP 1: OPUS PLANS ===
-        logger.info("STEP 1: Opus planning...", extra={"request_id": request_id})
+        # === STEP 1: SONNET PLANS ===
+        logger.info("STEP 1: Sonnet planning...", extra={"request_id": request_id})
+        emit({'phase': 'planning', 'status': 'start'})
+
+        plan_start = time.time()
+        emit({'phase': 'ai_response', 'status': 'start', 'model': 'sonnet'})
         try:
             plan_response = self.client.messages.create(
                 model=self.config.architect_model,
@@ -1881,6 +1909,7 @@ class DrMaxAgent:
             error_type = type(api_error).__name__
             error_msg = str(api_error)
             logger.error(f"API error in planning: {error_type}: {error_msg}", extra={"request_id": request_id})
+            emit({'phase': 'error', 'message': f'API error: {error_type}'})
             # Check if API key is set
             import os as agent_os
             api_key = agent_os.environ.get('ANTHROPIC_API_KEY', '')
@@ -1890,6 +1919,10 @@ class DrMaxAgent:
                 "error_detail": error_msg[:200],
                 "response": None
             }
+
+        plan_duration = time.time() - plan_start
+        emit({'phase': 'ai_response', 'status': 'complete', 'duration': round(plan_duration, 2)})
+        emit({'phase': 'planning', 'status': 'complete', 'duration': round(plan_duration, 2)})
 
         plan_text = ""
         for block in plan_response.content:
@@ -1918,6 +1951,8 @@ class DrMaxAgent:
 
         # === STEP 2: HAIKU EXECUTES TOOLS ===
         logger.info("STEP 2: Executing tools...", extra={"request_id": request_id})
+        emit({'phase': 'executing', 'status': 'start', 'total_tools': len(steps) if steps else 0})
+        exec_start = time.time()
 
         if steps:
             # Execute planned steps (respect config limit)
@@ -1947,6 +1982,7 @@ class DrMaxAgent:
                         'result': result
                     })
                     tool_call_count += 1
+                    emit({'phase': 'executing', 'tool': tool_name, 'index': tool_call_count, 'total': len(steps)})
         else:
             # Fallback: Let Haiku decide which tools to use
             logger.info("Fallback: Haiku autonomous mode", extra={"request_id": request_id})
@@ -1986,6 +2022,7 @@ class DrMaxAgent:
                             'result': result
                         })
                         tool_call_count += 1
+                        emit({'phase': 'executing', 'tool': block.name, 'index': tool_call_count})
 
                         haiku_content.append({
                             "type": "tool_use",
@@ -2008,8 +2045,12 @@ class DrMaxAgent:
                 if not has_tool_use:
                     break
 
-        # === STEP 3: OPUS SYNTHESIZES ===
-        logger.info("STEP 3: Opus synthesizing...", extra={"request_id": request_id})
+        exec_duration = time.time() - exec_start
+        emit({'phase': 'executing', 'status': 'complete', 'duration': round(exec_duration, 2), 'tool_count': tool_call_count})
+
+        # === STEP 3: HAIKU SYNTHESIZES ===
+        logger.info("STEP 3: Haiku synthesizing...", extra={"request_id": request_id})
+        emit({'phase': 'synthesizing', 'status': 'start'})
         logger.info(f"Tool results: {len(tool_results)}, Tool calls: {tool_call_count}", extra={"request_id": request_id})
         for tr in tool_results:
             result_preview = tr['result'][:100] if len(tr['result']) > 100 else tr['result']
@@ -2047,18 +2088,23 @@ VÝSLEDKY Z NÁSTROJOV:
 
         synthesis_input += "\nVytvor prehľadnú odpoveď pre používateľa."
 
+        # Use Haiku for faster synthesis (3x faster than Sonnet)
+        synth_start = time.time()
         synthesis_response = self.client.messages.create(
-            model=self.config.architect_model,
+            model=self.config.worker_model,  # Haiku - faster synthesis
             max_tokens=self.config.architect_max_tokens,
             system=ARCHITECT_SYNTHESIZE_PROMPT,
             messages=[{"role": "user", "content": synthesis_input}]
         )
+        synth_duration = time.time() - synth_start
 
         final_response = ""
         for block in synthesis_response.content:
             if block.type == "text":
                 final_response = block.text
                 break
+
+        emit({'phase': 'synthesizing', 'status': 'complete', 'duration': round(synth_duration, 2)})
 
         duration = time.time() - start_time
         logger.info(f"COMPLETE: {duration:.2f}s, {tool_call_count} tool calls, tools: {tools_used}", extra={"request_id": request_id})

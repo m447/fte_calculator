@@ -2419,6 +2419,18 @@ input:checked + .toggle-slider:before {
   color: var(--text-primary);
 }
 
+.streaming-step .step-timer {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+  min-width: 40px;
+  margin-left: auto;
+}
+
+.streaming-step.active .step-timer {
+  color: var(--brand-green);
+}
+
 .streaming-step .step-tools {
   display: flex;
   flex-wrap: wrap;
@@ -7907,22 +7919,30 @@ async function submitAgentQuery() {
   agentHistoryIndex = -1;
   agentInput.value = '';
 
-  // Show streaming progress UI
+  // Show streaming progress UI with 4 phases
   agentResults.innerHTML = `
     <div class="agent-streaming">
       <div class="streaming-steps">
         <div class="streaming-step active" id="step-planning">
           <div class="step-icon"><div class="spinner-small"></div></div>
-          <div class="step-text">Plánovanie analýzy...</div>
+          <div class="step-text">Plánovanie</div>
+          <div class="step-timer"></div>
+        </div>
+        <div class="streaming-step" id="step-ai-response">
+          <div class="step-icon">○</div>
+          <div class="step-text">Odpoveď AI</div>
+          <div class="step-timer"></div>
         </div>
         <div class="streaming-step" id="step-tools">
           <div class="step-icon">○</div>
           <div class="step-text">Zber dát</div>
+          <div class="step-timer"></div>
           <div class="step-tools" id="tools-list"></div>
         </div>
         <div class="streaming-step" id="step-synthesis">
           <div class="step-icon">○</div>
-          <div class="step-text">Generovanie odpovede</div>
+          <div class="step-text">Generovanie</div>
+          <div class="step-timer"></div>
         </div>
       </div>
     </div>
@@ -8002,34 +8022,78 @@ async function submitAgentQuery() {
   agentSubmit.disabled = false;
 }
 
+// Track timing for each phase
+let phaseStartTime = null;
+let phaseTimerInterval = null;
+
+function updatePhaseTimer(stepElement) {
+  if (!phaseStartTime || !stepElement) return;
+  const elapsed = ((Date.now() - phaseStartTime) / 1000).toFixed(1);
+  const timerEl = stepElement.querySelector('.step-timer');
+  if (timerEl) {
+    timerEl.textContent = `${elapsed}s`;
+  }
+}
+
 function handleStreamEvent(event, toolsCollected) {
   const stepPlanning = document.getElementById('step-planning');
+  const stepAiResponse = document.getElementById('step-ai-response');
   const stepTools = document.getElementById('step-tools');
   const stepSynthesis = document.getElementById('step-synthesis');
   const toolsList = document.getElementById('tools-list');
 
+  // Helper to mark step as done
+  function markStepDone(step, duration) {
+    if (!step) return;
+    step.classList.remove('active');
+    step.classList.add('done');
+    step.querySelector('.step-icon').textContent = '✓';
+    if (duration !== undefined) {
+      step.querySelector('.step-timer').textContent = `${duration}s`;
+    }
+  }
+
+  // Helper to activate step
+  function activateStep(step) {
+    if (!step) return;
+    if (phaseTimerInterval) clearInterval(phaseTimerInterval);
+    phaseStartTime = Date.now();
+    step.classList.add('active');
+    step.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+    phaseTimerInterval = setInterval(() => updatePhaseTimer(step), 100);
+  }
+
   switch (event.type) {
     case 'status':
-      if (event.phase === 'planning') {
-        stepPlanning.classList.add('active');
-        stepPlanning.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
-      } else if (event.phase === 'executing') {
-        // Planning done
-        stepPlanning.classList.remove('active');
-        stepPlanning.classList.add('done');
-        stepPlanning.querySelector('.step-icon').textContent = '✓';
-        stepPlanning.querySelector('.step-text').textContent = 'Plán pripravený';
-        // Tools active
-        stepTools.classList.add('active');
-        stepTools.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
-      } else if (event.phase === 'synthesizing') {
-        // Tools done
-        stepTools.classList.remove('active');
-        stepTools.classList.add('done');
-        stepTools.querySelector('.step-icon').textContent = '✓';
-        // Synthesis active
-        stepSynthesis.classList.add('active');
-        stepSynthesis.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+      const phase = event.phase;
+      const status = event.status;
+
+      if (phase === 'planning') {
+        if (status === 'start') {
+          activateStep(stepPlanning);
+        } else if (status === 'complete') {
+          markStepDone(stepPlanning, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'ai_response') {
+        if (status === 'start') {
+          // Planning done (instant), AI response starts
+          markStepDone(stepPlanning, '0.1');
+          activateStep(stepAiResponse);
+        } else if (status === 'complete') {
+          markStepDone(stepAiResponse, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'executing') {
+        if (status === 'start') {
+          activateStep(stepTools);
+        } else if (status === 'complete') {
+          markStepDone(stepTools, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'synthesizing') {
+        if (status === 'start') {
+          activateStep(stepSynthesis);
+        } else if (status === 'complete') {
+          markStepDone(stepSynthesis, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
       }
       break;
 
@@ -8044,11 +8108,11 @@ function handleStreamEvent(event, toolsCollected) {
       break;
 
     case 'result':
-      // All steps done
-      if (stepSynthesis) {
-        stepSynthesis.classList.remove('active');
-        stepSynthesis.classList.add('done');
-        stepSynthesis.querySelector('.step-icon').textContent = '✓';
+      // Stop timer
+      if (phaseTimerInterval) clearInterval(phaseTimerInterval);
+      // Mark synthesis done if not already
+      if (stepSynthesis && !stepSynthesis.classList.contains('done')) {
+        markStepDone(stepSynthesis, ((Date.now() - phaseStartTime) / 1000).toFixed(1));
       }
       // Render immediately - don't wait for stream to end
       renderAgentResult(event, toolsCollected);

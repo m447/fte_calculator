@@ -116,10 +116,31 @@ def load_model(project_root: Path):
     return _model_pkg
 
 
+def ensure_model_loaded(project_root: Path = None):
+    """
+    Ensure model is loaded (lazy initialization).
+
+    Call this before any function that requires the model.
+    Safe to call multiple times - only loads once.
+
+    Args:
+        project_root: Path to project root. If None, uses parent of this file's directory.
+
+    Returns:
+        dict: The loaded model package
+    """
+    global _model_pkg
+    if _model_pkg is None:
+        if project_root is None:
+            project_root = Path(__file__).parent.parent
+        return load_model(project_root)
+    return _model_pkg
+
+
 def get_model():
     """Get the loaded model package."""
     if _model_pkg is None:
-        raise RuntimeError("Model not loaded. Call load_model() first.")
+        raise RuntimeError("Model not loaded. Call load_model() or ensure_model_loaded() first.")
     return _model_pkg
 
 

@@ -1422,18 +1422,20 @@ def agent_analyze_stream():
     """
     Claude Agent endpoint with Server-Sent Events (SSE) streaming.
 
-    Provides real-time progress updates during the Plan → Execute → Synthesize cycle.
-    This makes the 10-30 second wait feel much shorter by showing what's happening.
+    Uses threading + queue for real-time progress updates during the
+    Plan → Execute → Synthesize cycle. This makes the 10-30 second wait
+    feel much shorter by showing what's happening in real-time.
 
     Event types:
-        - status: Current phase (planning, executing, synthesizing)
+        - status: Current phase (planning, ai_response, executing, synthesizing)
         - tool: Tool being executed
-        - progress: Progress percentage
         - result: Final result
         - error: Error message
     """
     import uuid
     import time
+    import queue
+    import threading
     from datetime import datetime
 
     request_id = str(uuid.uuid4())[:8]
@@ -1442,8 +1444,30 @@ def agent_analyze_stream():
     data = request.json
     prompt = data.get('prompt', '').strip() if data else ''
 
+    # Shared state between thread and generator
+    event_queue = queue.Queue()
+    result_holder = [None]  # Use list to allow mutation from thread
+
+    def run_analysis(agent, prompt, request_id):
+        """Run analysis in a separate thread, emitting progress events."""
+        try:
+            def on_progress(event):
+                """Callback that puts events into the queue."""
+                event_queue.put(event)
+
+            result_holder[0] = agent.analyze_sync(
+                prompt,
+                request_id=request_id,
+                progress_callback=on_progress
+            )
+            event_queue.put({'type': 'done'})
+        except Exception as e:
+            logger.exception(f"Analysis thread exception: {e}", extra={"request_id": request_id})
+            event_queue.put({'type': 'error', 'message': str(e)})
+            event_queue.put({'type': 'done'})
+
     def generate():
-        """SSE generator function."""
+        """SSE generator function with real-time progress from queue."""
         nonlocal prompt
         try:
             # Send initial status
@@ -1463,27 +1487,75 @@ def agent_analyze_stream():
                 return
 
             start_time = time.time()
-
-            # Phase 1: Planning
-            yield f"data: {json.dumps({'type': 'status', 'phase': 'planning', 'message': 'Opus plánuje analýzu...', 'progress': 10})}\n\n"
-
-            # Execute analysis with progress callbacks
             logger.info(f"SSE Agent request: {prompt[:100]}...", extra={"request_id": request_id})
 
-            # Phase 2: Executing - we'll track via the agent's internal state
-            yield f"data: {json.dumps({'type': 'status', 'phase': 'executing', 'message': 'Vykonávam nástroje...', 'progress': 30})}\n\n"
+            # Start analysis in background thread
+            analysis_thread = threading.Thread(
+                target=run_analysis,
+                args=(agent, prompt, request_id)
+            )
+            analysis_thread.start()
 
-            # Run the actual analysis
-            result = agent.analyze_sync(prompt, request_id=request_id)
+            # Stream events from queue in real-time
+            while True:
+                try:
+                    # Wait for event with timeout (to allow checking thread status)
+                    event = event_queue.get(timeout=0.1)
+                except queue.Empty:
+                    # Check if thread is still alive
+                    if not analysis_thread.is_alive():
+                        break
+                    continue
 
-            # Send tool execution updates
-            tools_used = result.get('tools_used', [])
-            for i, tool in enumerate(tools_used):
-                progress = 30 + int((i + 1) / len(tools_used) * 40) if tools_used else 70
-                yield f"data: {json.dumps({'type': 'tool', 'tool': tool, 'index': i + 1, 'total': len(tools_used), 'progress': progress})}\n\n"
+                # Check for completion
+                if event.get('type') == 'done':
+                    break
 
-            # Phase 3: Synthesizing
-            yield f"data: {json.dumps({'type': 'status', 'phase': 'synthesizing', 'message': 'Opus syntetizuje výsledky...', 'progress': 80})}\n\n"
+                # Handle error events
+                if event.get('type') == 'error' or event.get('phase') == 'error':
+                    yield f"data: {json.dumps({'type': 'error', 'message': event.get('message', 'Unknown error')})}\n\n"
+                    continue
+
+                # Map phase events to SSE format
+                phase = event.get('phase')
+                status = event.get('status')
+
+                if phase == 'planning':
+                    if status == 'start':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'planning', 'message': 'Plánovanie analýzy...'})}\n\n"
+                    elif status == 'complete':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'planning', 'status': 'complete', 'duration': event.get('duration')})}\n\n"
+
+                elif phase == 'ai_response':
+                    if status == 'start':
+                        model = event.get('model', 'AI')
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'ai_response', 'message': f'Čakanie na odpoveď ({model})...'})}\n\n"
+                    elif status == 'complete':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'ai_response', 'status': 'complete', 'duration': event.get('duration')})}\n\n"
+
+                elif phase == 'executing':
+                    if status == 'start':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'executing', 'message': 'Zber dát...'})}\n\n"
+                    elif status == 'complete':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'executing', 'status': 'complete', 'duration': event.get('duration'), 'tool_count': event.get('tool_count')})}\n\n"
+                    elif 'tool' in event:
+                        # Tool execution event
+                        yield f"data: {json.dumps({'type': 'tool', 'tool': event['tool'], 'index': event.get('index'), 'total': event.get('total')})}\n\n"
+
+                elif phase == 'synthesizing':
+                    if status == 'start':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'synthesizing', 'message': 'Generovanie odpovede...'})}\n\n"
+                    elif status == 'complete':
+                        yield f"data: {json.dumps({'type': 'status', 'phase': 'synthesizing', 'status': 'complete', 'duration': event.get('duration')})}\n\n"
+
+            # Wait for thread to finish
+            analysis_thread.join(timeout=5.0)
+
+            # Get final result
+            result = result_holder[0]
+            if result is None:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Analysis failed to complete'})}\n\n"
+                return
 
             if 'error' in result and result['error']:
                 logger.error(f"SSE Agent error: {result['error']}", extra={"request_id": request_id})
@@ -1491,6 +1563,7 @@ def agent_analyze_stream():
                 return
 
             duration = time.time() - start_time
+            tools_used = result.get('tools_used', [])
             logger.info(f"SSE Agent complete: tools={tools_used}", extra={"request_id": request_id})
 
             # Send final result

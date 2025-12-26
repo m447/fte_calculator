@@ -1,193 +1,71 @@
 """
 Data Sanitizer for Agent SDK
-Creates indexed/relative values to protect proprietary productivity formulas.
+Loads pre-computed data from CSV - no runtime calculations needed.
 
-Refactored to use shared business logic from app_v2.core for consistency.
+All derived fields (productivity_index, peer_rank, etc.) are pre-computed
+by scripts/precompute_agent_fields.py and stored in the CSV.
 """
 
 import pandas as pd
-import warnings
 from pathlib import Path
 
-# Import from shared core module (single source of truth)
-from app_v2.core import (
-    SEGMENT_PROPORTIONS,
-    GROSS_CONVERSION,
-    SEGMENT_PROD_MEANS,
-    get_gross_factors,
-    prepare_fte_dataframe,
-    load_model,
-    get_model,
-    validate_pharmacy_dataframe,
-    DataValidationError,
-)
-from app_v2.config import PROJECT_ROOT, DATA_DIR, logger
+from app_v2.config import DATA_DIR, logger
 
 
 # ============================================================
-# DATA LOADING
-# ============================================================
-
-def load_raw_data(data_path: Path = None) -> pd.DataFrame:
-    """Load and validate raw pharmacy data."""
-    if data_path is None:
-        data_path = DATA_DIR
-
-    df = pd.read_csv(data_path / 'ml_ready_v3.csv')
-
-    # Validate the loaded data
-    try:
-        validate_pharmacy_dataframe(df)
-    except DataValidationError as e:
-        logger.warning(f"Data validation warning in load_raw_data: {e}")
-        # Don't fail - just warn (data_sanitizer may work with partial data)
-
-    return df
-
-
-# ============================================================
-# SANITIZATION LOGIC (Indexing/Relative Values)
-# ============================================================
-
-def calculate_productivity_index(row: pd.Series) -> int:
-    """
-    Convert raw productivity to index where 100 = segment average.
-    Example: productivity 8.2 in segment with avg 7.5 → index 109
-    """
-    segment_avg = SEGMENT_PROD_MEANS.get(row['typ'], 7.0)
-    if segment_avg == 0:
-        return 100
-    index = int(round((row['produktivita'] / segment_avg) * 100))
-    return max(50, min(150, index))  # Clamp to 50-150 range
-
-
-def calculate_peer_rank(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate percentile rank within segment."""
-    df = df.copy()
-
-    def rank_in_segment(group):
-        # Rank by productivity (higher = better rank)
-        group['peer_rank'] = group['produktivita'].rank(ascending=False, method='min').astype(int)
-        group['segment_count'] = len(group)
-        return group
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        df = df.groupby('typ', group_keys=False).apply(rank_in_segment)
-    df['peer_rank_str'] = df['peer_rank'].astype(str) + '/' + df['segment_count'].astype(str)
-
-    return df
-
-
-def calculate_percentile(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate percentile within segment."""
-    df = df.copy()
-
-    def percentile_in_segment(group):
-        group['productivity_percentile'] = (
-            group['produktivita'].rank(pct=True) * 100
-        ).round().astype(int)
-        return group
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        df = df.groupby('typ', group_keys=False).apply(percentile_in_segment)
-    return df
-
-
-# ============================================================
-# MAIN SANITIZATION FUNCTION
+# MAIN DATA LOADING FUNCTION
 # ============================================================
 
 def generate_sanitized_data(data_path: Path = None, output_path: Path = None) -> pd.DataFrame:
     """
-    Generate sanitized dataset with indexed values.
+    Load pre-computed sanitized data from CSV.
 
-    Uses shared business logic from app_v2.core to ensure consistency
-    with the main API server.
+    All derived fields are pre-computed and stored in ml_ready_v3.csv:
+    - productivity_index (100 = segment avg)
+    - productivity_percentile (0-100)
+    - productivity_vs_segment ("nadpriemerná"/"podpriemerná"/"priemerná")
+    - peer_rank_str ("X/Y" format)
+    - bloky_index, trzby_index (100 = segment avg)
+    - fte_actual, fte_recommended, fte_gap, revenue_at_risk_eur
 
-    Protected (removed/indexed):
-    - produktivita → productivity_index (100 = segment avg)
-    - prod_residual → removed (but used internally for revenue_at_risk)
-    - naklady → removed
-    - All coefficients → never included
-
-    Exposed (safe):
-    - id, mesto, region_code, typ
-    - fte values (actual staffing)
-    - trzby, bloky (volume metrics)
-    - podiel_rx, bloky_trend
-    - Calculated: fte_recommended, fte_gap, revenue_at_risk (fresh from model)
+    NO ML model needed - just reads CSV.
     """
     if data_path is None:
         data_path = DATA_DIR
 
-    # Load raw data
-    df = load_raw_data(data_path)
+    # Load pre-computed data
+    csv_path = data_path / 'ml_ready_v3.csv'
+    logger.info(f"Loading pre-computed data from {csv_path}")
+    df = pd.read_csv(csv_path)
 
-    # Load model if not already loaded
-    try:
-        get_model()
-    except RuntimeError:
-        load_model(PROJECT_ROOT)
-
-    # Use shared FTE calculation logic from core.py
-    df = prepare_fte_dataframe(df, include_revenue_at_risk=True)
-
-    # Calculate productivity index
-    df['productivity_index'] = df.apply(calculate_productivity_index, axis=1)
-
-    # Calculate peer rankings
-    df = calculate_peer_rank(df)
-    df = calculate_percentile(df)
-
-    # Calculate bloky index (100 = segment avg)
-    segment_bloky_avg = df.groupby('typ')['bloky'].transform('mean')
-    df['bloky_index'] = ((df['bloky'] / segment_bloky_avg) * 100).round().astype(int)
-
-    # Calculate trzby index
-    segment_trzby_avg = df.groupby('typ')['trzby'].transform('mean')
-    df['trzby_index'] = ((df['trzby'] / segment_trzby_avg) * 100).round().astype(int)
-
-    # Productivity comparison text
-    df['productivity_vs_segment'] = df['productivity_index'].apply(
-        lambda x: 'nadpriemerná' if x > 105 else ('podpriemerná' if x < 95 else 'priemerná')
-    )
-
-    # Select only safe columns (using fresh calculations from core.py)
+    # Select only columns needed by agent
     safe_columns = [
         'id', 'mesto', 'region_code', 'typ',
-        'actual_fte', 'fte_F', 'fte_L', 'fte_ZF',  # GROSS FTE (calculated)
+        'fte_actual', 'fte_F', 'fte_L', 'fte_ZF',
         'trzby', 'bloky', 'podiel_rx',
         'bloky_trend',
-        # Indexed/relative values (safe)
+        # Pre-computed indexed values
         'productivity_index',
         'productivity_percentile',
         'productivity_vs_segment',
         'peer_rank_str',
         'bloky_index',
         'trzby_index',
-        # Fresh predictions (from model via core.py)
-        'predicted_fte',
+        # Pre-computed predictions
+        'fte_recommended',
         'fte_gap',
-        'revenue_at_risk'
+        'revenue_at_risk_eur'
     ]
 
-    sanitized = df[safe_columns].copy()
+    # Only select columns that exist (for backwards compatibility)
+    available_columns = [col for col in safe_columns if col in df.columns]
+    sanitized = df[available_columns].copy()
 
-    # Rename for clarity - use explicit names to avoid AI confusion
-    sanitized = sanitized.rename(columns={
-        'peer_rank_str': 'peer_rank',
-        'actual_fte': 'fte_actual',          # Rename to match expected column name
-        'predicted_fte': 'fte_recommended',  # Clear: this is FTE recommendation
-        'fte_gap': 'fte_gap',                # Positive = understaffed (from core.py)
-        'revenue_at_risk': 'revenue_at_risk_eur'  # Clear: in EUR
-    })
+    # Rename peer_rank_str to peer_rank for backwards compatibility
+    if 'peer_rank_str' in sanitized.columns:
+        sanitized = sanitized.rename(columns={'peer_rank_str': 'peer_rank'})
 
-    # Round FTE values for output (same as server.py)
-    sanitized['fte_actual'] = sanitized['fte_actual'].round(1)
-    sanitized['fte_recommended'] = sanitized['fte_recommended'].round(1)
-    sanitized['fte_gap'] = sanitized['fte_gap'].round(1)
+    logger.info(f"Loaded {len(sanitized)} pharmacies with {len(sanitized.columns)} columns")
 
     if output_path:
         sanitized.to_csv(output_path, index=False)

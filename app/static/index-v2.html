@@ -7596,10 +7596,7 @@ async function sendAgentMessage(prompt) {
     } else {
       // Format response with agent indicator
       const formattedResponse = formatAnswer(data.response);
-      const toolsInfo = data.tools_used && data.tools_used.length > 0
-        ? `<br><small style="color:var(--text-muted);">Použité nástroje: ${data.tools_used.join(', ')}</small>`
-        : '';
-      addChatMessage(formattedResponse + toolsInfo, 'assistant');
+      addChatMessage(formattedResponse, 'assistant');
     }
   } catch (error) {
     removeTypingIndicator(typingId);
@@ -8054,16 +8051,10 @@ function renderAgentResult(event, toolsCollected) {
   `;
 
   const formattedResponse = formatAgentResponse(event.response || '');
-  const toolsUsed = event.tools_used || toolsCollected;
 
   agentResults.innerHTML = `
     ${actionsHTML}
     <div class="agent-response" id="agent-response-content">${formattedResponse}</div>
-    ${toolsUsed.length > 0 ? `
-      <div class="agent-tools-used">
-        Použité nástroje: ${toolsUsed.map(t => `<span>${t}</span>`).join('')}
-      </div>
-    ` : ''}
   `;
 }
 

@@ -10,7 +10,6 @@
 <title>FTE Kalkulačka | Dr.Max</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 /* ============================================
    DR.MAX FTE CALCULATOR - CORPORATE STYLING
@@ -1282,20 +1281,25 @@ input:checked + .toggle-slider:before {
 
 .tab-btn.active {
   background: var(--brand-green);
-  box-shadow: var(--shadow-brand);
+  box-shadow:
+    var(--shadow-brand),
+    0 0 0 3px rgba(120, 190, 32, 0.15),
+    inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 .tab-btn.active .tab-icon {
   color: white;
   opacity: 1;
-  transform: scale(1.15);
-  animation: iconPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(1.18);
+  animation: iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
 }
 
 @keyframes iconPop {
-  0% { transform: scale(0.7); opacity: 0.5; }
-  50% { transform: scale(1.25); }
-  100% { transform: scale(1.15); opacity: 1; }
+  0% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1.3); }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1.18); opacity: 1; }
 }
 
 .tab-content {
@@ -1332,6 +1336,440 @@ input:checked + .toggle-slider:before {
 
 .tab-btn.agent-tab.active .tab-icon {
   color: white;
+}
+
+/* ============================================
+   ROZVRH TAB - Schedule Teaser (Kahneman)
+   ============================================ */
+
+/* Hero Opportunity Section - THE ANCHOR */
+.schedule-hero-loss {
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.08) 0%, rgba(106, 171, 26, 0.15) 100%);
+  border: 2px solid rgba(120, 190, 32, 0.3);
+  border-radius: 20px;
+  padding: 32px 24px 28px;
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  animation: scheduleHeroReveal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scheduleHeroReveal {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.schedule-hero-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  height: 120%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(120, 190, 32, 0.1) 0%, transparent 70%);
+  animation: heroPulseGlow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes heroPulseGlow {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+.schedule-hero-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-green-dark);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: scheduleLabelFade 0.5s ease-out 0.3s backwards;
+}
+
+@keyframes scheduleLabelFade {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.schedule-hero-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--brand-green);
+  border-radius: 50%;
+  animation: alertDotPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes alertDotPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(120, 190, 32, 0.6); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(120, 190, 32, 0); }
+}
+
+.schedule-hero-value {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--brand-green-dark);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 20px rgba(120, 190, 32, 0.25);
+  font-variant-numeric: tabular-nums;
+  animation: scheduleValueDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s backwards;
+}
+
+@keyframes scheduleValueDrop {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.85); }
+  60% { transform: translateY(5px) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.schedule-hero-subtext {
+  font-size: 0.9rem;
+  color: var(--brand-green-dark);
+  margin-top: 8px;
+  font-weight: 500;
+  opacity: 0.85;
+  animation: scheduleFadeUp 0.4s ease-out 0.8s backwards;
+}
+
+@keyframes scheduleFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 0.85; transform: translateY(0); }
+}
+
+.schedule-hero-detail {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(120, 190, 32, 0.2);
+  animation: scheduleFadeUp 0.4s ease-out 1s backwards;
+}
+
+.schedule-detail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.schedule-detail-num {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--brand-green-dark);
+}
+
+.schedule-detail-label {
+  font-size: 0.7rem;
+  color: var(--brand-green-dark);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.schedule-detail-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(120, 190, 32, 0.3);
+}
+
+/* Heatmap Card */
+.schedule-heatmap-card {
+  animation: fadeUp 0.5s ease-out 0.2s backwards;
+}
+
+.schedule-heatmap-card .card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-icon {
+  font-size: 1rem;
+}
+
+.title-unit {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.title-badge {
+  font-size: 0.65rem;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* Heatmap Grid */
+.schedule-heatmap-container {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.schedule-heatmap {
+  display: grid;
+  grid-template-columns: 40px repeat(12, 1fr);
+  gap: 3px;
+  font-size: 0.75rem;
+  min-width: 500px;
+}
+
+.schedule-heatmap-corner {
+  /* Empty corner cell */
+}
+
+.schedule-heatmap-hour {
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 6px 2px;
+  font-size: 0.7rem;
+}
+
+.schedule-heatmap-day {
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+  font-size: 0.75rem;
+}
+
+.schedule-heatmap-cell {
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  padding: 3px;
+  position: relative;
+}
+
+.schedule-heatmap-cell:hover {
+  transform: scale(1.12);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  z-index: 10;
+}
+
+.schedule-heatmap-cell .cell-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.schedule-heatmap-cell .cell-staff {
+  font-size: 0.55rem;
+  opacity: 0.75;
+  margin-top: 1px;
+}
+
+/* Heatmap color scale - opportunity green palette */
+.schedule-heatmap-cell.loss-0 {
+  background: var(--surface-elevated);
+}
+.schedule-heatmap-cell.loss-active {
+  background: rgba(120, 190, 32, 0.18);
+}
+
+/* Hide values by default, show on hover */
+.schedule-heatmap-cell .cell-value {
+  opacity: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--brand-green-dark);
+  transition: opacity 0.15s ease;
+}
+.schedule-heatmap-cell:hover .cell-value {
+  opacity: 1;
+}
+
+/* TEASER SECTION - Blurred Chart Style */
+.schedule-teaser-card {
+  margin-top: 20px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.schedule-teaser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.schedule-teaser-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.schedule-teaser-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+/* Chart wrapper with blur */
+.schedule-teaser-chart-wrap {
+  position: relative;
+  min-height: 240px;
+}
+
+.schedule-teaser-chart {
+  padding: 16px;
+  filter: blur(4px);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Chart grid */
+.teaser-chart-row {
+  display: grid;
+  grid-template-columns: 32px repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.teaser-chart-row.teaser-chart-header {
+  margin-bottom: 10px;
+}
+
+.teaser-chart-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.teaser-chart-header .teaser-chart-cell {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.teaser-chart-cell {
+  background: var(--bg-subtle);
+  border-radius: 4px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+}
+
+.teaser-chart-header .teaser-chart-cell {
+  background: transparent;
+  height: auto;
+}
+
+/* Bars */
+.teaser-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--brand-green);
+  transition: width 0.3s ease;
+}
+
+.teaser-bar.warn {
+  background: #dc2626;
+}
+
+.teaser-bar.critical {
+  background: #dc2626;
+}
+
+/* Overlay */
+.schedule-teaser-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(1px);
+}
+
+.schedule-teaser-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(120, 190, 32, 0.3);
+}
+
+.schedule-teaser-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(120, 190, 32, 0.4);
+}
+
+.schedule-teaser-cta svg {
+  flex-shrink: 0;
+}
+
+.schedule-teaser-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.teaser-lock-icon {
+  font-size: 2rem;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .schedule-hero-value {
+    font-size: 2.5rem;
+  }
+
+  .schedule-hero-detail {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .schedule-detail-divider {
+    width: 60px;
+    height: 1px;
+  }
+}
+
+/* Touch devices - show heatmap values by default (no hover) */
+@media (hover: none) {
+  .schedule-heatmap-cell .cell-value {
+    opacity: 1;
+  }
 }
 
 /* ============================================
@@ -1870,9 +2308,8 @@ input:checked + .toggle-slider:before {
   gap: 16px;
 }
 
-/* Back to tools & PDF Download buttons */
-.back-to-tools,
-.download-pdf-btn {
+/* Back to tools button */
+.back-to-tools {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1887,15 +2324,13 @@ input:checked + .toggle-slider:before {
   color: var(--text-secondary);
 }
 
-.back-to-tools:hover,
-.download-pdf-btn:hover {
+.back-to-tools:hover {
   border-color: var(--brand-green);
   background: var(--brand-green-light);
   color: var(--brand-green-dark);
 }
 
-.back-to-tools svg,
-.download-pdf-btn svg {
+.back-to-tools svg {
   width: 14px;
   height: 14px;
 }
@@ -2155,58 +2590,115 @@ input:checked + .toggle-slider:before {
    NETWORK DASHBOARD
    ============================================ */
 
-/* Hero Stat - Revenue at Risk */
+/* Hero Stat - Revenue at Risk (Peak Moment) */
 .hero-stat {
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%);
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  border-radius: 16px;
-  padding: 24px;
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(185, 28, 28, 0.15) 100%);
+  border: 2px solid rgba(220, 38, 38, 0.3);
+  border-radius: 20px;
+  padding: 28px 24px;
   text-align: center;
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
-  animation: fadeUp 0.5s ease-out;
+  animation: heroStatEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow:
+    0 0 0 1px rgba(220, 38, 38, 0.1),
+    0 8px 32px rgba(220, 38, 38, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+@keyframes heroStatEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .hero-stat::before {
   content: '';
   position: absolute;
-  top: -50%;
-  right: -30%;
-  width: 60%;
-  height: 150%;
-  background: radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%);
+  top: -100%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(220, 38, 38, 0.06) 0%, transparent 50%);
+  animation: heroGlow 4s ease-in-out infinite;
   pointer-events: none;
 }
 
+@keyframes heroGlow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.hero-stat::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(220, 38, 38, 0.3) 50%, transparent 100%);
+}
+
 .hero-stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   color: #b91c1c;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  opacity: 0;
+  animation: heroLabelReveal 0.4s ease-out 0.2s forwards;
+}
+
+@keyframes heroLabelReveal {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .hero-stat-label::before {
-  content: '⚠';
-  font-size: 0.9rem;
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border-radius: 50%;
+  animation: alertPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes alertPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
 }
 
 .hero-stat-value {
-  font-size: 2.8rem;
+  font-size: 3rem;
   font-weight: 800;
   color: #dc2626;
   line-height: 1;
-  animation: heroReveal 0.8s ease-out;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: heroValueDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
+  text-shadow: 0 2px 12px rgba(220, 38, 38, 0.2);
+}
+
+@keyframes heroValueDrop {
+  0% { opacity: 0; transform: translateY(-15px) scale(0.9); }
+  60% { transform: translateY(3px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .hero-stat-value.pulse {
-  animation: heroPulse 0.6s ease-out;
+  animation: heroPulseIntense 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes heroReveal {
@@ -2214,16 +2706,24 @@ input:checked + .toggle-slider:before {
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes heroPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); }
+@keyframes heroPulseIntense {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08); color: #b91c1c; }
+  100% { transform: scale(1); }
 }
 
 .hero-stat-detail {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #b91c1c;
-  margin-top: 8px;
-  opacity: 0.9;
+  margin-top: 10px;
+  opacity: 0;
+  animation: heroDetailFade 0.4s ease-out 0.7s forwards;
+  font-weight: 500;
+}
+
+@keyframes heroDetailFade {
+  from { opacity: 0; }
+  to { opacity: 0.85; }
 }
 
 /* Quick Stats Row */
@@ -3913,6 +4413,7 @@ input:checked + .toggle-slider:before {
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .revenue-loss-value .currency {
@@ -4650,6 +5151,14 @@ input:checked + .toggle-slider:before {
     <button class="tab-btn agent-tab" data-tab="agent" title="AI Asistent">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </button>
+    <button class="tab-btn" data-tab="rozvrh" title="Rozvrh">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
     </button>
   </div>
@@ -5405,6 +5914,154 @@ input:checked + .toggle-slider:before {
   </div>
   <!-- END AGENT TAB -->
 
+  <!-- ROZVRH TAB (Schedule Teaser) -->
+  <div id="tab-rozvrh" class="tab-content">
+    <div id="rozvrh-loading" class="loading-spinner">Analyzujem rozvrh...</div>
+
+    <div id="rozvrh-content" style="display:none;">
+
+      <!-- SECTION A: THE ANCHOR - Opportunity Number -->
+      <div class="schedule-hero-loss">
+        <div class="schedule-hero-pulse"></div>
+        <div class="schedule-hero-label">
+          <span class="schedule-hero-dot"></span>
+          Potenciálne tržby tento mesiac
+        </div>
+        <div class="schedule-hero-value" id="schedule-total-loss">+0 €</div>
+        <div class="schedule-hero-subtext">
+          pri optimalizácii rozvrhu
+        </div>
+        <div class="schedule-hero-detail">
+          <span class="schedule-detail-item">
+            <span class="schedule-detail-num">29</span>
+            <span class="schedule-detail-label">hodín na zlepšenie</span>
+          </span>
+          <span class="schedule-detail-divider"></span>
+          <span class="schedule-detail-item">
+            <span class="schedule-detail-num">5.3%</span>
+            <span class="schedule-detail-label">kapacity na využitie</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- SECTION B: Opportunity Heatmap -->
+      <div class="card schedule-heatmap-card">
+        <div class="card-title">
+          <span class="title-icon">📈</span>
+          Príležitosť podľa hodiny
+          <span class="title-unit">€/mesiac</span>
+        </div>
+
+        <div class="schedule-heatmap-container">
+          <div class="schedule-heatmap" id="schedule-heatmap">
+            <!-- Header row -->
+            <div class="schedule-heatmap-corner"></div>
+            <div class="schedule-heatmap-hour">8</div>
+            <div class="schedule-heatmap-hour">9</div>
+            <div class="schedule-heatmap-hour">10</div>
+            <div class="schedule-heatmap-hour">11</div>
+            <div class="schedule-heatmap-hour">12</div>
+            <div class="schedule-heatmap-hour">13</div>
+            <div class="schedule-heatmap-hour">14</div>
+            <div class="schedule-heatmap-hour">15</div>
+            <div class="schedule-heatmap-hour">16</div>
+            <div class="schedule-heatmap-hour">17</div>
+            <div class="schedule-heatmap-hour">18</div>
+            <div class="schedule-heatmap-hour">19</div>
+            <!-- Rows will be generated by JavaScript -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SECTION D: THE TEASER - Blurred Schedule Chart -->
+      <div class="card schedule-teaser-card">
+        <div class="schedule-teaser-header">
+          <span class="schedule-teaser-title">Optimalizácia rozvrhu</span>
+          <span class="schedule-teaser-badge">Pripravujeme</span>
+        </div>
+
+        <!-- Blurred Schedule Chart -->
+        <div class="schedule-teaser-chart-wrap">
+          <div class="schedule-teaser-chart">
+            <!-- Chart header -->
+            <div class="teaser-chart-row teaser-chart-header">
+              <div class="teaser-chart-label"></div>
+              <div class="teaser-chart-cell">8-11</div>
+              <div class="teaser-chart-cell">11-14</div>
+              <div class="teaser-chart-cell">14-17</div>
+              <div class="teaser-chart-cell">17-20</div>
+            </div>
+            <!-- Chart rows with bar visualization -->
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">Po</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:80%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:60%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">Ut</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:90%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:85%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:55%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">St</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:85%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:95%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:90%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:50%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">Št</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:80%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:95%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:45%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">Pi</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:75%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:100%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:60%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">So</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:65%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:70%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar" style="width:80%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:40%"></div></div>
+            </div>
+            <div class="teaser-chart-row">
+              <div class="teaser-chart-label">Ne</div>
+              <div class="teaser-chart-cell"><div class="teaser-bar critical" style="width:45%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar critical" style="width:50%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:55%"></div></div>
+              <div class="teaser-chart-cell"><div class="teaser-bar warn" style="width:40%"></div></div>
+            </div>
+          </div>
+
+          <!-- Overlay with CTA -->
+          <div class="schedule-teaser-overlay">
+            <span class="teaser-lock-icon">🔒</span>
+            <a href="mailto:marian.svatko@gmail.com?subject=Mám%20záujem%20o%20optimalizáciu%20rozvrhu&body=Dobrý%20deň,%0A%0Amám%20záujem%20o%20funkciu%20automatickej%20optimalizácie%20rozvrhu.%0A%0ADakujem" class="schedule-teaser-cta">
+              <span>Mám záujem</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </a>
+            <span class="schedule-teaser-hint">Napíšte Mariánovi</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- END ROZVRH TAB -->
+
 </div>
 
 <!-- AI Chat Assistant -->
@@ -5925,6 +6582,20 @@ function analyzeAnother() {
   document.getElementById('pharmacy-hint').classList.remove('loaded', 'error');
 }
 
+// Switch to AI Assistant tab
+function switchToAgentTab() {
+  const agentTabBtn = document.querySelector('[data-tab="agent"]');
+  if (agentTabBtn) {
+    agentTabBtn.click();
+    // Scroll to top and focus input
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const agentInput = document.getElementById('agent-input');
+      if (agentInput) agentInput.focus();
+    }, 100);
+  }
+}
+
 function expandIds() {
   document.getElementById("trust-ids").textContent = allIds.join(', ');
   document.getElementById("trust-expand").style.display = "none";
@@ -6137,6 +6808,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Load network data on first view
     if (tabId === 'network' && !networkDataLoaded) {
       loadNetworkData();
+    }
+
+    // Load rozvrh data on first view
+    if (tabId === 'rozvrh' && !rozvrhDataLoaded) {
+      loadRozvrhData();
     }
 
     // Focus on pharmacy ID input when switching to calculator tab
@@ -7402,10 +8078,6 @@ function renderAgentResult(event, toolsCollected) {
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Späť na nástroje
       </button>
-      <button class="download-pdf-btn" onclick="downloadResponsePDF()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-        Stiahnuť PDF
-      </button>
     </div>
   `;
 
@@ -7484,23 +8156,6 @@ function convertMarkdownTables(text) {
     html += '</tbody></table>';
     return html;
   });
-}
-
-// PDF download function
-function downloadResponsePDF() {
-  const element = document.getElementById('agent-response-content');
-  if (!element) return;
-
-  const opt = {
-    margin: 15,
-    filename: 'drmax-analyza-' + new Date().toISOString().slice(0,10) + '.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  };
-
-  html2pdf().set(opt).from(element).save();
 }
 
 // Show agent welcome/tools showcase
@@ -7787,6 +8442,124 @@ async function loadTrendChart(pharmacyId) {
     console.error('Error loading trend chart:', error);
     document.getElementById('trend-chart-card').style.display = 'none';
   }
+}
+
+// ============================================
+// ROZVRH TAB - Schedule with Kahneman Principles
+// ============================================
+let rozvrhDataLoaded = false;
+
+// Static demo data (from utilization.html)
+const rozvrhMonthlyLoss = {
+  'Po': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 364, 17: 463, 18: 134, 19: 0},
+  'Ut': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 160, 17: 234, 18: 173, 19: 0},
+  'St': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 255, 17: 251, 18: 0, 19: 0},
+  'Št': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 225, 17: 394, 18: 0, 19: 0},
+  'Pi': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 372, 17: 372, 18: 234, 19: 0},
+  'So': {8: 0, 9: 355, 10: 662, 11: 615, 12: 165, 13: 0, 14: 0, 15: 0, 16: 169, 17: 204, 18: 264, 19: 0},
+  'Ne': {8: 0, 9: 238, 10: 394, 11: 277, 12: 121, 13: 152, 14: 247, 15: 156, 16: 178, 17: 0, 18: 143, 19: 0}
+};
+
+const rozvrhWeeklyStaff = {
+  'Po': {8: 3.9, 9: 3.9, 10: 4.1, 11: 4.0, 12: 4.0, 13: 3.9, 14: 4.0, 15: 3.9, 16: 3.1, 17: 3.0, 18: 3.0, 19: 2.7},
+  'Ut': {8: 4.4, 9: 4.4, 10: 4.2, 11: 3.8, 12: 4.2, 13: 4.3, 14: 4.2, 15: 4.0, 16: 3.5, 17: 3.0, 18: 3.0, 19: 2.8},
+  'St': {8: 4.4, 9: 4.2, 10: 4.4, 11: 4.4, 12: 4.0, 13: 4.0, 14: 3.6, 15: 4.2, 16: 3.2, 17: 3.0, 18: 3.0, 19: 3.0},
+  'Št': {8: 4.6, 9: 4.4, 10: 4.6, 11: 4.4, 12: 4.1, 13: 4.1, 14: 4.1, 15: 4.1, 16: 3.3, 17: 3.0, 18: 3.0, 19: 2.9},
+  'Pi': {8: 4.3, 9: 4.1, 10: 4.4, 11: 4.4, 12: 4.4, 13: 4.1, 14: 4.1, 15: 4.4, 16: 3.4, 17: 3.0, 18: 3.0, 19: 3.0},
+  'So': {8: 3.0, 9: 3.0, 10: 3.0, 11: 3.0, 12: 3.0, 13: 3.0, 14: 3.0, 15: 2.9, 16: 2.1, 17: 2.0, 18: 2.0, 19: 2.0},
+  'Ne': {8: 2.0, 9: 2.0, 10: 2.0, 11: 2.0, 12: 2.0, 13: 2.0, 14: 2.0, 15: 2.0, 16: 2.0, 17: 2.0, 18: 2.0, 19: 2.0}
+};
+
+const rozvrhDays = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+const rozvrhHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+function getRozvrhLossClass(loss) {
+  // Simplified: only ok or loss (single red shade)
+  return loss === 0 ? 'loss-0' : 'loss-active';
+}
+
+function loadRozvrhData() {
+  const loadingEl = document.getElementById('rozvrh-loading');
+  const contentEl = document.getElementById('rozvrh-content');
+
+  loadingEl.style.display = 'flex';
+  contentEl.style.display = 'none';
+
+  // Simulate brief loading for effect
+  setTimeout(() => {
+    buildScheduleHeatmap();
+
+    // Calculate total loss
+    let totalLoss = 0;
+    rozvrhDays.forEach(day => {
+      rozvrhHours.forEach(hour => {
+        totalLoss += rozvrhMonthlyLoss[day][hour];
+      });
+    });
+
+    // Animate the hero value
+    animateScheduleHeroValue(totalLoss);
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+    rozvrhDataLoaded = true;
+  }, 600);
+}
+
+function buildScheduleHeatmap() {
+  const heatmap = document.getElementById('schedule-heatmap');
+
+  rozvrhDays.forEach(day => {
+    // Row label
+    const label = document.createElement('div');
+    label.className = 'schedule-heatmap-day';
+    label.textContent = day;
+    heatmap.appendChild(label);
+
+    // Cells for each hour - only show loss amount, hide FTE
+    rozvrhHours.forEach(hour => {
+      const loss = rozvrhMonthlyLoss[day][hour];
+      const staff = rozvrhWeeklyStaff[day][hour];
+
+      const cell = document.createElement('div');
+      cell.className = 'schedule-heatmap-cell ' + getRozvrhLossClass(loss);
+
+      // Only show opportunity value, no FTE
+      if (loss > 0) {
+        cell.innerHTML = `<span class="cell-value">+${loss}€</span>`;
+      }
+
+      cell.dataset.day = day;
+      cell.dataset.hour = hour;
+      cell.dataset.loss = loss;
+      cell.dataset.staff = staff;
+
+      heatmap.appendChild(cell);
+    });
+  });
+}
+
+function animateScheduleHeroValue(targetValue) {
+  const el = document.getElementById('schedule-total-loss');
+  const duration = 1500;
+  const start = performance.now();
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(targetValue * eased);
+
+    el.textContent = '+' + current.toLocaleString('sk-SK') + ' €';
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
 }
 </script>
 

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend tržieb | Dr.Max FTE Kalkulačka</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brand-green: #78be20;
+  --brand-green-dark: #6aab1a;
+  --brand-green-light: rgba(120, 190, 32, 0.08);
+  --brand-green-glow: rgba(120, 190, 32, 0.15);
+  --text-primary: #1a1f25;
+  --text-secondary: #4b5563;
+  --text-muted: #7c8694;
+  --bg-page: #f7f9f5;
+  --bg-card: #ffffff;
+  --border-light: #e8ebe5;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+
+  /* Chart colors with opacity progression */
+  --line-2019: rgba(120, 190, 32, 0.25);
+  --line-2020: rgba(120, 190, 32, 0.55);
+  --line-2021: rgba(120, 190, 32, 1);
+  --area-2019: rgba(120, 190, 32, 0.03);
+  --area-2020: rgba(120, 190, 32, 0.06);
+  --area-2021: rgba(120, 190, 32, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 32px 16px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Header */
+.demo-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.demo-header::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-green), var(--brand-green-dark));
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.demo-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.demo-header p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Card */
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-light);
+}
+
+.card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title::before {
+  content: '';
+  width: 3px;
+  height: 16px;
+  background: var(--brand-green);
+  border-radius: 2px;
+}
+
+
+/* Chart Container */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 240px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Chart Lines */
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-line-2019 {
+  stroke: var(--line-2019);
+  stroke-width: 1.5;
+}
+
+.chart-line-2020 {
+  stroke: var(--line-2020);
+  stroke-width: 1.75;
+}
+
+.chart-line-2021 {
+  stroke: var(--line-2021);
+  stroke-width: 2.25;
+}
+
+/* Forecast styling */
+.chart-line-forecast {
+  fill: none;
+  stroke: var(--line-2021);
+  stroke-width: 2;
+  stroke-dasharray: 6, 4;
+  opacity: 0;
+  animation: forecastReveal 0.6s ease-out forwards;
+  animation-delay: 0.8s;
+}
+
+.forecast-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  animation: forecastReveal 0.6s ease-out forwards;
+  animation-delay: 0.8s;
+}
+
+@keyframes forecastReveal {
+  to { opacity: 0.7; }
+}
+
+/* Chart Areas */
+.chart-area {
+  opacity: 0;
+  animation: areaFadeIn 0.8s ease-out forwards;
+}
+
+.chart-area-2019 { fill: var(--area-2019); animation-delay: 0.1s; }
+.chart-area-2020 { fill: var(--area-2020); animation-delay: 0.2s; }
+.chart-area-2021 { fill: var(--area-2021); animation-delay: 0.3s; }
+
+@keyframes areaFadeIn {
+  to { opacity: 1; }
+}
+
+/* Line Animation */
+.chart-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: lineReveal 1.2s ease-out forwards;
+}
+
+.chart-line-2019 { animation-delay: 0.1s; }
+.chart-line-2020 { animation-delay: 0.25s; }
+.chart-line-2021 { animation-delay: 0.4s; }
+
+@keyframes lineReveal {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Current Month Marker */
+.current-marker {
+  opacity: 0;
+  animation: markerPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: 1s;
+}
+
+@keyframes markerPop {
+  0% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+
+/* Axis Labels */
+.axis-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  font-weight: 500;
+}
+
+.axis-label-month {
+  text-anchor: middle;
+}
+
+.axis-label-value {
+  text-anchor: end;
+}
+
+/* Grid Lines */
+.grid-line {
+  stroke: var(--border-light);
+  stroke-width: 1;
+  stroke-dasharray: 2, 4;
+}
+
+/* YoY Stats */
+.yoy-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  margin-left: 50px;
+  margin-right: 20px;
+}
+
+.yoy-item {
+  background: var(--bg-page);
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.yoy-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.yoy-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.yoy-value.positive {
+  color: var(--brand-green-dark);
+}
+
+.yoy-value.negative {
+  color: #dc2626;
+}
+
+/* Tooltip */
+.chart-tooltip {
+  position: absolute;
+  background: var(--text-primary);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.chart-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .yoy-stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="demo-header">
+    <h1>Porovnanie - Trend tržieb</h1>
+    <p>Demo nového komponentu pre analýzu rastu</p>
+  </div>
+
+  <div class="card">
+    <!-- Chart Title -->
+    <div class="card-title">Trend tržieb</div>
+
+    <!-- YoY Stats -->
+    <div class="yoy-stats">
+      <div class="yoy-item">
+        <div class="yoy-label">2021 vs 2020</div>
+        <div class="yoy-value positive" id="yoy-2021">+4.8%</div>
+      </div>
+      <div class="yoy-item">
+        <div class="yoy-label">2020 vs 2019</div>
+        <div class="yoy-value positive" id="yoy-2020">+46.4%</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container">
+      <svg class="chart-svg" id="revenue-chart" viewBox="0 0 580 240" preserveAspectRatio="xMidYMid meet">
+        <!-- Chart will be rendered here by JS -->
+      </svg>
+      <div class="chart-tooltip" id="tooltip"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Sample revenue data for pharmacy ID 33
+const revenueData = {
+  2019: [
+    { month: 1, revenue: 130673.72 },
+    { month: 2, revenue: 140426.41 },
+    { month: 3, revenue: 133911.84 },
+    { month: 4, revenue: 130912.59 },
+    { month: 5, revenue: 130610.53 },
+    { month: 6, revenue: 130739.90 },
+    { month: 7, revenue: 128584.58 },
+    { month: 8, revenue: 121966.47 },
+    { month: 9, revenue: 138489.04 },
+    { month: 10, revenue: 137303.99 },
+    { month: 11, revenue: 139090.90 },
+    { month: 12, revenue: 161347.35 }
+  ],
+  2020: [
+    { month: 1, revenue: 196727.42 },
+    { month: 2, revenue: 201189.89 },
+    { month: 3, revenue: 239750.63 },
+    { month: 4, revenue: 166860.33 },
+    { month: 5, revenue: 159342.61 },
+    { month: 6, revenue: 170895.92 },
+    { month: 7, revenue: 192008.64 },
+    { month: 8, revenue: 192367.47 },
+    { month: 9, revenue: 200588.49 },
+    { month: 10, revenue: 226918.22 },
+    { month: 11, revenue: 185256.57 },
+    { month: 12, revenue: 244956.36 }
+  ],
+  2021: [
+    { month: 1, revenue: 214008.10 },
+    { month: 2, revenue: 193977.42 },
+    { month: 3, revenue: 218175.91 },
+    { month: 4, revenue: 201826.64 },
+    { month: 5, revenue: 197887.14 },
+    { month: 6, revenue: 217825.67 },
+    { month: 7, revenue: 205974.81 },
+    { month: 8, revenue: 210671.49 }
+  ]
+};
+
+// Forecast data (Sep-Nov 2021) - 55% seasonal adjustment (optimal: 11.1% MAPE)
+// Formula: recent_avg × (0.45 + 0.55 × seasonal_factor)
+// Recent avg: 211,491 | Factors: Sep=1.10, Oct=1.16, Nov=1.10
+const forecastData = [
+  { month: 9, revenue: 223239 },   // 211,491 × 1.056
+  { month: 10, revenue: 229869 },  // 211,491 × 1.087
+  { month: 11, revenue: 223006 }   // 211,491 × 1.054
+];
+
+const currentMonth = 8; // August
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+
+// Chart dimensions
+const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+const width = 580 - margin.left - margin.right;
+const height = 240 - margin.top - margin.bottom;
+
+// Find min/max values for scaling (including forecast)
+const allValues = [...Object.values(revenueData).flat().map(d => d.revenue), ...forecastData.map(d => d.revenue)];
+const minValue = Math.min(...allValues) * 0.9;
+const maxValue = Math.max(...allValues) * 1.05;
+
+// Scale functions
+function scaleX(month) {
+  return margin.left + ((month - 1) / 11) * width;
+}
+
+function scaleY(value) {
+  return margin.top + height - ((value - minValue) / (maxValue - minValue)) * height;
+}
+
+// Format currency
+function formatCurrency(value) {
+  return new Intl.NumberFormat('sk-SK', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+// Create SVG path from data points
+function createPath(data) {
+  return data.map((d, i) => {
+    const x = scaleX(d.month);
+    const y = scaleY(d.revenue);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+}
+
+// Create area path
+function createAreaPath(data) {
+  const linePath = data.map((d, i) => {
+    const x = scaleX(d.month);
+    const y = scaleY(d.revenue);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+
+  const lastX = scaleX(data[data.length - 1].month);
+  const firstX = scaleX(data[0].month);
+  const bottomY = margin.top + height;
+
+  return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+}
+
+// Render chart
+function renderChart() {
+  const svg = document.getElementById('revenue-chart');
+  let svgContent = '';
+
+  // Grid lines
+  const gridValues = [100000, 150000, 200000, 250000];
+  gridValues.forEach(value => {
+    if (value >= minValue && value <= maxValue) {
+      const y = scaleY(value);
+      svgContent += `<line class="grid-line" x1="${margin.left}" y1="${y}" x2="${margin.left + width}" y2="${y}" />`;
+      svgContent += `<text class="axis-label axis-label-value" x="${margin.left - 8}" y="${y + 3}">${(value/1000).toFixed(0)}k</text>`;
+    }
+  });
+
+  // Month labels
+  monthNames.forEach((name, i) => {
+    const x = scaleX(i + 1);
+    svgContent += `<text class="axis-label axis-label-month" x="${x}" y="${margin.top + height + 18}">${name}</text>`;
+  });
+
+  // Areas (back to front)
+  svgContent += `<path class="chart-area chart-area-2019" d="${createAreaPath(revenueData[2019])}" />`;
+  svgContent += `<path class="chart-area chart-area-2020" d="${createAreaPath(revenueData[2020])}" />`;
+  svgContent += `<path class="chart-area chart-area-2021" d="${createAreaPath(revenueData[2021])}" />`;
+
+  // Lines (back to front)
+  svgContent += `<path class="chart-line chart-line-2019" d="${createPath(revenueData[2019])}" />`;
+  svgContent += `<path class="chart-line chart-line-2020" d="${createPath(revenueData[2020])}" />`;
+  svgContent += `<path class="chart-line chart-line-2021" d="${createPath(revenueData[2021])}" />`;
+
+  // Forecast line (continuing from last actual data point)
+  const lastActual = revenueData[2021][revenueData[2021].length - 1];
+  const forecastWithConnection = [lastActual, ...forecastData];
+
+  // Forecast line (dashed)
+  const forecastLinePath = forecastWithConnection.map((d, i) => {
+    const x = scaleX(d.month);
+    const y = scaleY(d.revenue);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+  svgContent += `<path class="chart-line-forecast" d="${forecastLinePath}" />`;
+
+  // Current month marker on 2021 line
+  const currentData = revenueData[2021].find(d => d.month === currentMonth);
+  if (currentData) {
+    const cx = scaleX(currentData.month);
+    const cy = scaleY(currentData.revenue);
+
+    // Main marker
+    svgContent += `<g class="current-marker" style="transform-origin: ${cx}px ${cy}px;">
+      <circle cx="${cx}" cy="${cy}" r="5" fill="var(--brand-green)" />
+      <circle cx="${cx}" cy="${cy}" r="3" fill="white" />
+    </g>`;
+  }
+
+  // Interactive hover points
+  Object.entries(revenueData).forEach(([year, data]) => {
+    data.forEach(d => {
+      const x = scaleX(d.month);
+      const y = scaleY(d.revenue);
+      svgContent += `<circle
+        class="hover-point"
+        cx="${x}"
+        cy="${y}"
+        r="12"
+        fill="transparent"
+        data-year="${year}"
+        data-month="${d.month}"
+        data-revenue="${d.revenue}"
+        style="cursor: pointer;"
+      />`;
+    });
+  });
+
+  // Forecast hover points
+  forecastData.forEach(d => {
+    const x = scaleX(d.month);
+    const y = scaleY(d.revenue);
+    svgContent += `<circle
+      class="hover-point"
+      cx="${x}"
+      cy="${y}"
+      r="12"
+      fill="transparent"
+      data-year="2021"
+      data-month="${d.month}"
+      data-revenue="${d.revenue}"
+      data-forecast="true"
+      style="cursor: pointer;"
+    />`;
+  });
+
+  svg.innerHTML = svgContent;
+
+  // Add hover interactions
+  const tooltip = document.getElementById('tooltip');
+  const hoverPoints = svg.querySelectorAll('.hover-point');
+
+  hoverPoints.forEach(point => {
+    point.addEventListener('mouseenter', (e) => {
+      const year = e.target.getAttribute('data-year');
+      const month = parseInt(e.target.getAttribute('data-month'));
+      const revenue = parseFloat(e.target.getAttribute('data-revenue'));
+      const isForecast = e.target.getAttribute('data-forecast') === 'true';
+
+      const label = isForecast ? `${monthNames[month - 1]} ${year} (prognóza)` : `${monthNames[month - 1]} ${year}`;
+      tooltip.innerHTML = `${label}: ${formatCurrency(revenue)}`;
+      tooltip.style.opacity = '1';
+
+      const rect = svg.getBoundingClientRect();
+      const x = parseFloat(e.target.getAttribute('cx'));
+      const y = parseFloat(e.target.getAttribute('cy'));
+
+      const tooltipX = (x / 580) * rect.width;
+      const tooltipY = (y / 200) * rect.height;
+
+      tooltip.style.left = `${tooltipX}px`;
+      tooltip.style.top = `${tooltipY - 35}px`;
+      tooltip.style.transform = 'translateX(-50%)';
+    });
+
+    point.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+  });
+}
+
+// Initialize
+renderChart();
+</script>
+
+</body>
+</html>

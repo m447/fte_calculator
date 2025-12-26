@@ -88,7 +88,7 @@ This project analyzes pharmacy operational data to predict the optimal number of
 
 **Credentials:**
 - Používateľ: `drmax`
-- Heslo: `FteCalc2024!Rx#Secure`
+- Heslo: `FteCalc2024Rx`.  'dev-password-change-me'
 
 **Usage Analytics (BigQuery):**
 - Dataset: `gen-lang-client-0415148507.fte_analytics`

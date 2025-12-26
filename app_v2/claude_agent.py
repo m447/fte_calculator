@@ -2036,8 +2036,9 @@ VÝSLEDKY Z NÁSTROJOV:
                         result_json['peers'] = result_json['peers'][:3]
                         result_json['_note'] = 'Zobrazené 3 z viacerých peers'
                     if 'pharmacies' in result_json:
-                        result_json['pharmacies'] = result_json['pharmacies'][:5]
-                        result_json['_note'] = f"Zobrazených 5 z {result_json.get('count', 'viacerých')}"
+                        result_json['pharmacies'] = result_json['pharmacies'][:10]
+                        if result_json.get('count', 0) > 10:
+                            result_json['_note'] = f"Zobrazených 10 z {result_json.get('count', 'viacerých')}"
                     result_str = json.dumps(result_json, ensure_ascii=False)
                 except (json.JSONDecodeError, KeyError):
                     # Fallback: just truncate but ensure valid ending

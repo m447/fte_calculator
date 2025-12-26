@@ -449,6 +449,8 @@ class DrMaxAgent:
         max_bloky: int = None,
         understaffed_only: bool = False,
         overstaffed_only: bool = False,
+        sort_by: str = None,
+        sort_desc: bool = True,
         limit: int = 10
     ) -> dict:
         """Search pharmacies with filters."""
@@ -475,6 +477,13 @@ class DrMaxAgent:
             df = df[df['fte_gap'] > 0.5]  # Positive gap = understaffed (need more FTE)
         if overstaffed_only:
             df = df[df['fte_gap'] < -0.5]  # Negative gap = overstaffed (excess FTE)
+
+        # Sort by specified column (default: bloky descending for "top/najväčšie" queries)
+        if sort_by and sort_by in df.columns:
+            df = df.sort_values(by=sort_by, ascending=not sort_desc)
+        else:
+            # Default sort by bloky descending (largest first)
+            df = df.sort_values(by='bloky', ascending=False)
 
         df = df.head(limit)
 
@@ -1390,7 +1399,7 @@ class DrMaxAgent:
         return [
             {
                 "name": "search_pharmacies",
-                "description": "Vyhľadaj lekárne podľa kritérií (mesto, typ, región, bloky). Vráti zoznam s indexovanou produktivitou.",
+                "description": "Vyhľadaj lekárne podľa kritérií (mesto, typ, región, bloky). Výsledky sú zoradené podľa blokov (najväčšie prvé). Pre 'top/najväčšie' lekárne použi sort_by='bloky'.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -1421,6 +1430,14 @@ class DrMaxAgent:
                         "overstaffed_only": {
                             "type": "boolean",
                             "description": "Len naddimenzované lekárne (fte_gap < -0.5) - vhodné pre presun personálu"
+                        },
+                        "sort_by": {
+                            "type": "string",
+                            "description": "Stĺpec pre zoradenie: 'bloky', 'trzby', 'fte_actual', 'productivity_index', 'revenue_at_risk_eur'. Default: 'bloky'"
+                        },
+                        "sort_desc": {
+                            "type": "boolean",
+                            "description": "Zoradiť zostupne (true=najväčšie prvé). Default: true"
                         },
                         "limit": {
                             "type": "integer",

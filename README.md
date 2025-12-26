@@ -82,13 +82,12 @@ This project analyzes pharmacy operational data to predict the optimal number of
 
 ## Live Application
 
-**Production URL:** https://fte-calculator-638044991573.europe-west1.run.app
+**Production URL:** https://fte-calc-gqsssy2mjq-ew.a.run.app
 
 **GCP Project:** `gen-lang-client-0415148507`
 
 **Credentials:**
-- Používateľ: `drmax`
-- Heslo: `FteCalc2024Rx`.  'dev-password-change-me'
+- Heslo: `FteCalc2024Rx`
 
 **Usage Analytics (BigQuery):**
 - Dataset: `gen-lang-client-0415148507.fte_analytics`
@@ -291,17 +290,14 @@ If the AI assistant returns 403 errors locally:
 
 ```bash
 # Build and deploy
-gcloud run deploy fte-calculator \
+gcloud run deploy fte-calc \
   --source . \
   --region europe-west1 \
   --project gen-lang-client-0415148507 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --min-instances=1
 
-# Update min instances (0 = cold start allowed, 1 = always warm)
-gcloud run services update fte-calculator \
-  --region europe-west1 \
-  --min-instances 0 \
-  --project gen-lang-client-0415148507
+# Service is always running (min-instances=1)
 ```
 
 ### Static Tools

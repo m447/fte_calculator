@@ -3221,6 +3221,21 @@ input:checked + .toggle-slider:before {
   margin-top: 2px;
 }
 
+/* Hospital supply badge for E pharmacies */
+.hospital-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: #0ea5e9;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
 /* Legacy styles for compatibility */
 .summary-stat.priority-urgent {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.05));
@@ -6301,7 +6316,8 @@ async function loadPharmacyById(pharmacyId) {
       fte_diff: data.fte_diff,
       is_above_avg_productivity: data.is_above_avg_productivity,
       revenue_at_risk: data.revenue_at_risk,
-      bloky_trend: data.bloky_trend
+      bloky_trend: data.bloky_trend,
+      hospital_supply: data.hospital_supply
     };
     window.selectedPharmacyExact = {
       bloky: data.bloky,
@@ -6323,8 +6339,9 @@ async function loadPharmacyById(pharmacyId) {
     updateEfficiencyIndicator();
     updateTrendIndicator();
 
-    // Update hint with success
-    hint.textContent = `${data.mesto}`;
+    // Update hint with success (include hospital badge if applicable)
+    const hospitalBadge = data.hospital_supply ? ' <span class="hospital-badge" title="Zásobuje nemocnicu">H</span>' : '';
+    hint.innerHTML = `${data.mesto}${hospitalBadge}`;
     hint.classList.add('loaded');
 
     // Load trend chart
@@ -6365,7 +6382,7 @@ pharmacyIdInput.onkeypress = (e) => {
 document.getElementById('btn-new-pharmacy').addEventListener('click', function() {
   // Clear pharmacy ID
   document.getElementById('pharmacy-id-input').value = '';
-  document.getElementById('pharmacy-hint').textContent = '';
+  document.getElementById('pharmacy-hint').innerHTML = '';
   document.getElementById('pharmacy-hint').classList.remove('loaded', 'error');
 
   // Reset form fields
@@ -6578,7 +6595,7 @@ function analyzeAnother() {
   setTimeout(() => input.classList.remove('ready'), 2000);
 
   // Clear previous data
-  document.getElementById('pharmacy-hint').textContent = '';
+  document.getElementById('pharmacy-hint').innerHTML = '';
   document.getElementById('pharmacy-hint').classList.remove('loaded', 'error');
 }
 
@@ -6968,6 +6985,7 @@ function renderPriorityList(type, items) {
     const shortType = p.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
     const pData = encodeURIComponent(JSON.stringify(p));
     const rank = index + 1;
+    const hospitalBadge = p.hospital_supply ? '<span class="hospital-badge" title="Zásobuje nemocnicu">H</span>' : '';
 
     let valueHtml = '';
     let subtitleHtml = '';
@@ -6984,7 +7002,9 @@ function renderPriorityList(type, items) {
       // Overstaffed - show excess FTE
       const excess = Math.abs(p.diff || 0);
       valueHtml = `<span class="priority-item-value optimize">+${excess.toFixed(1)} FTE</span>`;
-      subtitleHtml = `<span class="priority-item-subtitle">Možné prerozdelenie</span>`;
+      subtitleHtml = p.hospital_supply
+        ? `<span class="priority-item-subtitle">FTE zásobuje nemocnicu</span>`
+        : `<span class="priority-item-subtitle">Možné prerozdelenie</span>`;
     } else if (type === 'monitor') {
       // Growing - show trend
       valueHtml = `<span class="priority-item-value monitor">+${p.bloky_trend || 0}%</span>`;
@@ -6998,6 +7018,7 @@ function renderPriorityList(type, items) {
           <div class="priority-item-name">
             ${p.id} - ${p.mesto}
             <span class="priority-item-id">${shortType}</span>
+            ${hospitalBadge}
           </div>
           ${subtitleHtml}
         </div>
@@ -7076,8 +7097,8 @@ function exportCSV(type) {
     },
     optimize: {
       filename: 'fte_surplus.csv',
-      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Prebytok FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %'],
-      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, Math.abs(p.diff || 0).toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend]
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Prebytok FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %', 'Nemocnica'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, Math.abs(p.diff || 0).toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend, p.hospital_supply ? 'Áno' : '']
     }
   };
 
@@ -7732,9 +7753,10 @@ function analyzeOutlier(jsonStr) {
   chatOpen = true;
 
   // Reset chat messages
+  const hospitalNote = p.hospital_supply ? '<br><em style="color:#0ea5e9;font-size:0.85em;">Lekáreň zásobuje nemocnicu - FTE zahŕňa aj nemocničnú logistiku</em>' : '';
   chatMessages.innerHTML = `
     <div class="chat-message assistant">
-      <div class="bubble"><strong>${p.mesto}</strong> (${p.typ})<br><br>Model odporúča ${p.predicted_fte.toFixed(1)} FTE, aktuálne má ${p.actual_fte.toFixed(1)} FTE (${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)}). Opýtajte sa prečo.</div>
+      <div class="bubble"><strong>${p.mesto}</strong> (${p.typ})${hospitalNote}<br><br>Model odporúča ${p.predicted_fte.toFixed(1)} FTE, aktuálne má ${p.actual_fte.toFixed(1)} FTE (${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)}). Opýtajte sa prečo.</div>
     </div>
   `;
 

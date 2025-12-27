@@ -528,7 +528,8 @@ def get_network():
             'bloky': int(row['bloky']),
             'trzby': int(row['trzby']),
             'podiel_rx': round(row['podiel_rx'] * 100, 0),
-            'is_above_avg_productivity': row['is_above_avg']
+            'is_above_avg_productivity': row['is_above_avg'],
+            'hospital_supply': bool(row.get('hospital_supply', False))
         }
         if include_priority_data:
             # Add fields needed for priority dashboard
@@ -814,7 +815,8 @@ def get_pharmacy(pharmacy_id):
         'prod_residual': round(float(row.get('prod_residual', 0)), 2),
         'is_above_avg_productivity': is_above_avg,
         'prod_pct': calculate_prod_pct(row),
-        'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0)
+        'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0),
+        'hospital_supply': bool(row.get('hospital_supply', False))
     })
 
 

@@ -102,9 +102,10 @@ DOSTUPNÉ NÁSTROJE:
 10. generate_report - Vytvor report vo formáte Markdown
 11. get_segment_comparison - Porovnaj segmenty (A-E)
 12. get_city_summary - Súhrn za mesto s viacerými lekárňami
-13. get_network_overview - Rýchly prehľad celej siete
-14. get_trend_analysis - Rastúce/klesajúce lekárne
-15. get_priority_actions - Prioritizovaný zoznam akcií
+13. get_cities_pharmacy_count - Počet lekární v jednotlivých mestách
+14. get_network_overview - Rýchly prehľad celej siete
+15. get_trend_analysis - Rastúce/klesajúce lekárne
+16. get_priority_actions - Prioritizovaný zoznam akcií
 
 ═══════════════════════════════════════════════════════════════
 CHRÁNENÉ INFORMÁCIE - NIKDY NEZVEREJŇUJ:
@@ -312,16 +313,21 @@ DOSTUPNÉ NÁSTROJE A PARAMETRE:
     - mesto: Názov mesta (required)
     - Vráti aj info o možnosti presunu personálu v rámci mesta
 
-11. get_network_overview ⚠️ PRE CELKOVÝ PREHĽAD SIETE
+11. get_cities_pharmacy_count ⚠️ PRE POČET LEKÁRNÍ V MESTÁCH
+    - min_count: Minimálny počet lekární (default 1)
+    - limit: Max počet miest (default 50)
+    - Použiť pri "koľko lekární v mestách", "mestá s najviac lekárňami", "počet lekární podľa mesta"
+
+12. get_network_overview ⚠️ PRE CELKOVÝ PREHĽAD SIETE
     - Bez parametrov - rýchly health check celej siete
     - Použiť pri "ako je na tom sieť", "celkový prehľad", "koľko lekární"
 
-12. get_trend_analysis ⚠️ PRE RASTÚCE/KLESAJÚCE LEKÁRNE
+13. get_trend_analysis ⚠️ PRE RASTÚCE/KLESAJÚCE LEKÁRNE
     - trend_threshold: Prah v % (default 10)
     - limit: Max počet (default 20)
     - Použiť pri "rastúce lekárne", "klesajúce", "trendy"
 
-13. get_priority_actions ⚠️ PRE "ČO RIEŠIŤ NAJSKÔR"
+14. get_priority_actions ⚠️ PRE "ČO RIEŠIŤ NAJSKÔR"
     - limit: Max počet akcií (default 10)
     - Kombinuje riziko, produktivitu a FTE gap do prioritizovaného zoznamu
 
@@ -1259,6 +1265,42 @@ class DrMaxAgent:
             'transfer_possible': len(understaffed) > 0 and len(overstaffed) > 0
         }
 
+    def tool_get_cities_pharmacy_count(self, min_count: int = 1, limit: int = 50) -> dict:
+        """Get count of pharmacies per city, sorted by count descending."""
+        df = self.sanitized_data
+
+        # Use 'city' column (clean city name extracted from 'mesto')
+        if 'city' not in df.columns:
+            # Fallback: extract city from mesto
+            def extract_city(mesto):
+                if ',' in str(mesto):
+                    return str(mesto).split(',')[0].strip()
+                if ' - ' in str(mesto):
+                    return str(mesto).split(' - ')[0].strip()
+                return str(mesto).strip()
+            df['city'] = df['mesto'].apply(extract_city)
+
+        city_counts = df['city'].value_counts()
+
+        # Filter by min_count and limit
+        filtered = city_counts[city_counts >= min_count].head(limit)
+
+        cities = []
+        for city, count in filtered.items():
+            city_df = df[df['city'] == city]
+            cities.append({
+                'city': city,
+                'pharmacy_count': int(count),
+                'total_fte': round(city_df['fte_actual'].sum(), 1),
+                'total_revenue_at_risk': int(city_df['revenue_at_risk_eur'].sum())
+            })
+
+        return {
+            'total_cities': len(city_counts),
+            'cities_with_multiple': len(city_counts[city_counts >= 2]),
+            'cities': cities
+        }
+
     def tool_get_network_overview(self) -> dict:
         """Get quick health snapshot of the entire pharmacy network."""
         df = self.sanitized_data
@@ -1668,6 +1710,23 @@ class DrMaxAgent:
                 }
             },
             {
+                "name": "get_cities_pharmacy_count",
+                "description": "Počet lekární v jednotlivých mestách, zoradené zostupne. Použiť pri otázkach 'koľko lekární v mestách', 'mestá s najviac lekárňami'.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "min_count": {
+                            "type": "integer",
+                            "description": "Minimálny počet lekární v meste (default 1)"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Max počet miest vo výsledku (default 50)"
+                        }
+                    }
+                }
+            },
+            {
                 "name": "get_network_overview",
                 "description": "Rýchly prehľad zdravia celej siete lekární. Celkové FTE, ohrozené tržby, % poddimenzovaných.",
                 "input_schema": {
@@ -1725,6 +1784,7 @@ class DrMaxAgent:
             'generate_report': self.tool_generate_report,
             'get_segment_comparison': self.tool_get_segment_comparison,
             'get_city_summary': self.tool_get_city_summary,
+            'get_cities_pharmacy_count': self.tool_get_cities_pharmacy_count,
             'get_network_overview': self.tool_get_network_overview,
             'get_trend_analysis': self.tool_get_trend_analysis,
             'get_priority_actions': self.tool_get_priority_actions

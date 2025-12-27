@@ -206,6 +206,9 @@ def calculate_pharmacy_fte(row):
     """
     Single source of truth for pharmacy FTE calculation.
 
+    Calculates predicted GROSS FTE and uses efektivita-based actual GROSS FTE.
+    Uses actual_fte_gross from CSV (fte + fte_n) for consistency with model training.
+
     Args:
         row: DataFrame row or dict with pharmacy data
 
@@ -238,13 +241,16 @@ def calculate_pharmacy_fte(row):
     fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
     predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
 
-    # Calculate actual GROSS FTE from role breakdown
+    # Use efektivita-based GROSS FTE (fte + fte_n) for consistency with model training
+    # This excludes hospital logistics staff, matching retail-focused predictions
+    actual_fte = float(row.get('actual_fte_gross', 0))
+
+    # Role breakdown for display (informational only, not used for total)
     fte_F_actual = float(row['fte_F']) * conv['F']
     fte_L_actual = float(row['fte_L']) * conv['L']
     fte_ZF_actual = float(row['fte_ZF']) * conv['ZF']
-    actual_fte = fte_F_actual + fte_L_actual + fte_ZF_actual
 
-    # Calculate difference
+    # Calculate difference (positive = understaffed, negative = overstaffed)
     fte_diff = predicted_fte - actual_fte
 
     return {
@@ -717,14 +723,10 @@ def get_network():
         conv = get_gross_factors(pharmacy_id, typ)
         return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
-    def calc_gross_fte_actual(row):
-        """Calculate actual GROSS FTE using shared get_gross_factors()."""
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
-
     df_calc['predicted_fte'] = df_calc.apply(
         lambda row: calc_gross_fte_predicted(row['predicted_fte_net'], row['typ'], row['id']), axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_gross_fte_actual, axis=1)
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
     df_calc['fte_diff'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
     # Summary
@@ -917,12 +919,9 @@ def search_pharmacies():
         conv = get_gross_factors(pharmacy_id, typ)
         return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
-    def calc_actual_gross(row):
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
-
     df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
     # Apply filters
@@ -1369,12 +1368,9 @@ def execute_search_pharmacies(args):
         conv = get_gross_factors(pharmacy_id, typ)
         return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
-    def calc_actual_gross(row):
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
-
     df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
     # Use shared helper functions - single source of truth
     df_calc['revenue_at_risk'] = df_calc.apply(
@@ -1465,12 +1461,9 @@ def execute_get_network_summary():
         conv = get_gross_factors(pharmacy_id, typ)
         return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
-    def calc_actual_gross(row):
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
-
     df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross_pred(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
 
     total_actual = df_calc['actual_fte'].sum()
@@ -1511,16 +1504,11 @@ def execute_get_pharmacy_details(pharmacy_id):
     row = pharmacy.iloc[0]
     typ = row['typ']
 
-    TYPE_GROSS_CONV = {
-        'A - shopping premium': {'F': 1.17, 'L': 1.22, 'ZF': 1.23},
-        'B - shopping': {'F': 1.22, 'L': 1.22, 'ZF': 1.18},
-        'C - street +': {'F': 1.23, 'L': 1.22, 'ZF': 1.20},
-        'D - street': {'F': 1.29, 'L': 1.22, 'ZF': 1.25},
-        'E - poliklinika': {'F': 1.27, 'L': 1.24, 'ZF': 1.23},
-    }
-    conv = TYPE_GROSS_CONV.get(typ, {'F': 1.21, 'L': 1.22, 'ZF': 1.20})
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    actual_fte = float(row.get('actual_fte_gross', 0))
 
-    actual_fte = row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
+    # Get conversion factors for predicted FTE calculation
+    conv = get_gross_factors(pharmacy_id, typ)
 
     # Calculate predicted
     rx_time_factor = model_pkg.get('rx_time_factor', 0.41)
@@ -1631,12 +1619,9 @@ def execute_detect_growth_opportunities(args):
         conv = get_gross_factors(pharmacy_id, typ)
         return fte_net * (props['prop_F'] * conv['F'] + props['prop_L'] * conv['L'] + props['prop_ZF'] * conv['ZF'])
 
-    def calc_actual_gross(row):
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['fte_F'] * conv['F'] + row['fte_L'] * conv['L'] + row['fte_ZF'] * conv['ZF']
-
     df_calc['predicted_fte'] = df_calc.apply(lambda r: calc_gross(r['predicted_fte_net'], r['typ'], r['id']), axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+    # Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
     # Use shared helper function - single source of truth
     df_calc['prod_pct'] = df_calc.apply(calculate_prod_pct, axis=1)

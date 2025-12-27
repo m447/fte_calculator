@@ -356,8 +356,8 @@ def calculate_pharmacy_fte(row):
     """
     Single source of truth for pharmacy FTE calculation.
 
-    Calculates both predicted and actual GROSS FTE for a single pharmacy,
-    applying pharmacy-specific or type-based conversion factors.
+    Calculates predicted GROSS FTE and uses efektivita-based actual GROSS FTE.
+    Uses actual_fte_gross from CSV (fte + fte_n) for consistency with model training.
 
     Args:
         row: DataFrame row or dict with pharmacy data
@@ -403,13 +403,16 @@ def calculate_pharmacy_fte(row):
     fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
     predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
 
-    # Calculate actual GROSS FTE from role breakdown
+    # Use efektivita-based GROSS FTE (fte + fte_n) for consistency with model training
+    # This excludes hospital logistics staff, matching retail-focused predictions
+    actual_fte = float(row.get('actual_fte_gross', 0))
+
+    # Role breakdown for display (informational only, not used for total)
     fte_F_actual = float(row['fte_F']) * conv['F']
     fte_L_actual = float(row['fte_L']) * conv['L']
     fte_ZF_actual = float(row['fte_ZF']) * conv['ZF']
-    actual_fte = fte_F_actual + fte_L_actual + fte_ZF_actual
 
-    # Calculate difference
+    # Calculate difference (positive = understaffed, negative = overstaffed)
     fte_diff = predicted_fte - actual_fte
 
     return {
@@ -475,17 +478,10 @@ def prepare_fte_dataframe(df, include_revenue_at_risk=True):
             props['prop_ZF'] * conv['ZF']
         )
 
-    # 5. Calculate actual GROSS
-    def calc_actual_gross(row):
-        conv = get_gross_factors(row['id'], row['typ'])
-        return (
-            row['fte_F'] * conv['F'] +
-            row['fte_L'] * conv['L'] +
-            row['fte_ZF'] * conv['ZF']
-        )
-
     df_calc['predicted_fte'] = df_calc.apply(calc_predicted_gross, axis=1)
-    df_calc['actual_fte'] = df_calc.apply(calc_actual_gross, axis=1)
+
+    # 5. Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
+    df_calc['actual_fte'] = df_calc['actual_fte_gross']
 
     # 6. Calculate derived fields
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']

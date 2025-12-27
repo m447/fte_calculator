@@ -113,3 +113,19 @@ Revenue at risk calculation uses the `is_above_avg_productivity()` function, whi
 | Column | `produktivita` | `produktivita_gross` |
 
 **Recommendation:** Keep NET for model (captures true efficiency), use GROSS for display (consistent with staffing metrics shown to users).
+
+## FTE Calculation Consistency (Dec 2024)
+
+To ensure full consistency, the server now uses efektivita-based GROSS FTE (`fte + fte_n`) for actual staffing:
+
+| Component | Source | Consistency |
+|-----------|--------|-------------|
+| Model training | `produktivita = bloky / fte(efektivita) / 2088` | efektivita |
+| Productivity display | `produktivita_gross = bloky / actual_fte_gross / 2088` | efektivita |
+| Staffing comparison | `actual_fte = fte + fte_n` (efektivita) | efektivita |
+
+This eliminates the previous inconsistency where:
+- Model used efektivita data
+- Server compared to role-based GROSS (different source)
+
+See [data_sources.md](data_sources.md) for details on the FTE calculation change.

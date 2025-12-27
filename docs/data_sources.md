@@ -98,19 +98,27 @@ E-type pharmacies (poliklinika) consistently show higher FTE in payroll data tha
 
 ### 3. GROSS FTE Calculation Methods
 
-Two methods were used historically:
+Two methods exist for calculating GROSS FTE:
 
 | Method | Formula | Source |
 |--------|---------|--------|
 | Factor-based | `(fte_F × factor_F) + (fte_L × factor_L) + (fte_ZF × factor_ZF)` | Role FTE × payroll factors |
-| Direct | `fte + fte_n` | Efektivita data |
+| Direct (efektivita) | `fte + fte_n` | Efektivita data |
 
 **Comparison:**
-- Mean difference: +0.12 FTE
-- Standard deviation: 0.51 FTE
-- Range: -2.3 to +1.9 FTE
+- Mean difference: +0.11 FTE (factor-based shows higher)
+- 71% of pharmacies within ±0.5 FTE
+- E-type pharmacies show largest differences (hospital staff in role breakdown)
 
-**Current approach:** Using direct method (`fte + fte_n`) as it's simpler and uses data from a single source.
+**Current approach (as of Dec 2024):**
+
+The server now uses the **direct method (`fte + fte_n`)** for actual FTE calculations. This ensures consistency with the model training data, which uses efektivita-based productivity metrics.
+
+**Rationale:**
+- Model was trained on efektivita data (`produktivita = bloky / fte / 2088`)
+- Comparing predictions to efektivita-based actuals is more consistent
+- Excludes hospital logistics staff from retail FTE comparison
+- Reduces "paradox" cases (high productivity + overstaffed) from 13 to 9
 
 ## Model Training Data
 
@@ -139,20 +147,22 @@ The model was trained on `ml_ready_v3.csv` which includes:
 
 **Hospital supply flagged pharmacies (10):**
 
-Based on server's FTE calculation (gross factors method), E pharmacies with surplus > 0.5 FTE:
+These pharmacies were flagged based on the original factor-based calculation which showed significant surplus (>0.5 FTE). With the current efektivita-based calculation, they no longer appear overstaffed because efektivita excludes hospital logistics staff:
 
-| ID | Mesto | Surplus |
-|----|-------|---------|
-| 262 | Michalovce | +2.7 FTE |
-| 97 | Trebišov, Nemocnica s pol. | +2.6 FTE |
-| 136 | Rožňava, nemocnica | +2.1 FTE |
-| 98 | Spiš.N.Ves, poliklinika | +1.7 FTE |
-| 240 | Topolčany, Nemocnica | +1.5 FTE |
-| 41 | Žiar n.H., NsP 2 | +1.0 FTE |
-| 277 | Nováky | +0.9 FTE |
-| 22 | Rimavská Sobota, NsP | +0.9 FTE |
-| 144 | Nemocnica Dunajská Streda | +0.8 FTE |
-| 37 | Čierna n.T., poliklinika | +0.7 FTE |
+| ID | Mesto | Surplus (efektivita) |
+|----|-------|---------------------|
+| 97 | Trebišov, Nemocnica s pol. | +0.8 FTE |
+| 41 | Žiar n.H., NsP 2 | +0.6 FTE |
+| 262 | Michalovce | +0.3 FTE |
+| 98 | Spiš.N.Ves, poliklinika | +0.2 FTE |
+| 144 | Nemocnica Dunajská Streda | +0.2 FTE |
+| 136 | Rožňava, nemocnica | +0.1 FTE |
+| 37 | Čierna n.T., poliklinika | 0.0 FTE |
+| 240 | Topolčany, Nemocnica | 0.0 FTE |
+| 277 | Nováky | -0.5 FTE |
+| 22 | Rimavská Sobota, NsP | -1.4 FTE |
+
+**Note:** The `hospital_supply` flag is retained for informational purposes - these pharmacies serve hospitals and may have additional staff not reflected in retail metrics.
 
 ## Recommendations
 

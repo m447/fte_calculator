@@ -263,7 +263,14 @@ def calculate_pharmacy_fte(row):
 
 
 def is_above_avg_productivity(row):
-    """Single source of truth for determining above-average productivity."""
+    """
+    Single source of truth for determining above-average productivity.
+    Uses GROSS-based productivity (consistent with FTE staffing metrics).
+    """
+    # Prefer GROSS-based classification (consistent with staffing metrics)
+    if 'is_above_avg_gross' in row:
+        return bool(row.get('is_above_avg_gross', False))
+    # Fallback to NET-based (legacy)
     return float(row.get('prod_residual', 0)) > 0
 
 

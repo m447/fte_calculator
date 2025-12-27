@@ -290,12 +290,19 @@ def is_above_avg_productivity(row):
     """
     Check if pharmacy has above-average productivity.
 
+    Uses GROSS-based productivity for classification (consistent with FTE staffing).
+    Falls back to NET-based (prod_residual) if GROSS column not available.
+
     Args:
-        row: DataFrame row or dict with 'prod_residual' key
+        row: DataFrame row or dict with 'is_above_avg_gross' or 'prod_residual' key
 
     Returns:
         bool: True if productivity is above segment average
     """
+    # Prefer GROSS-based classification (consistent with staffing metrics)
+    if 'is_above_avg_gross' in row:
+        return bool(row.get('is_above_avg_gross', False))
+    # Fallback to NET-based (legacy)
     return float(row.get('prod_residual', 0)) > 0
 
 

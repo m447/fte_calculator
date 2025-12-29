@@ -54,7 +54,12 @@ def generate_sanitized_data(data_path: Path = None, output_path: Path = None) ->
         # Pre-computed predictions
         'fte_recommended',
         'fte_gap',
-        'revenue_at_risk_eur'
+        'revenue_at_risk_eur',
+        # Zastup (borrowed staff)
+        'zastup',
+        'zastup_pct',
+        # Above-average productivity flag (GROSS-based, matches app)
+        'is_above_avg_gross'
     ]
 
     # Only select columns that exist (for backwards compatibility)

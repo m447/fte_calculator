@@ -28,3 +28,4 @@ __pycache__/
 *.tmp
 *.temp
 .gemini/
+cookies.txt

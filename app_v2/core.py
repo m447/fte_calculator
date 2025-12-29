@@ -51,8 +51,8 @@ GROSS_CONVERSION = {
 GROSS_CONVERSION_DEFAULT = {'F': 1.21, 'L': 1.22, 'ZF': 1.20}
 
 # FTE gap thresholds - defines what counts as "notable" vs "significant" gaps
-FTE_GAP_NOTABLE = 0.5     # Threshold for counting as understaffed/overstaffed
-FTE_GAP_URGENT = 0.5      # Threshold for urgent priority (with productivity check)
+FTE_GAP_NOTABLE = 0.05    # Threshold for counting as understaffed/overstaffed (~1.5 hrs/week)
+FTE_GAP_URGENT = 0.05     # Threshold for urgent priority (with productivity check)
 FTE_GAP_OPTIMIZE = 0.7    # Threshold for optimize priority (overstaffed)
 FTE_GAP_OUTLIER = 1.0     # Threshold for significant outliers
 
@@ -329,6 +329,8 @@ def calculate_revenue_at_risk(predicted_fte, actual_fte, trzby, is_above_avg):
     Only applies to productive pharmacies (above average) that are understaffed.
     Formula: (Overload_ratio - 1) × 50% × Annual_Revenue
 
+    Uses UNROUNDED values for accurate calculation.
+
     Args:
         predicted_fte: Model-predicted FTE (GROSS)
         actual_fte: Current actual FTE (GROSS)
@@ -338,17 +340,11 @@ def calculate_revenue_at_risk(predicted_fte, actual_fte, trzby, is_above_avg):
     Returns:
         int: Estimated annual revenue at risk (EUR)
     """
-    if not actual_fte or predicted_fte <= actual_fte or trzby <= 0 or not is_above_avg:
+    if not actual_fte or actual_fte <= 0 or predicted_fte <= actual_fte or trzby <= 0 or not is_above_avg:
         return 0
 
-    # Use rounded values for consistency with display
-    actual_rounded = round(actual_fte, 1)
-    predicted_rounded = round(predicted_fte, 1)
-
-    if predicted_rounded <= actual_rounded:
-        return 0
-
-    overload_ratio = predicted_rounded / actual_rounded if actual_rounded > 0 else 1
+    # Use actual values, not rounded (more accurate)
+    overload_ratio = predicted_fte / actual_fte
     return int((overload_ratio - 1) * 0.5 * trzby)
 
 
@@ -356,33 +352,39 @@ def calculate_pharmacy_fte(row):
     """
     Single source of truth for pharmacy FTE calculation.
 
-    Calculates predicted GROSS FTE and uses efektivita-based actual GROSS FTE.
-    Uses actual_fte_gross from CSV (fte + fte_n) for consistency with model training.
+    GROSS FTE conversion (single source of truth):
+        actual_gross = fte + fte_n (NET working staff + absence FTE)
+        predicted_gross = predicted_net + fte_n (same formula)
+
+    This ensures consistency: both actual and predicted use the same
+    NET + fte_n formula for GROSS conversion.
 
     Args:
         row: DataFrame row or dict with pharmacy data
 
     Returns:
         dict: {
-            'predicted_fte': float,
-            'predicted_fte_net': float,
-            'predicted_fte_F': float,
-            'predicted_fte_L': float,
-            'predicted_fte_ZF': float,
-            'actual_fte': float,
-            'actual_fte_F': float,
-            'actual_fte_L': float,
-            'actual_fte_ZF': float,
+            'predicted_fte': float (GROSS),
+            'predicted_fte_net': float (NET),
+            'predicted_fte_F': float (informational),
+            'predicted_fte_L': float (informational),
+            'predicted_fte_ZF': float (informational),
+            'actual_fte': float (GROSS),
+            'actual_fte_net': float (NET),
+            'actual_fte_F': float (informational),
+            'actual_fte_L': float (informational),
+            'actual_fte_ZF': float (informational),
+            'fte_n': float (absence FTE),
             'fte_diff': float,
-            'gross_factors': dict,
+            'gross_factors': dict (informational, not used for conversion),
         }
     """
     pharmacy_id = int(row['id'])
     typ = row['typ']
-
-    # Get conversion factors (pharmacy-specific or type-based)
-    conv = get_gross_factors(pharmacy_id, typ)
     props = SEGMENT_PROPORTIONS.get(typ, {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
+
+    # Get gross factors (for informational/backward compatibility only)
+    gross_factors = get_gross_factors(pharmacy_id, typ)
 
     # Build features for prediction
     rx_time_factor = get_rx_time_factor()
@@ -396,23 +398,31 @@ def calculate_pharmacy_fte(row):
     # Predict NET FTE
     X = pd.DataFrame([features])
     predicted_fte_net = get_model()['models']['fte'].predict(X)[0]
+    predicted_fte_net = max(0.5, predicted_fte_net)  # Minimum 0.5 FTE
 
-    # Convert predicted NET to GROSS by role
-    fte_F_pred = predicted_fte_net * props['prop_F'] * conv['F']
-    fte_L_pred = predicted_fte_net * props['prop_L'] * conv['L']
-    fte_ZF_pred = predicted_fte_net * props['prop_ZF'] * conv['ZF']
-    predicted_fte = fte_F_pred + fte_L_pred + fte_ZF_pred
+    # Get fte_n (absence FTE) - same value used for both actual and predicted
+    fte_n = float(row.get('fte_n', 0))
 
-    # Use efektivita-based GROSS FTE (fte + fte_n) for consistency with model training
-    # This excludes hospital logistics staff, matching retail-focused predictions
-    actual_fte = float(row.get('actual_fte_gross', 0))
+    # GROSS = NET + fte_n (single source of truth for both actual and predicted)
+    predicted_fte = predicted_fte_net + fte_n
 
-    # Role breakdown for display (informational only, not used for total)
-    fte_F_actual = float(row['fte_F']) * conv['F']
-    fte_L_actual = float(row['fte_L']) * conv['L']
-    fte_ZF_actual = float(row['fte_ZF']) * conv['ZF']
+    # Actual NET and GROSS
+    actual_fte_net = float(row.get('fte', 0))
+    actual_fte = actual_fte_net + fte_n  # Same formula as predicted
+
+    # Role breakdown for display (informational only, uses proportions)
+    # Predicted roles (based on segment proportions)
+    fte_F_pred = predicted_fte_net * props['prop_F']
+    fte_L_pred = predicted_fte_net * props['prop_L']
+    fte_ZF_pred = predicted_fte_net * props['prop_ZF']
+
+    # Actual roles (from CSV data)
+    fte_F_actual = float(row.get('fte_F', 0))
+    fte_L_actual = float(row.get('fte_L', 0))
+    fte_ZF_actual = float(row.get('fte_ZF', 0))
 
     # Calculate difference (positive = understaffed, negative = overstaffed)
+    # Note: fte_diff = (pred_net + fte_n) - (actual_net + fte_n) = pred_net - actual_net
     fte_diff = predicted_fte - actual_fte
 
     return {
@@ -422,11 +432,13 @@ def calculate_pharmacy_fte(row):
         'predicted_fte_L': fte_L_pred,
         'predicted_fte_ZF': fte_ZF_pred,
         'actual_fte': actual_fte,
+        'actual_fte_net': actual_fte_net,
         'actual_fte_F': fte_F_actual,
         'actual_fte_L': fte_L_actual,
         'actual_fte_ZF': fte_ZF_actual,
+        'fte_n': fte_n,
         'fte_diff': fte_diff,
-        'gross_factors': conv,
+        'gross_factors': gross_factors,  # For informational/backward compatibility
     }
 
 
@@ -467,28 +479,19 @@ def prepare_fte_dataframe(df, include_revenue_at_risk=True):
     X['effective_bloky'] = df_calc['effective_bloky']
     X['prod_residual'] = df_calc['prod_residual']
     df_calc['predicted_fte_net'] = get_model()['models']['fte'].predict(X)
+    df_calc['predicted_fte_net'] = df_calc['predicted_fte_net'].clip(lower=0.5)  # Minimum 0.5 FTE
 
-    # 4. Convert NET to GROSS (predicted)
-    def calc_predicted_gross(row):
-        props = SEGMENT_PROPORTIONS.get(row['typ'], {'prop_F': 0.4, 'prop_L': 0.4, 'prop_ZF': 0.2})
-        conv = get_gross_factors(row['id'], row['typ'])
-        return row['predicted_fte_net'] * (
-            props['prop_F'] * conv['F'] +
-            props['prop_L'] * conv['L'] +
-            props['prop_ZF'] * conv['ZF']
-        )
+    # 4. Convert NET to GROSS: GROSS = NET + fte_n (single source of truth)
+    # Same formula for both actual and predicted
+    df_calc['predicted_fte'] = df_calc['predicted_fte_net'] + df_calc['fte_n']
+    df_calc['actual_fte'] = df_calc['fte'] + df_calc['fte_n']
 
-    df_calc['predicted_fte'] = df_calc.apply(calc_predicted_gross, axis=1)
-
-    # 5. Use efektivita-based actual GROSS FTE (fte + fte_n) for consistency with model training
-    df_calc['actual_fte'] = df_calc['actual_fte_gross']
-
-    # 6. Calculate derived fields
+    # 5. Calculate derived fields
     df_calc['fte_gap'] = df_calc['predicted_fte'] - df_calc['actual_fte']
     df_calc['prod_pct'] = df_calc.apply(calculate_prod_pct, axis=1)
     df_calc['is_above_avg'] = df_calc.apply(is_above_avg_productivity, axis=1)
 
-    # 7. Revenue at risk (optional)
+    # 6. Revenue at risk (optional)
     if include_revenue_at_risk:
         df_calc['revenue_at_risk'] = df_calc.apply(
             lambda r: calculate_revenue_at_risk(

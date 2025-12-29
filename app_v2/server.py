@@ -486,6 +486,7 @@ def get_network():
     total_actual = df_calc['actual_fte'].sum()
     total_predicted = df_calc['predicted_fte'].sum()
     total_diff = total_predicted - total_actual
+    total_zastup = df_calc['zastup'].sum() if 'zastup' in df_calc.columns else 0
 
     # Segment breakdown
     segments = []
@@ -502,12 +503,16 @@ def get_network():
         under_count = len(seg[seg['fte_gap'] > FTE_GAP_NOTABLE])
         over_count = len(seg[seg['fte_gap'] < -FTE_GAP_NOTABLE])
 
+        # Zastup (borrowed staff) - indicates network flexibility usage
+        zastup_total = seg['zastup'].sum() if 'zastup' in seg.columns else 0
+
         segments.append({
             'typ': typ,
             'count': len(seg),
             'actual_fte': round(actual, 1),
             'predicted_fte': round(pred, 1),
             'diff': round(diff, 1),
+            'zastup': round(zastup_total, 1),
             'ok_count': ok_count,
             'understaffed_count': under_count,
             'overstaffed_count': over_count
@@ -529,7 +534,9 @@ def get_network():
             'trzby': int(row['trzby']),
             'podiel_rx': round(row['podiel_rx'] * 100, 0),
             'is_above_avg_productivity': row['is_above_avg'],
-            'hospital_supply': bool(row.get('hospital_supply', False))
+            'hospital_supply': bool(row.get('hospital_supply', False)),
+            'zastup': round(row.get('zastup', 0), 2),
+            'zastup_pct': round(row.get('zastup_pct', 0), 1)
         }
         if include_priority_data:
             # Add fields needed for priority dashboard
@@ -576,7 +583,8 @@ def get_network():
             'total_predicted_fte': round(total_predicted, 1),
             'diff': round(total_diff, 1),
             'diff_pct': round(total_diff / total_actual * 100, 1) if total_actual > 0 else 0,
-            'status': 'balanced' if abs(total_diff) < 10 else ('understaffed' if total_diff > 0 else 'overstaffed')
+            'status': 'balanced' if abs(total_diff) < 10 else ('understaffed' if total_diff > 0 else 'overstaffed'),
+            'total_zastup': round(total_zastup, 1)
         },
         'segments': segments,
         'outliers': {
@@ -816,7 +824,9 @@ def get_pharmacy(pharmacy_id):
         'is_above_avg_productivity': is_above_avg,
         'prod_pct': calculate_prod_pct(row),
         'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0),
-        'hospital_supply': bool(row.get('hospital_supply', False))
+        'hospital_supply': bool(row.get('hospital_supply', False)),
+        'zastup': round(float(row.get('zastup', 0)), 2),
+        'zastup_pct': round(float(row.get('zastup_pct', 0)), 1)
     })
 
 

@@ -10,31 +10,324 @@ raw files, protecting proprietary productivity calculations.
 
 import json
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import AsyncIterator, Optional
-from dataclasses import dataclass, field
 
-from app_v2.data_sanitizer import generate_sanitized_data
-from app_v2.core import calculate_fte_from_inputs, ensure_model_loaded
 from app_v2.config import (
-    AGENT_ARCHITECT_MODEL,
-    AGENT_WORKER_MODEL,
     AGENT_ARCHITECT_MAX_TOKENS,
-    AGENT_WORKER_MAX_TOKENS,
-    AGENT_MAX_TOOL_CALLS,
+    AGENT_ARCHITECT_MODEL,
     AGENT_MAX_PLAN_STEPS,
-    REVENUE_MONTHLY_PATH,
+    AGENT_MAX_TOOL_CALLS,
+    AGENT_WORKER_MAX_TOKENS,
+    AGENT_WORKER_MODEL,
+    CONTEXT_LIMITS,
     REVENUE_ANNUAL_PATH,
+    REVENUE_MONTHLY_PATH,
+    TOOL_TIMEOUT_DEFAULT,
+    TOOL_TIMEOUTS,
     logger,
 )
+from app_v2.core import calculate_fte_from_inputs, ensure_model_loaded, FTE_GAP_NOTABLE, FTE_GAP_URGENT
+from app_v2.data_sanitizer import generate_sanitized_data
 
 # Check if SDK is available
 try:
     from anthropic import Anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
     logger.warning("anthropic package not installed. Agent features disabled.")
+
+
+# Custom Exception Classes for structured error handling
+class ToolExecutionError(Exception):
+    """Base exception for tool execution failures."""
+
+    def __init__(
+        self,
+        message: str,
+        tool_name: str = None,
+        retryable: bool = False,
+        hint: str = None,
+    ):
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.retryable = retryable
+        self.hint = hint
+
+
+class ValidationError(ToolExecutionError):
+    """Raised when tool input validation fails."""
+
+    pass
+
+
+class DataNotFoundError(ToolExecutionError):
+    """Raised when requested data doesn't exist."""
+
+    pass
+
+
+class TransientError(ToolExecutionError):
+    """Raised for temporary failures that may succeed on retry."""
+
+    def __init__(self, message: str, tool_name: str = None, hint: str = None):
+        super().__init__(message, tool_name=tool_name, retryable=True, hint=hint)
+
+
+class ToolTimeoutError(TransientError):
+    """Raised when tool execution exceeds timeout."""
+
+    pass
+
+
+def create_error_response(error: ToolExecutionError) -> dict:
+    """Create structured error response from exception."""
+    return {
+        "error": True,
+        "error_type": type(error).__name__,
+        "message": str(error),
+        "retryable": getattr(error, "retryable", False),
+        "hint": getattr(error, "hint", None),
+    }
+
+
+def summarize_tool_result(tool_name: str, result: dict) -> dict:
+    """
+    Summarize large tool results immediately after execution.
+
+    Prevents context overflow by truncating large lists while
+    preserving metadata about the total available.
+    """
+    if not isinstance(result, dict):
+        return result
+
+    # Truncate pharmacy lists
+    if "pharmacies" in result and isinstance(result["pharmacies"], list):
+        limit = CONTEXT_LIMITS.get("pharmacies", 15)
+        if len(result["pharmacies"]) > limit:
+            result["_truncated"] = True
+            result["_total_available"] = len(result["pharmacies"])
+            result["pharmacies"] = result["pharmacies"][:limit]
+
+    # Truncate peer comparisons
+    if "peers" in result and isinstance(result["peers"], list):
+        limit = CONTEXT_LIMITS.get("peers", 5)
+        if len(result["peers"]) > limit:
+            result["_truncated"] = True
+            result["_total_peers"] = len(result["peers"])
+            result["peers"] = result["peers"][:limit]
+
+    # Truncate city lists
+    if "cities" in result and isinstance(result["cities"], list):
+        limit = CONTEXT_LIMITS.get("cities", 20)
+        if len(result["cities"]) > limit:
+            result["_truncated"] = True
+            result["_total_cities"] = len(result["cities"])
+            result["cities"] = result["cities"][:limit]
+
+    # Truncate priority actions
+    if "actions" in result and isinstance(result["actions"], list):
+        limit = CONTEXT_LIMITS.get("actions", 10)
+        if len(result["actions"]) > limit:
+            result["_truncated"] = True
+            result["_total_actions"] = len(result["actions"])
+            result["actions"] = result["actions"][:limit]
+
+    return result
+
+
+def validate_plan(
+    plan_dict: dict, allowed_tools: frozenset, request_id: str = ""
+) -> tuple:
+    """
+    Validate architect plan structure.
+
+    Returns: (is_valid: bool, validated_steps: list, error_message: str)
+    """
+    if not isinstance(plan_dict, dict):
+        return False, [], "Plan must be a dictionary"
+
+    if "steps" not in plan_dict:
+        return False, [], "Missing 'steps' in plan"
+
+    steps = plan_dict.get("steps", [])
+    if not isinstance(steps, list):
+        return False, [], "'steps' must be a list"
+
+    if len(steps) == 0:
+        return False, [], "Plan has no steps"
+
+    validated_steps = []
+    max_steps = 5  # Safety limit
+
+    for step in steps[:max_steps]:
+        if not isinstance(step, dict):
+            continue
+
+        tool_name = step.get("tool")
+        if tool_name and tool_name in allowed_tools:
+            validated_steps.append(
+                {
+                    "tool": tool_name,
+                    "params": step.get("params", {}),
+                    "purpose": step.get("purpose", ""),
+                }
+            )
+
+    if len(validated_steps) == 0:
+        return False, [], "No valid tool steps found in plan"
+
+    return True, validated_steps, ""
+
+
+# Tool allowlist - single source of truth for valid tool names
+ALLOWED_TOOLS: frozenset = frozenset(
+    [
+        "search_pharmacies",
+        "get_pharmacy_details",
+        "get_pharmacy_revenue_trend",
+        "get_segment_position",
+        "simulate_fte",
+        "compare_to_peers",
+        "get_understaffed",
+        "get_regional_summary",
+        "get_all_regions_summary",
+        "generate_report",
+        "get_segment_comparison",
+        "get_city_summary",
+        "get_cities_pharmacy_count",
+        "get_network_overview",
+        "get_trend_analysis",
+        "get_priority_actions",
+        "get_zastup_analysis",
+        "get_overstaffed_with_zastup",
+        "get_knowledge",
+    ]
+)
+
+# Knowledge base from skills (loaded at module level for efficiency)
+KNOWLEDGE_BASE: dict = {
+    "model_explanation": """
+ML MODEL - ČO ROBÍ A AKO HO VYSVETLIŤ:
+
+Model analyzuje historické dáta lekární a predpovedá optimálny počet personálu (FTE).
+
+VSTUPY (čo model vidí):
+- Bloky (transakcie) - hlavný faktor
+- Tržby - celkové príjmy
+- Podiel Rx - percento receptových liekov
+- Typ lekárne - segment A-E
+- Historická produktivita
+
+VÝSTUPY (čo model vracia):
+- Odporúčané FTE - optimálny počet pracovníkov
+- FTE Gap - rozdiel oproti súčasnosti (+ = potrebujete viac)
+- Ohrozené tržby - potenciálna strata z poddimenzovanosti
+- Produktivita - index porovnania s priemerom segmentu (100 = priemer)
+
+LIMITÁCIE MODELU:
+- Nevie predpovedať náhle zmeny (nový konkurent, pandémia)
+- Nezohľadňuje kvalitu jednotlivcov
+- Nevie o plánovaných investíciách
+- Nenahradí lokálnu znalosť manažéra
+""",
+    "app_benefits": """
+VÝHODY APLIKÁCIE:
+
+1. FINANČNÝ PRÍNOS:
+   - Identifikované ohrozené tržby: ~3.7M EUR
+   - ROI na personálne rozšírenie: 1.3-6x
+   - Objektívne kritériá namiesto intuície
+
+2. ÚSPORA ČASU:
+   - Predtým: 4-6 dní (zber dát, Excel analýza, reporty)
+   - Teraz: < 5 minút (otázka → odpoveď)
+
+3. UNIKÁTNE FUNKCIE:
+   - AI asistent rozumie slovenčine
+   - Drill-down: sieť → segment → región → lekáreň
+   - Okamžité odpovede bez IT ticketov
+   - Export pre manažment
+""",
+    "fte_interpretation": """
+INTERPRETÁCIA FTE METRÍK:
+
+FTE (Full-Time Equivalent):
+- 1.0 FTE = 1 zamestnanec na plný úväzok
+- 0.5 FTE = polovičný úväzok alebo 2×25%
+
+NET vs GROSS FTE:
+- NET (fte) = pracovníci skutočne pracujúci
+- GROSS = NET + fte_n (pokrytie absencií)
+- Model predikuje GROSS
+
+FTE GAP (Rozdiel):
+- KLADNÝ (+0.5) = potrebujete 0.5 FTE navyše = poddimenzovaní
+- ZÁPORNÝ (-0.5) = máte 0.5 FTE navyše = predimenzovaní
+- Prah pre urgentné: ≥0.05 FTE (~1.5 hod/týždeň)
+
+PRODUKTIVITA (Index):
+- 100 = priemer segmentu
+- 115 = o 15% efektívnejší ako priemer
+- 85 = o 15% menej efektívny
+- NIE JE to percento využitia!
+
+REVENUE AT RISK:
+- Počíta sa LEN pre: poddimenzované + nadpriemerne produktívne
+- Vzorec: (preťaženie - 1) × 50% × ročné tržby
+- Ak produktivita < 100 → revenue at risk = 0
+""",
+    "action_planning": """
+AKČNÉ PLÁNOVANIE:
+
+KEDY PRIJÍMAŤ:
+- FTE Gap ≥ +0.05 A produktivita > 100
+- Revenue at Risk > 0
+→ Efektívny tím potrebuje kapacitu
+
+KEDY OPTIMALIZOVAŤ (nie prijímať):
+- FTE Gap ≥ +0.05 ALE produktivita < 100
+→ Najprv zlepšiť efektívnosť
+
+KEDY REALOKOVAŤ:
+- FTE Gap < -0.05 (prebytok)
+- Existujú urgentné lekárne v regióne
+→ Presun z predimenzovaných
+
+PRIORITY FRAMEWORK:
+1. Top 10 s najvyšším Revenue at Risk (0-30 dní)
+2. Ďalších 20 s vysokou produktivitou (30-90 dní)
+3. OPTIMIZE lekárne po zlepšení (90-180 dní)
+
+NÁKLADY NA 1 FTE: ~30,000 EUR/rok
+ROI = Chránené tržby / Náklady
+""",
+    "faq": """
+ČASTÉ OTÁZKY:
+
+"Prečo som poddimenzovaný ale lekáreň funguje?"
+→ Tím pracuje nadštandardne, ale dlhodobo neudržateľné.
+→ Riziko: vyhorenie, kratšie konzultácie, stratení zákazníci.
+
+"Prečo nemám revenue at risk?"
+→ Počíta sa len pre poddimenzované + nadpriemerne produktívne.
+→ Ak produktivita < 100, najprv optimalizovať.
+
+"Čo ak nesúhlasím s modelom?"
+→ Model je nástroj, nie autorita. Vy rozhodujete.
+→ Zdokumentujte prečo, overte dáta, konzultujte regionálneho manažéra.
+
+"Ako dlho potrvá kým uvidím výsledky?"
+→ Realokácia: 1-2 týždne
+→ Nový zamestnanec: 2-3 mesiace (zaškolenie)
+
+"Môžem prijať part-time?"
+→ Áno, FTE je prepočet. 0.5 FTE = 50% úväzok.
+""",
+}
 
 
 @dataclass
@@ -44,9 +337,12 @@ class AgentConfig:
     Values are loaded from config.py (which reads from environment variables).
     This allows model upgrades without code changes.
     """
+
     architect_model: str = field(default_factory=lambda: AGENT_ARCHITECT_MODEL)
     worker_model: str = field(default_factory=lambda: AGENT_WORKER_MODEL)
-    architect_max_tokens: int = field(default_factory=lambda: AGENT_ARCHITECT_MAX_TOKENS)
+    architect_max_tokens: int = field(
+        default_factory=lambda: AGENT_ARCHITECT_MAX_TOKENS
+    )
     worker_max_tokens: int = field(default_factory=lambda: AGENT_WORKER_MAX_TOKENS)
     temperature: float = 0
     # P2: Safety limits
@@ -55,30 +351,30 @@ class AgentConfig:
 
 
 # P3: Output Schema Validation
-PHARMACY_REQUIRED_FIELDS = ['id', 'mesto', 'fte_actual', 'fte_recommended', 'fte_gap']
-PHARMACY_LIST_REQUIRED_FIELDS = ['count', 'pharmacies']
+PHARMACY_REQUIRED_FIELDS = ["id", "mesto", "fte_actual", "fte_recommended", "fte_gap"]
+PHARMACY_LIST_REQUIRED_FIELDS = ["count", "pharmacies"]
 
 
 def validate_pharmacy_output(result: dict) -> dict:
     """Ensure pharmacy data has required fields."""
-    if 'error' in result:
+    if "error" in result:
         return result
 
     missing = [f for f in PHARMACY_REQUIRED_FIELDS if f not in result]
     if missing:
-        return {'error': f'Missing fields: {missing}', 'partial_data': result}
+        return {"error": f"Missing fields: {missing}", "partial_data": result}
 
     return result
 
 
 def validate_pharmacy_list_output(result: dict) -> dict:
     """Ensure pharmacy list has required structure."""
-    if 'error' in result:
+    if "error" in result:
         return result
 
     missing = [f for f in PHARMACY_LIST_REQUIRED_FIELDS if f not in result]
     if missing:
-        return {'error': f'Missing list fields: {missing}', 'partial_data': result}
+        return {"error": f"Missing list fields: {missing}", "partial_data": result}
 
     return result
 
@@ -209,48 +505,20 @@ DÔLEŽITÉ UPOZORNENIE:
    - fte_actual/fte_recommended sú POČTY ZAMESTNANCOV (hodnoty 2-12)
 
 ═══════════════════════════════════════════════════════════════
-AKO VYSVETLIŤ ML MODEL A VÝHODY APLIKÁCIE:
+VYSVETĽOVACIE OTÁZKY - POUŽI get_knowledge NÁSTROJ
 ═══════════════════════════════════════════════════════════════
 
-Keď sa používateľ pýta "ako to funguje", "prečo AI", "čo je ML model", "aké sú výhody":
+Pre otázky typu "ako funguje model", "aké sú výhody", "čo znamená FTE gap",
+"prečo nemám revenue at risk", "čo mám robiť":
 
-KONTEXT DR.MAX:
-- 3 regióny, 200+ lekární na Slovensku
-- ŽIADNA jednotná metodológia personálneho obsadenia
-- Rozhodnutia doteraz na základe intuície
-- Špecializovaný personál (farmaceuti) = limitujúci faktor rastu
-- Bez metodológie nie je možné efektívne škálovať sieť
+→ Použi nástroj get_knowledge s príslušnou témou:
+  - model_explanation: ako funguje ML model
+  - app_benefits: výhody aplikácie, ROI, úspora času
+  - fte_interpretation: FTE, produktivita, gap, revenue at risk
+  - action_planning: čo robiť, prioritizácia, náklady
+  - faq: časté otázky a paradoxy
 
-1. PROBLÉM PRED APLIKÁCIOU:
-   - Každý región si riadil personál po svojom
-   - Manažéri trávili dni zberom dát z rôznych systémov
-   - Rozhodnutia na základe pocitu, nie dát
-   - Žiadny jednotný pohľad na celú sieť
-   - Nedalo sa identifikovať, kde presne chýba personál
-
-2. ČO PRINÁŠA ML MODEL:
-   - PRVÁ JEDNOTNÁ METODOLÓGIA pre celú sieť Dr.Max
-   - Analyzuje historické dáta všetkých lekární
-   - Zohľadňuje: tržby, bloky, typ lekárne, sezónnosť, trendy
-   - Predpovedá optimálne personálne obsadenie (FTE)
-   - Identifikuje ohrozené tržby pri poddimenzovaní
-   - Objektívne kritériá namiesto intuície
-
-3. ČO ROBÍ AI ASISTENT (ty):
-   - Sprístupňuje ML model v reálnom čase
-   - Prirodzená komunikácia v slovenčine
-   - Bez čakania na IT, bez ticketov
-   - Drill-down: sieť → segmenty → regióny → lekárne
-   - Export do PDF pre manažment
-
-4. KONKRÉTNE PRÍNOSY:
-   - Čas: dni práce → sekundy
-   - Jednotná metodológia naprieč 3 regiónmi
-   - Identifikované ohrozené tržby (použi get_network_overview pre aktuálne číslo)
-   - Dátami podložené rozhodnutia o alokácii vzácneho personálu
-   - Podklad pre strategické plánovanie rastu
-
-Pri vysvetľovaní VŽDY uveď konkrétne čísla zo siete (použi get_network_overview).
+Pri vysvetľovaní VŽDY doplň konkrétne čísla (použi get_network_overview).
 """
 
 # Architect prompt - for planning and synthesis (Opus 4.5)
@@ -331,6 +599,27 @@ DOSTUPNÉ NÁSTROJE A PARAMETRE:
     - limit: Max počet akcií (default 10)
     - Kombinuje riziko, produktivitu a FTE gap do prioritizovaného zoznamu
 
+15. get_zastup_analysis ⚠️⚠️ POVINNÉ PRE OTÁZKY O ZÁSTUPE/ZASTUPE!
+    - segment: Typ lekárne (A/B/C/D/E)
+    - region: Kód regiónu
+    - min_zastup_pct: Minimálne % zástupu
+    - max_productivity: Max produktivita (pre nízku produktivitu)
+    - ZASTUP = personál zapožičaný Z INÝCH lekární na pokrytie neprítomnosti
+    - ZASTUP ≠ PREBYTOK! Zastup je dočasný, prebytok je trvalý nadbytok
+    - Použiť pri "zástup", "zastup", "borrowed staff", "zapožičaný personál"
+
+16. get_overstaffed_with_zastup ⚠️⚠️ PRE KOMBINÁCIU "PREBYTOK + ZÁSTUP"!
+    - min_zastup_pct: Min % zástupu (default 10)
+    - max_productivity: Max produktivita (napr. 110)
+    - segment: Typ lekárne (A/B/C/D/E)
+    - Vracia lekárne s PREBYTKOM FTE a VYSOKÝM ZÁSTUPOM v jednom výstupe
+    - Použiť pri "prebytok so zástupom", "naddimenzované + zastup", "overstaffed + zastup"
+
+17. get_knowledge ⚠️⚠️ POVINNÉ PRE VYSVETĽOVACIE OTÁZKY!
+    - topic: "model_explanation" | "app_benefits" | "fte_interpretation" | "action_planning" | "faq"
+    - Použiť pri "ako funguje model", "výhody aplikácie", "čo znamená FTE/produktivita", "prečo..."
+    - Vráti štruktúrované znalosti pre odpoveď používateľovi
+
 VÝSTUP: Vytvor JSON plán s krokmi:
 {
   "analysis": "Stručná analýza požiadavky",
@@ -354,6 +643,9 @@ PRAVIDLÁ:
 - Pri "rastúce/klesajúce lekárne" alebo "trendy" pouzi get_trend_analysis
 - Ak user chce "lekárne s vyšším FTE" alebo "presun personálu", použi overstaffed_only: true
 - Ak user chce "lekárne s vyšším FTE" na porovnanie, použi higher_fte_only: true
+- Pri otázkach o ZASTUPE/ZÁSTUPE VŽDY použi get_zastup_analysis (nie search_pharmacies!)
+- Pri kombináciách "prebytok + zástup" alebo "naddimenzované so zástupom" použi get_overstaffed_with_zastup
+- Pri vysvetľovacích otázkach ("ako funguje", "výhody", "čo znamená", "prečo") použi get_knowledge
 """
 
 ARCHITECT_SYNTHESIZE_PROMPT = """Si expertný analytik pre sieť lekární Dr.Max.
@@ -388,7 +680,11 @@ Ak productivity_index < 100 → "Produktivita podpriemerná - najprv optimalizov
 ═══════════════════════════════════════════════════════════════
 TABUĽKA PRE VIACERO LEKÁRNÍ
 ═══════════════════════════════════════════════════════════════
+⚠️ KRITICKÉ: KAŽDÁ tabuľka MUSÍ mať stĺpec "ID" na PRVOM mieste!
+Bez ID nie je možné identifikovať lekáreň (môže byť viac v jednom meste).
+
 FORMÁTOVANIE:
+- ID: POVINNÉ - číselné ID lekárne z dát (napr. 33, 71, 185)
 - Mesto: LEN názov mesta (bez "Kaufland", "TESCO" atď.)
 - Čísla: použiť K/M (172K, 3.1M), nie 171,852
 - Risk: ak 0 → zobraziť "—", ak >100K → pridať 🔴, ak >0 → pridať ⚠️
@@ -403,6 +699,9 @@ FORMÁTOVANIE:
 
 <small>Prod: index (100=Ø) | FTE: skutočné/odporúčané | Risk: ohrozené tržby</small>
 Ak celkový risk > 0: "⚠ Celkovo ohrozené: €XXK"
+
+Pri KAŽDOM výstupe s lekárňami VŽDY uvádzaj ID! Príklad textu:
+"Lekáreň ID 185 (Trebišov) má najväčší risk 203K €."
 
 ═══════════════════════════════════════════════════════════════
 CHRÁNENÉ INFORMÁCIE
@@ -432,10 +731,10 @@ class DrMaxAgent:
 
         if ANTHROPIC_AVAILABLE:
             import httpx
+
             # Configure longer timeouts for Cloud Run
             self.client = Anthropic(
-                timeout=httpx.Timeout(120.0, connect=30.0),
-                max_retries=2
+                timeout=httpx.Timeout(120.0, connect=30.0), max_retries=2
             )
         else:
             self.client = None
@@ -463,7 +762,7 @@ class DrMaxAgent:
         overstaffed_only: bool = False,
         sort_by: str = None,
         sort_desc: bool = True,
-        limit: int = 15
+        limit: int = 15,
     ) -> dict:
         """Search pharmacies with filters."""
         # Ensure types (AI might pass strings)
@@ -476,67 +775,74 @@ class DrMaxAgent:
         df = self.sanitized_data.copy()
 
         if mesto:
-            df = df[df['mesto'].str.contains(mesto, case=False, na=False)]
+            df = df[df["mesto"].str.contains(mesto, case=False, na=False)]
         if typ:
-            df = df[df['typ'].str.contains(typ, case=False)]
+            df = df[df["typ"].str.contains(typ, case=False)]
         if region:
-            df = df[df['region_code'] == region]
+            df = df[df["region_code"] == region]
         if min_bloky:
-            df = df[df['bloky'] >= min_bloky]
+            df = df[df["bloky"] >= min_bloky]
         if max_bloky:
-            df = df[df['bloky'] <= max_bloky]
+            df = df[df["bloky"] <= max_bloky]
         if understaffed_only:
-            df = df[df['fte_gap'] > 0.5]  # Positive gap = understaffed (need more FTE)
+            df = df[df["fte_gap"] > FTE_GAP_NOTABLE]  # Positive gap = understaffed (need more FTE)
         if overstaffed_only:
-            df = df[df['fte_gap'] < -0.5]  # Negative gap = overstaffed (excess FTE)
+            df = df[df["fte_gap"] < -FTE_GAP_NOTABLE]  # Negative gap = overstaffed (excess FTE)
 
         # Sort by specified column (default: bloky descending for "top/najväčšie" queries)
         if sort_by and sort_by in df.columns:
             df = df.sort_values(by=sort_by, ascending=not sort_desc)
         else:
             # Default sort by bloky descending (largest first)
-            df = df.sort_values(by='bloky', ascending=False)
+            df = df.sort_values(by="bloky", ascending=False)
 
         df = df.head(limit)
 
         # P3: Validate output schema
-        return validate_pharmacy_list_output({
-            'count': len(df),
-            'pharmacies': df.to_dict('records')
-        })
+        return validate_pharmacy_list_output(
+            {"count": len(df), "pharmacies": df.to_dict("records")}
+        )
 
     def tool_get_pharmacy_details(self, pharmacy_id: int) -> dict:
         """Get details for a specific pharmacy."""
         # Ensure pharmacy_id is int (AI might pass string)
         pharmacy_id = int(pharmacy_id)
         df = self.sanitized_data
-        pharmacy = df[df['id'] == pharmacy_id]
+        pharmacy = df[df["id"] == pharmacy_id]
 
         if pharmacy.empty:
-            return {'error': f'Pharmacy {pharmacy_id} not found'}
+            raise DataNotFoundError(
+                f"Pharmacy {pharmacy_id} not found",
+                tool_name="get_pharmacy_details",
+                hint="Use search_pharmacies to find valid pharmacy IDs",
+            )
 
         result = pharmacy.iloc[0].to_dict()
 
         # Round FTE values for clarity (avoid AI confusion from long decimals)
-        result['fte_actual'] = round(result.get('fte_actual', 0), 1)
-        result['fte_F'] = round(result.get('fte_F', 0), 1)
-        result['fte_L'] = round(result.get('fte_L', 0), 1)
-        result['fte_ZF'] = round(result.get('fte_ZF', 0), 1)
-        result['trzby'] = int(result.get('trzby', 0))
-        result['bloky'] = int(result.get('bloky', 0))
-        result['podiel_rx'] = round(result.get('podiel_rx', 0), 2)
-        result['bloky_trend'] = round(result.get('bloky_trend', 0) * 100, 0)  # Convert to %
+        result["fte_actual"] = round(result.get("fte_actual", 0), 1)
+        result["fte_F"] = round(result.get("fte_F", 0), 1)
+        result["fte_L"] = round(result.get("fte_L", 0), 1)
+        result["fte_ZF"] = round(result.get("fte_ZF", 0), 1)
+        result["trzby"] = int(result.get("trzby", 0))
+        result["bloky"] = int(result.get("bloky", 0))
+        result["podiel_rx"] = round(result.get("podiel_rx", 0), 2)
+        result["bloky_trend"] = round(
+            result.get("bloky_trend", 0) * 100, 0
+        )  # Convert to %
 
         # Add staffing status based on fte_gap (positive = understaffed)
-        fte_gap = result.get('fte_gap', 0)
-        result['staffing_status'] = (
-            'poddimenzovaná' if fte_gap > 0.5  # Positive gap = understaffed
-            else 'naddimenzovaná' if fte_gap < -0.5  # Negative gap = overstaffed
-            else 'optimálna'
+        fte_gap = result.get("fte_gap", 0)
+        result["staffing_status"] = (
+            "poddimenzovaná"
+            if fte_gap > FTE_GAP_NOTABLE  # Positive gap = understaffed
+            else "naddimenzovaná"
+            if fte_gap < -FTE_GAP_NOTABLE  # Negative gap = overstaffed
+            else "optimálna"
         )
 
         # Add explicit summary to prevent AI confusion
-        result['_summary'] = (
+        result["_summary"] = (
             f"ID {pharmacy_id}: má {result['fte_actual']} FTE, "
             f"potrebuje {result['fte_recommended']} FTE, "
             f"gap {result['fte_gap']:+.1f}, "
@@ -554,195 +860,225 @@ class DrMaxAgent:
 
         # Check if revenue data files exist
         if not REVENUE_MONTHLY_PATH.exists() or not REVENUE_ANNUAL_PATH.exists():
-            return {'error': 'Historické dáta o tržbách nie sú k dispozícii'}
+            raise DataNotFoundError(
+                "Historické dáta o tržbách nie sú k dispozícii",
+                tool_name="get_pharmacy_revenue_trend",
+            )
 
         # Load revenue data
         df_monthly = pd.read_csv(REVENUE_MONTHLY_PATH)
         df_annual = pd.read_csv(REVENUE_ANNUAL_PATH)
 
         # Get monthly data for this pharmacy
-        pharm_monthly = df_monthly[df_monthly['id'] == pharmacy_id]
+        pharm_monthly = df_monthly[df_monthly["id"] == pharmacy_id]
         if len(pharm_monthly) == 0:
-            return {'error': f'Žiadne dáta o tržbách pre lekáreň {pharmacy_id}'}
+            raise DataNotFoundError(
+                f"Žiadne dáta o tržbách pre lekáreň {pharmacy_id}",
+                tool_name="get_pharmacy_revenue_trend",
+                hint="Use search_pharmacies to find valid pharmacy IDs",
+            )
 
         # Organize by year
         monthly = {}
         yearly_totals = {}
         for year in [2019, 2020, 2021]:
-            year_data = pharm_monthly[pharm_monthly['year'] == year].sort_values('month')
+            year_data = pharm_monthly[pharm_monthly["year"] == year].sort_values(
+                "month"
+            )
             if len(year_data) > 0:
                 monthly[str(year)] = [
-                    {'month': int(row['month']), 'revenue': round(float(row['revenue']), 0)}
+                    {
+                        "month": int(row["month"]),
+                        "revenue": round(float(row["revenue"]), 0),
+                    }
                     for _, row in year_data.iterrows()
                 ]
-                yearly_totals[str(year)] = round(year_data['revenue'].sum(), 0)
+                yearly_totals[str(year)] = round(year_data["revenue"].sum(), 0)
 
         # Get YoY growth data
-        pharm_annual = df_annual[df_annual['id'] == pharmacy_id]
+        pharm_annual = df_annual[df_annual["id"] == pharmacy_id]
         yoy_2020 = None
         yoy_2021 = None
         if len(pharm_annual) > 0:
             annual_row = pharm_annual.iloc[0]
-            yoy_2020 = round(annual_row['yoy_growth_2020'], 1) if pd.notna(annual_row['yoy_growth_2020']) else None
-            yoy_2021 = round(annual_row['yoy_growth_2021'], 1) if pd.notna(annual_row['yoy_growth_2021']) else None
+            yoy_2020 = (
+                round(annual_row["yoy_growth_2020"], 1)
+                if pd.notna(annual_row["yoy_growth_2020"])
+                else None
+            )
+            yoy_2021 = (
+                round(annual_row["yoy_growth_2021"], 1)
+                if pd.notna(annual_row["yoy_growth_2021"])
+                else None
+            )
 
         # Get pharmacy name from sanitized data
-        pharmacy = self.sanitized_data[self.sanitized_data['id'] == pharmacy_id]
-        mesto = pharmacy.iloc[0]['mesto'] if not pharmacy.empty else 'Neznáme'
+        pharmacy = self.sanitized_data[self.sanitized_data["id"] == pharmacy_id]
+        mesto = pharmacy.iloc[0]["mesto"] if not pharmacy.empty else "Neznáme"
 
         return {
-            'pharmacy_id': pharmacy_id,
-            'mesto': mesto,
-            'yearly_totals': yearly_totals,
-            'yoy_growth': {
-                '2020_vs_2019': f"{yoy_2020:+.1f}%" if yoy_2020 else None,
-                '2021_vs_2020': f"{yoy_2021:+.1f}%" if yoy_2021 else None
+            "pharmacy_id": pharmacy_id,
+            "mesto": mesto,
+            "yearly_totals": yearly_totals,
+            "yoy_growth": {
+                "2020_vs_2019": f"{yoy_2020:+.1f}%" if yoy_2020 else None,
+                "2021_vs_2020": f"{yoy_2021:+.1f}%" if yoy_2021 else None,
             },
-            'monthly_data': monthly,
-            '_summary': (
+            "monthly_data": monthly,
+            "_summary": (
                 f"Lekáreň {pharmacy_id} ({mesto}): "
                 f"Tržby 2019: €{yearly_totals.get('2019', 0):,.0f}, "
-                f"2020: €{yearly_totals.get('2020', 0):,.0f} ({yoy_2020:+.1f}% YoY), " if yoy_2020 else ""
-                f"2021: €{yearly_totals.get('2021', 0):,.0f} ({yoy_2021:+.1f}% YoY)" if yoy_2021 else ""
-            )
+                f"2020: €{yearly_totals.get('2020', 0):,.0f} ({yoy_2020:+.1f}% YoY), "
+                if yoy_2020
+                else ""
+                f"2021: €{yearly_totals.get('2021', 0):,.0f} ({yoy_2021:+.1f}% YoY)"
+                if yoy_2021
+                else ""
+            ),
         }
 
     def tool_get_segment_position(self, pharmacy_id: int) -> dict:
         """Get pharmacy's position within its segment for all KPIs."""
         pharmacy_id = int(pharmacy_id)
         df = self.sanitized_data
-        pharmacy = df[df['id'] == pharmacy_id]
+        pharmacy = df[df["id"] == pharmacy_id]
 
         if pharmacy.empty:
-            return {'error': f'Lekáreň {pharmacy_id} nenájdená'}
+            return {"error": f"Lekáreň {pharmacy_id} nenájdená"}
 
         p = pharmacy.iloc[0]
-        typ = p['typ']
-        segment_data = df[df['typ'] == typ].copy()
+        typ = p["typ"]
+        segment_data = df[df["typ"] == typ].copy()
 
         # Constants for hourly calculations
         HOURS_PER_FTE_YEAR = 2112  # 176 hours/month * 12
 
         # Calculate hourly metrics for segment
-        segment_data['hours'] = segment_data['fte_actual'] * 1.21 * HOURS_PER_FTE_YEAR
-        segment_data['bloky_per_hour'] = segment_data['bloky'] / segment_data['hours']
-        segment_data['trzby_per_hour'] = segment_data['trzby'] / segment_data['hours']
-        segment_data['basket'] = segment_data['trzby'] / segment_data['bloky']
+        segment_data["hours"] = segment_data["fte_actual"] * 1.21 * HOURS_PER_FTE_YEAR
+        segment_data["bloky_per_hour"] = segment_data["bloky"] / segment_data["hours"]
+        segment_data["trzby_per_hour"] = segment_data["trzby"] / segment_data["hours"]
+        segment_data["basket"] = segment_data["trzby"] / segment_data["bloky"]
 
         # Calculate for this pharmacy
-        p_hours = p['fte_actual'] * 1.21 * HOURS_PER_FTE_YEAR
-        p_bloky_hour = p['bloky'] / p_hours if p_hours > 0 else 0
-        p_trzby_hour = p['trzby'] / p_hours if p_hours > 0 else 0
-        p_basket = p['trzby'] / p['bloky'] if p['bloky'] > 0 else 0
+        p_hours = p["fte_actual"] * 1.21 * HOURS_PER_FTE_YEAR
+        p_bloky_hour = p["bloky"] / p_hours if p_hours > 0 else 0
+        p_trzby_hour = p["trzby"] / p_hours if p_hours > 0 else 0
+        p_basket = p["trzby"] / p["bloky"] if p["bloky"] > 0 else 0
 
         def get_position(value, series):
             """Calculate percentile and position description."""
             pct = (series < value).mean() * 100
             avg = series.mean()
             if value > avg * 1.1:
-                pos = 'nad priemerom'
+                pos = "nad priemerom"
             elif value < avg * 0.9:
-                pos = 'pod priemerom'
+                pos = "pod priemerom"
             else:
-                pos = 'okolo priemeru'
+                pos = "okolo priemeru"
             return round(pct, 0), pos
 
         # Build KPI positions
         kpis = {}
 
         # Bloky (in thousands)
-        bloky_pct, bloky_pos = get_position(p['bloky'], segment_data['bloky'])
-        kpis['bloky'] = {
-            'value': f"{int(p['bloky']/1000)}k",
-            'segment_min': f"{int(segment_data['bloky'].min()/1000)}k",
-            'segment_max': f"{int(segment_data['bloky'].max()/1000)}k",
-            'segment_avg': f"{int(segment_data['bloky'].mean()/1000)}k",
-            'percentile': bloky_pct,
-            'position': bloky_pos
+        bloky_pct, bloky_pos = get_position(p["bloky"], segment_data["bloky"])
+        kpis["bloky"] = {
+            "value": f"{int(p['bloky'] / 1000)}k",
+            "segment_min": f"{int(segment_data['bloky'].min() / 1000)}k",
+            "segment_max": f"{int(segment_data['bloky'].max() / 1000)}k",
+            "segment_avg": f"{int(segment_data['bloky'].mean() / 1000)}k",
+            "percentile": bloky_pct,
+            "position": bloky_pos,
         }
 
         # Tržby (in millions)
-        trzby_pct, trzby_pos = get_position(p['trzby'], segment_data['trzby'])
-        kpis['trzby'] = {
-            'value': f"{round(p['trzby']/1000000, 1)}M€",
-            'segment_min': f"{round(segment_data['trzby'].min()/1000000, 1)}M€",
-            'segment_max': f"{round(segment_data['trzby'].max()/1000000, 1)}M€",
-            'segment_avg': f"{round(segment_data['trzby'].mean()/1000000, 1)}M€",
-            'percentile': trzby_pct,
-            'position': trzby_pos
+        trzby_pct, trzby_pos = get_position(p["trzby"], segment_data["trzby"])
+        kpis["trzby"] = {
+            "value": f"{round(p['trzby'] / 1000000, 1)}M€",
+            "segment_min": f"{round(segment_data['trzby'].min() / 1000000, 1)}M€",
+            "segment_max": f"{round(segment_data['trzby'].max() / 1000000, 1)}M€",
+            "segment_avg": f"{round(segment_data['trzby'].mean() / 1000000, 1)}M€",
+            "percentile": trzby_pct,
+            "position": trzby_pos,
         }
 
         # Rx %
-        rx_pct, rx_pos = get_position(p['podiel_rx'], segment_data['podiel_rx'])
-        kpis['rx_podiel'] = {
-            'value': f"{int(p['podiel_rx']*100)}%",
-            'segment_min': f"{int(segment_data['podiel_rx'].min()*100)}%",
-            'segment_max': f"{int(segment_data['podiel_rx'].max()*100)}%",
-            'segment_avg': f"{int(segment_data['podiel_rx'].mean()*100)}%",
-            'percentile': rx_pct,
-            'position': rx_pos
+        rx_pct, rx_pos = get_position(p["podiel_rx"], segment_data["podiel_rx"])
+        kpis["rx_podiel"] = {
+            "value": f"{int(p['podiel_rx'] * 100)}%",
+            "segment_min": f"{int(segment_data['podiel_rx'].min() * 100)}%",
+            "segment_max": f"{int(segment_data['podiel_rx'].max() * 100)}%",
+            "segment_avg": f"{int(segment_data['podiel_rx'].mean() * 100)}%",
+            "percentile": rx_pct,
+            "position": rx_pos,
         }
 
         # FTE
-        fte_pct, fte_pos = get_position(p['fte_actual'], segment_data['fte_actual'])
-        kpis['fte'] = {
-            'value': round(p['fte_actual'], 1),
-            'segment_min': round(segment_data['fte_actual'].min(), 1),
-            'segment_max': round(segment_data['fte_actual'].max(), 1),
-            'segment_avg': round(segment_data['fte_actual'].mean(), 1),
-            'percentile': fte_pct,
-            'position': fte_pos
+        fte_pct, fte_pos = get_position(p["fte_actual"], segment_data["fte_actual"])
+        kpis["fte"] = {
+            "value": round(p["fte_actual"], 1),
+            "segment_min": round(segment_data["fte_actual"].min(), 1),
+            "segment_max": round(segment_data["fte_actual"].max(), 1),
+            "segment_avg": round(segment_data["fte_actual"].mean(), 1),
+            "percentile": fte_pct,
+            "position": fte_pos,
         }
 
         # Bloky/h
-        blokyhod_pct, blokyhod_pos = get_position(p_bloky_hour, segment_data['bloky_per_hour'])
-        kpis['bloky_za_hodinu'] = {
-            'value': round(p_bloky_hour, 1),
-            'segment_min': round(segment_data['bloky_per_hour'].min(), 1),
-            'segment_max': round(segment_data['bloky_per_hour'].max(), 1),
-            'segment_avg': round(segment_data['bloky_per_hour'].mean(), 1),
-            'percentile': blokyhod_pct,
-            'position': blokyhod_pos
+        blokyhod_pct, blokyhod_pos = get_position(
+            p_bloky_hour, segment_data["bloky_per_hour"]
+        )
+        kpis["bloky_za_hodinu"] = {
+            "value": round(p_bloky_hour, 1),
+            "segment_min": round(segment_data["bloky_per_hour"].min(), 1),
+            "segment_max": round(segment_data["bloky_per_hour"].max(), 1),
+            "segment_avg": round(segment_data["bloky_per_hour"].mean(), 1),
+            "percentile": blokyhod_pct,
+            "position": blokyhod_pos,
         }
 
         # Tržby/h
-        trzbyhod_pct, trzbyhod_pos = get_position(p_trzby_hour, segment_data['trzby_per_hour'])
-        kpis['trzby_za_hodinu'] = {
-            'value': f"{int(p_trzby_hour)}€",
-            'segment_min': f"{int(segment_data['trzby_per_hour'].min())}€",
-            'segment_max': f"{int(segment_data['trzby_per_hour'].max())}€",
-            'segment_avg': f"{int(segment_data['trzby_per_hour'].mean())}€",
-            'percentile': trzbyhod_pct,
-            'position': trzbyhod_pos
+        trzbyhod_pct, trzbyhod_pos = get_position(
+            p_trzby_hour, segment_data["trzby_per_hour"]
+        )
+        kpis["trzby_za_hodinu"] = {
+            "value": f"{int(p_trzby_hour)}€",
+            "segment_min": f"{int(segment_data['trzby_per_hour'].min())}€",
+            "segment_max": f"{int(segment_data['trzby_per_hour'].max())}€",
+            "segment_avg": f"{int(segment_data['trzby_per_hour'].mean())}€",
+            "percentile": trzbyhod_pct,
+            "position": trzbyhod_pos,
         }
 
         # Košík
-        basket_pct, basket_pos = get_position(p_basket, segment_data['basket'])
-        kpis['kosik'] = {
-            'value': f"{round(p_basket, 1)}€",
-            'segment_min': f"{round(segment_data['basket'].min(), 1)}€",
-            'segment_max': f"{round(segment_data['basket'].max(), 1)}€",
-            'segment_avg': f"{round(segment_data['basket'].mean(), 1)}€",
-            'percentile': basket_pct,
-            'position': basket_pos
+        basket_pct, basket_pos = get_position(p_basket, segment_data["basket"])
+        kpis["kosik"] = {
+            "value": f"{round(p_basket, 1)}€",
+            "segment_min": f"{round(segment_data['basket'].min(), 1)}€",
+            "segment_max": f"{round(segment_data['basket'].max(), 1)}€",
+            "segment_avg": f"{round(segment_data['basket'].mean(), 1)}€",
+            "percentile": basket_pct,
+            "position": basket_pos,
         }
 
         # Productivity (index only, not raw value)
-        prod_pct, prod_pos = get_position(p['productivity_index'], segment_data['productivity_index'])
-        kpis['produktivita'] = {
-            'value': int(p['productivity_index']),
-            'segment_avg': 100,  # By definition, 100 = segment average
-            'percentile': prod_pct,
-            'position': prod_pos
+        prod_pct, prod_pos = get_position(
+            p["productivity_index"], segment_data["productivity_index"]
+        )
+        kpis["produktivita"] = {
+            "value": int(p["productivity_index"]),
+            "segment_avg": 100,  # By definition, 100 = segment average
+            "percentile": prod_pct,
+            "position": prod_pos,
         }
 
         return {
-            'pharmacy_id': pharmacy_id,
-            'mesto': p['mesto'],
-            'segment': typ,
-            'segment_count': len(segment_data),
-            'kpis': kpis,
-            '_summary': f"Lekáreň {pharmacy_id} ({p['mesto']}) v segmente {typ} ({len(segment_data)} lekární)"
+            "pharmacy_id": pharmacy_id,
+            "mesto": p["mesto"],
+            "segment": typ,
+            "segment_count": len(segment_data),
+            "kpis": kpis,
+            "_summary": f"Lekáreň {pharmacy_id} ({p['mesto']}) v segmente {typ} ({len(segment_data)} lekární)",
         }
 
     def tool_simulate_fte(
@@ -752,7 +1088,7 @@ class DrMaxAgent:
         trzby: float = None,
         bloky_change_pct: float = None,
         trzby_change_pct: float = None,
-        typ: str = None
+        typ: str = None,
     ) -> dict:
         """
         Simulate FTE requirements with changed inputs (what-if analysis).
@@ -765,18 +1101,18 @@ class DrMaxAgent:
         if pharmacy_id is not None:
             pharmacy_id = int(pharmacy_id)
             df = self.sanitized_data
-            pharmacy = df[df['id'] == pharmacy_id]
+            pharmacy = df[df["id"] == pharmacy_id]
 
             if pharmacy.empty:
-                return {'error': f'Lekáreň {pharmacy_id} nenájdená'}
+                return {"error": f"Lekáreň {pharmacy_id} nenájdená"}
 
             p = pharmacy.iloc[0]
-            base_bloky = p['bloky']
-            base_trzby = p['trzby']
-            base_typ = p['typ']
-            base_rx = p['podiel_rx']
-            current_fte = p['fte_actual']
-            current_recommended = p['fte_recommended']
+            base_bloky = p["bloky"]
+            base_trzby = p["trzby"]
+            base_typ = p["typ"]
+            base_rx = p["podiel_rx"]
+            current_fte = p["fte_actual"]
+            current_recommended = p["fte_recommended"]
 
             # Apply percentage changes if provided
             if bloky_change_pct is not None:
@@ -799,11 +1135,11 @@ class DrMaxAgent:
         else:
             # Manual simulation without pharmacy context
             if bloky is None or trzby is None:
-                return {'error': 'Bez pharmacy_id musíš zadať bloky aj trzby'}
+                return {"error": "Bez pharmacy_id musíš zadať bloky aj trzby"}
 
             sim_bloky = float(bloky)
             sim_trzby = float(trzby)
-            sim_typ = typ if typ else 'B - shopping'
+            sim_typ = typ if typ else "B - shopping"
             sim_rx = 0.5
             base_bloky = None
             base_trzby = None
@@ -821,32 +1157,28 @@ class DrMaxAgent:
                 podiel_rx=sim_rx,
                 productivity_z=0,  # Average productivity
                 variability_z=0,
-                pharmacy_id=pharmacy_id
+                pharmacy_id=pharmacy_id,
             )
 
-            new_fte = round(result['fte_total'], 1)
-            new_fte_F = round(result['fte_F'], 1)
-            new_fte_L = round(result['fte_L'], 1)
-            new_fte_ZF = round(result['fte_ZF'], 1)
+            new_fte = round(result["fte_total"], 1)
+            new_fte_F = round(result["fte_F"], 1)
+            new_fte_L = round(result["fte_L"], 1)
+            new_fte_ZF = round(result["fte_ZF"], 1)
 
         except Exception as e:
-            return {'error': f'Chyba pri výpočte: {str(e)}'}
+            return {"error": f"Chyba pri výpočte: {str(e)}"}
 
         # Build response
         response = {
-            'simulation_inputs': {
-                'bloky': int(sim_bloky),
-                'trzby': int(sim_trzby),
-                'typ': sim_typ
+            "simulation_inputs": {
+                "bloky": int(sim_bloky),
+                "trzby": int(sim_trzby),
+                "typ": sim_typ,
             },
-            'simulated_fte': {
-                'total': new_fte,
-                'breakdown': {
-                    'F': new_fte_F,
-                    'L': new_fte_L,
-                    'ZF': new_fte_ZF
-                }
-            }
+            "simulated_fte": {
+                "total": new_fte,
+                "breakdown": {"F": new_fte_F, "L": new_fte_L, "ZF": new_fte_ZF},
+            },
         }
 
         # Add comparison if pharmacy context available
@@ -855,39 +1187,40 @@ class DrMaxAgent:
             trzby_diff = sim_trzby - base_trzby
             fte_diff = new_fte - current_recommended
 
-            response['pharmacy_id'] = pharmacy_id
-            response['current_values'] = {
-                'bloky': int(base_bloky),
-                'trzby': int(base_trzby),
-                'fte_actual': current_fte,
-                'fte_recommended': current_recommended
+            response["pharmacy_id"] = pharmacy_id
+            response["current_values"] = {
+                "bloky": int(base_bloky),
+                "trzby": int(base_trzby),
+                "fte_actual": current_fte,
+                "fte_recommended": current_recommended,
             }
-            response['changes'] = {
-                'bloky_diff': int(bloky_diff),
-                'bloky_diff_pct': round(bloky_diff / base_bloky * 100, 1) if base_bloky > 0 else 0,
-                'trzby_diff': int(trzby_diff),
-                'trzby_diff_pct': round(trzby_diff / base_trzby * 100, 1) if base_trzby > 0 else 0,
-                'fte_diff': round(fte_diff, 1)
+            response["changes"] = {
+                "bloky_diff": int(bloky_diff),
+                "bloky_diff_pct": round(bloky_diff / base_bloky * 100, 1)
+                if base_bloky > 0
+                else 0,
+                "trzby_diff": int(trzby_diff),
+                "trzby_diff_pct": round(trzby_diff / base_trzby * 100, 1)
+                if base_trzby > 0
+                else 0,
+                "fte_diff": round(fte_diff, 1),
             }
-            response['_summary'] = (
+            response["_summary"] = (
                 f"Simulácia pre lekáreň {pharmacy_id}: "
-                f"Pri {int(sim_bloky/1000)}k blokoch a {round(sim_trzby/1000000, 1)}M€ tržbách "
+                f"Pri {int(sim_bloky / 1000)}k blokoch a {round(sim_trzby / 1000000, 1)}M€ tržbách "
                 f"by potrebovala {new_fte} FTE "
-                f"({'+'if fte_diff >= 0 else ''}{round(fte_diff, 1)} oproti súčasnému odporúčaniu)"
+                f"({'+' if fte_diff >= 0 else ''}{round(fte_diff, 1)} oproti súčasnému odporúčaniu)"
             )
         else:
-            response['_summary'] = (
-                f"Simulácia: Pri {int(sim_bloky/1000)}k blokoch a {round(sim_trzby/1000000, 1)}M€ tržbách "
+            response["_summary"] = (
+                f"Simulácia: Pri {int(sim_bloky / 1000)}k blokoch a {round(sim_trzby / 1000000, 1)}M€ tržbách "
                 f"v segmente {sim_typ} je potrebných {new_fte} FTE"
             )
 
         return response
 
     def tool_compare_to_peers(
-        self,
-        pharmacy_id: int,
-        n_peers: int = 5,
-        higher_fte_only: bool = False
+        self, pharmacy_id: int, n_peers: int = 5, higher_fte_only: bool = False
     ) -> dict:
         """Compare pharmacy to similar peers in the same segment."""
         # Ensure types (AI might pass strings)
@@ -896,99 +1229,107 @@ class DrMaxAgent:
         df = self.sanitized_data
 
         # Get target pharmacy
-        target = df[df['id'] == pharmacy_id]
+        target = df[df["id"] == pharmacy_id]
         if target.empty:
-            return {'error': f'Pharmacy {pharmacy_id} not found'}
+            return {"error": f"Pharmacy {pharmacy_id} not found"}
 
         target = target.iloc[0]
-        target_bloky = target['bloky']
-        target_trzby = target['trzby']
+        target_bloky = target["bloky"]
+        target_trzby = target["trzby"]
 
         # Find peers in same segment with similar bloky AND trzby (±20%)
-        same_segment = df[df['typ'] == target['typ']]
+        same_segment = df[df["typ"] == target["typ"]]
         bloky_range = target_bloky * 0.2
         trzby_range = target_trzby * 0.2
 
         peers = same_segment[
-            (same_segment['bloky'] >= target_bloky - bloky_range) &
-            (same_segment['bloky'] <= target_bloky + bloky_range) &
-            (same_segment['trzby'] >= target_trzby - trzby_range) &
-            (same_segment['trzby'] <= target_trzby + trzby_range) &
-            (same_segment['id'] != pharmacy_id)
+            (same_segment["bloky"] >= target_bloky - bloky_range)
+            & (same_segment["bloky"] <= target_bloky + bloky_range)
+            & (same_segment["trzby"] >= target_trzby - trzby_range)
+            & (same_segment["trzby"] <= target_trzby + trzby_range)
+            & (same_segment["id"] != pharmacy_id)
         ].copy()
 
         if higher_fte_only:
-            peers = peers[peers['fte_actual'] > target['fte_actual']]
+            peers = peers[peers["fte_actual"] > target["fte_actual"]]
 
         # Sort by combined similarity (bloky + trzby difference)
-        peers['bloky_diff'] = abs(peers['bloky'] - target_bloky) / target_bloky
-        peers['trzby_diff'] = abs(peers['trzby'] - target_trzby) / target_trzby
-        peers['similarity_score'] = peers['bloky_diff'] + peers['trzby_diff']
-        peers = peers.sort_values('similarity_score').head(n_peers)
+        peers["bloky_diff"] = abs(peers["bloky"] - target_bloky) / target_bloky
+        peers["trzby_diff"] = abs(peers["trzby"] - target_trzby) / target_trzby
+        peers["similarity_score"] = peers["bloky_diff"] + peers["trzby_diff"]
+        peers = peers.sort_values("similarity_score").head(n_peers)
 
         # Calculate peer statistics
         peer_count = len(peers)
         if peer_count > 0:
-            avg_fte = round(peers['fte_actual'].mean(), 1)
-            avg_fte_recommended = round(peers['fte_recommended'].mean(), 1)
-            avg_productivity = int(peers['productivity_index'].mean())
-            avg_gap = round(peers['fte_gap'].mean(), 1)
+            avg_fte = round(peers["fte_actual"].mean(), 1)
+            avg_fte_recommended = round(peers["fte_recommended"].mean(), 1)
+            avg_productivity = int(peers["productivity_index"].mean())
+            avg_gap = round(peers["fte_gap"].mean(), 1)
 
             # Comparison with target
-            fte_vs_peers = round(target['fte_actual'] - avg_fte, 1)
-            productivity_vs_peers = int(target['productivity_index'] - avg_productivity)
-            gap_vs_peers = round(target['fte_gap'] - avg_gap, 1)
+            fte_vs_peers = round(target["fte_actual"] - avg_fte, 1)
+            productivity_vs_peers = int(target["productivity_index"] - avg_productivity)
+            gap_vs_peers = round(target["fte_gap"] - avg_gap, 1)
         else:
             avg_fte = avg_fte_recommended = avg_productivity = avg_gap = 0
             fte_vs_peers = productivity_vs_peers = gap_vs_peers = 0
 
         # Format peers for output (remove temp columns)
-        peers_output = peers.drop(columns=['bloky_diff', 'trzby_diff', 'similarity_score']).to_dict('records')
+        peers_output = peers.drop(
+            columns=["bloky_diff", "trzby_diff", "similarity_score"]
+        ).to_dict("records")
 
         # Format each peer with key metrics
         formatted_peers = []
         for p in peers_output:
-            formatted_peers.append({
-                'id': int(p['id']),
-                'mesto': p['mesto'],
-                'bloky': int(p['bloky']),
-                'trzby': int(p['trzby']),
-                'fte_actual': round(p['fte_actual'], 1),
-                'fte_recommended': round(p['fte_recommended'], 1),
-                'fte_gap': round(p['fte_gap'], 1),
-                'productivity_index': int(p['productivity_index']),
-                'revenue_at_risk_eur': int(p['revenue_at_risk_eur'])
-            })
+            formatted_peers.append(
+                {
+                    "id": int(p["id"]),
+                    "mesto": p["mesto"],
+                    "bloky": int(p["bloky"]),
+                    "trzby": int(p["trzby"]),
+                    "fte_actual": round(p["fte_actual"], 1),
+                    "fte_recommended": round(p["fte_recommended"], 1),
+                    "fte_gap": round(p["fte_gap"], 1),
+                    "productivity_index": int(p["productivity_index"]),
+                    "revenue_at_risk_eur": int(p["revenue_at_risk_eur"]),
+                }
+            )
 
         return {
-            'target': {
-                'id': int(target['id']),
-                'mesto': target['mesto'],
-                'bloky': int(target_bloky),
-                'trzby': int(target_trzby),
-                'fte_actual': round(target['fte_actual'], 1),
-                'fte_recommended': round(target['fte_recommended'], 1),
-                'fte_gap': round(target['fte_gap'], 1),
-                'productivity_index': int(target['productivity_index']),
-                'revenue_at_risk_eur': int(target['revenue_at_risk_eur'])
+            "target": {
+                "id": int(target["id"]),
+                "mesto": target["mesto"],
+                "bloky": int(target_bloky),
+                "trzby": int(target_trzby),
+                "fte_actual": round(target["fte_actual"], 1),
+                "fte_recommended": round(target["fte_recommended"], 1),
+                "fte_gap": round(target["fte_gap"], 1),
+                "productivity_index": int(target["productivity_index"]),
+                "revenue_at_risk_eur": int(target["revenue_at_risk_eur"]),
             },
-            'segment': target['typ'],
-            'peer_count': peer_count,
-            'peers': formatted_peers,
-            'peer_statistics': {
-                'avg_fte': avg_fte,
-                'avg_fte_recommended': avg_fte_recommended,
-                'avg_productivity_index': avg_productivity,
-                'avg_fte_gap': avg_gap
+            "segment": target["typ"],
+            "peer_count": peer_count,
+            "peers": formatted_peers,
+            "peer_statistics": {
+                "avg_fte": avg_fte,
+                "avg_fte_recommended": avg_fte_recommended,
+                "avg_productivity_index": avg_productivity,
+                "avg_fte_gap": avg_gap,
             },
-            'comparison': {
-                'fte_vs_peers': fte_vs_peers,
-                'productivity_vs_peers': productivity_vs_peers,
-                'gap_vs_peers': gap_vs_peers,
-                'fte_assessment': 'vyššie' if fte_vs_peers > 0.5 else ('nižšie' if fte_vs_peers < -0.5 else 'porovnateľné'),
-                'productivity_assessment': 'vyššia' if productivity_vs_peers > 5 else ('nižšia' if productivity_vs_peers < -5 else 'porovnateľná')
+            "comparison": {
+                "fte_vs_peers": fte_vs_peers,
+                "productivity_vs_peers": productivity_vs_peers,
+                "gap_vs_peers": gap_vs_peers,
+                "fte_assessment": "vyššie"
+                if fte_vs_peers > 0.5
+                else ("nižšie" if fte_vs_peers < -0.5 else "porovnateľné"),
+                "productivity_assessment": "vyššia"
+                if productivity_vs_peers > 5
+                else ("nižšia" if productivity_vs_peers < -5 else "porovnateľná"),
             },
-            'comparison_note': f"Porovnanie s {peer_count} lekárňami segmentu {target['typ']} s podobným objemom ({int(target_bloky/1000)}k blokov, {int(target_trzby/1000000)}M€ tržieb ± 20%)"
+            "comparison_note": f"Porovnanie s {peer_count} lekárňami segmentu {target['typ']} s podobným objemom ({int(target_bloky / 1000)}k blokov, {int(target_trzby / 1000000)}M€ tržieb ± 20%)",
         }
 
     def tool_get_understaffed(
@@ -999,7 +1340,7 @@ class DrMaxAgent:
         limit: int = 20,
         high_risk_only: bool = False,
         high_productivity_only: bool = False,
-        sort_by: str = 'fte_gap'
+        sort_by: str = "fte_gap",
     ) -> dict:
         """Get list of understaffed pharmacies with optional filters."""
         # Ensure types (AI might pass strings)
@@ -1009,112 +1350,146 @@ class DrMaxAgent:
 
         # Filter understaffed (positive gap = understaffed)
         # Note: min_gap parameter is now interpreted as minimum positive gap
-        df = df[df['fte_gap'] > abs(min_gap)]
+        df = df[df["fte_gap"] > abs(min_gap)]
 
         # Filter by mesto (city) if specified
         if mesto:
-            df = df[df['mesto'].str.contains(mesto, case=False, na=False)]
+            df = df[df["mesto"].str.contains(mesto, case=False, na=False)]
 
         # Filter by region if specified
         if region:
-            df = df[df['region_code'] == region]
+            df = df[df["region_code"] == region]
 
         # Filter high risk only (revenue_at_risk > 0)
         if high_risk_only:
-            df = df[df['revenue_at_risk_eur'] > 0]
+            df = df[df["revenue_at_risk_eur"] > 0]
 
         # Filter high productivity only (index > 100)
         if high_productivity_only:
-            df = df[df['productivity_index'] > 100]
+            df = df[df["productivity_index"] > 100]
 
         # Sort by specified field
-        if sort_by == 'revenue_at_risk':
-            df = df.sort_values('revenue_at_risk_eur', ascending=False)
-        elif sort_by == 'productivity':
-            df = df.sort_values('productivity_index', ascending=False)
+        if sort_by == "revenue_at_risk":
+            df = df.sort_values("revenue_at_risk_eur", ascending=False)
+        elif sort_by == "productivity":
+            df = df.sort_values("productivity_index", ascending=False)
         else:
-            df = df.sort_values('fte_gap', ascending=False)  # Most understaffed (highest gap) first
+            df = df.sort_values(
+                "fte_gap", ascending=False
+            )  # Most understaffed (highest gap) first
 
         # P3: Validate output schema
-        return validate_pharmacy_list_output({
-            'count': len(df),
-            'total_revenue_at_risk_eur': int(df['revenue_at_risk_eur'].sum()),
-            'pharmacies': df.head(limit).to_dict('records')
-        })
+        return validate_pharmacy_list_output(
+            {
+                "count": len(df),
+                "total_revenue_at_risk_eur": int(df["revenue_at_risk_eur"].sum()),
+                "pharmacies": df.head(limit).to_dict("records"),
+            }
+        )
 
     def tool_get_regional_summary(self, region: str) -> dict:
         """Get summary statistics for a region."""
         df = self.sanitized_data
-        region_df = df[df['region_code'] == region]
+        region_df = df[df["region_code"] == region]
 
         if region_df.empty:
-            return {'error': f'Region {region} not found'}
+            raise DataNotFoundError(
+                f"Region {region} not found",
+                tool_name="get_regional_summary",
+                hint="Use get_all_regions_summary to see available regions",
+            )
 
-        understaffed = region_df[region_df['fte_gap'] > 0.5]  # Positive gap = understaffed
-        overstaffed = region_df[region_df['fte_gap'] < -0.5]  # Negative gap = overstaffed
+        understaffed = region_df[
+            region_df["fte_gap"] > FTE_GAP_NOTABLE
+        ]  # Positive gap = understaffed
+        overstaffed = region_df[
+            region_df["fte_gap"] < -FTE_GAP_NOTABLE
+        ]  # Negative gap = overstaffed
         # Urgent: understaffed + revenue at risk (same criteria as app)
-        urgent = region_df[(region_df['fte_gap'] > 0.5) & (region_df['revenue_at_risk_eur'] > 0)]
+        urgent = region_df[
+            (region_df["fte_gap"] > FTE_GAP_NOTABLE) & (region_df["revenue_at_risk_eur"] > 0)
+        ]
 
         # FTE-weighted productivity
-        total_fte = region_df['fte_actual'].sum()
-        weighted_prod = (region_df['productivity_index'] * region_df['fte_actual']).sum() / total_fte if total_fte > 0 else 100
+        total_fte = region_df["fte_actual"].sum()
+        weighted_prod = (
+            (region_df["productivity_index"] * region_df["fte_actual"]).sum()
+            / total_fte
+            if total_fte > 0
+            else 100
+        )
 
         return {
-            'region': region,
-            'pharmacy_count': len(region_df),
-            'total_fte': round(region_df['fte_actual'].sum(), 1),
-            'total_bloky': int(region_df['bloky'].sum()),
-            'understaffed_count': len(understaffed),
-            'overstaffed_count': len(overstaffed),
-            'urgent_count': len(urgent),  # Matches app's urgent criteria
-            'total_revenue_at_risk_eur': int(urgent['revenue_at_risk_eur'].sum()),
-            'avg_productivity_index': int(weighted_prod),  # FTE-weighted
-            'types': region_df['typ'].value_counts().to_dict()
+            "region": region,
+            "pharmacy_count": len(region_df),
+            "total_fte": round(region_df["fte_actual"].sum(), 1),
+            "total_bloky": int(region_df["bloky"].sum()),
+            "understaffed_count": len(understaffed),
+            "overstaffed_count": len(overstaffed),
+            "urgent_count": len(urgent),  # Matches app's urgent criteria
+            "total_revenue_at_risk_eur": int(urgent["revenue_at_risk_eur"].sum()),
+            "avg_productivity_index": int(weighted_prod),  # FTE-weighted
+            "types": region_df["typ"].value_counts().to_dict(),
         }
 
-    def tool_get_all_regions_summary(self, sort_by: str = 'revenue_at_risk') -> dict:
+    def tool_get_all_regions_summary(self, sort_by: str = "revenue_at_risk") -> dict:
         """Get summary statistics for ALL regions at once."""
         df = self.sanitized_data
-        regions = df['region_code'].unique()
+        regions = df["region_code"].unique()
 
         summaries = []
         for region in sorted(regions):
-            region_df = df[df['region_code'] == region]
-            understaffed = region_df[region_df['fte_gap'] > 0.5]  # Positive gap = understaffed
-            overstaffed = region_df[region_df['fte_gap'] < -0.5]  # Negative gap = overstaffed
+            region_df = df[df["region_code"] == region]
+            understaffed = region_df[
+                region_df["fte_gap"] > FTE_GAP_NOTABLE
+            ]  # Positive gap = understaffed
+            overstaffed = region_df[
+                region_df["fte_gap"] < -FTE_GAP_NOTABLE
+            ]  # Negative gap = overstaffed
             # Urgent: understaffed + revenue at risk (same criteria as app)
-            urgent = region_df[(region_df['fte_gap'] > 0.5) & (region_df['revenue_at_risk_eur'] > 0)]
+            urgent = region_df[
+                (region_df["fte_gap"] > FTE_GAP_NOTABLE) & (region_df["revenue_at_risk_eur"] > 0)
+            ]
 
             # FTE-weighted productivity
-            total_fte = region_df['fte_actual'].sum()
-            weighted_prod = (region_df['productivity_index'] * region_df['fte_actual']).sum() / total_fte if total_fte > 0 else 100
+            total_fte = region_df["fte_actual"].sum()
+            weighted_prod = (
+                (region_df["productivity_index"] * region_df["fte_actual"]).sum()
+                / total_fte
+                if total_fte > 0
+                else 100
+            )
 
-            summaries.append({
-                'region': region,
-                'pharmacy_count': len(region_df),
-                'total_fte_actual': round(region_df['fte_actual'].sum(), 1),
-                'total_fte_recommended': round(region_df['fte_recommended'].sum(), 1),
-                'understaffed_count': len(understaffed),
-                'overstaffed_count': len(overstaffed),
-                'urgent_count': len(urgent),  # Matches app's urgent criteria
-                'revenue_at_risk_eur': int(urgent['revenue_at_risk_eur'].sum()),
-                'avg_productivity_index': int(weighted_prod)  # FTE-weighted
-            })
+            summaries.append(
+                {
+                    "region": region,
+                    "pharmacy_count": len(region_df),
+                    "total_fte_actual": round(region_df["fte_actual"].sum(), 1),
+                    "total_fte_recommended": round(
+                        region_df["fte_recommended"].sum(), 1
+                    ),
+                    "understaffed_count": len(understaffed),
+                    "overstaffed_count": len(overstaffed),
+                    "urgent_count": len(urgent),  # Matches app's urgent criteria
+                    "revenue_at_risk_eur": int(urgent["revenue_at_risk_eur"].sum()),
+                    "avg_productivity_index": int(weighted_prod),  # FTE-weighted
+                }
+            )
 
         # Sort by specified field
-        if sort_by == 'revenue_at_risk':
-            summaries.sort(key=lambda x: x['revenue_at_risk_eur'], reverse=True)
-        elif sort_by == 'productivity':
-            summaries.sort(key=lambda x: x['avg_productivity_index'], reverse=True)
-        elif sort_by == 'understaffed':
-            summaries.sort(key=lambda x: x['understaffed_count'], reverse=True)
+        if sort_by == "revenue_at_risk":
+            summaries.sort(key=lambda x: x["revenue_at_risk_eur"], reverse=True)
+        elif sort_by == "productivity":
+            summaries.sort(key=lambda x: x["avg_productivity_index"], reverse=True)
+        elif sort_by == "understaffed":
+            summaries.sort(key=lambda x: x["understaffed_count"], reverse=True)
 
-        total_risk = sum(s['revenue_at_risk_eur'] for s in summaries)
+        total_risk = sum(s["revenue_at_risk_eur"] for s in summaries)
 
         return {
-            'region_count': len(summaries),
-            'total_revenue_at_risk_eur': total_risk,
-            'regions': summaries
+            "region_count": len(summaries),
+            "total_revenue_at_risk_eur": total_risk,
+            "regions": summaries,
         }
 
     def tool_generate_report(
@@ -1122,21 +1497,23 @@ class DrMaxAgent:
         title: str,
         pharmacy_ids: list = None,
         region: str = None,
-        include_recommendations: bool = True
+        include_recommendations: bool = True,
     ) -> dict:
         """Generate a Markdown report."""
         lines = [f"# {title}", ""]
 
         if region:
             summary = self.tool_get_regional_summary(region)
-            lines.extend([
-                f"## Región: {region}",
-                f"- Počet lekární: {summary['pharmacy_count']}",
-                f"- Celkové FTE: {summary['total_fte']}",
-                f"- Poddimenzované: {summary['understaffed_count']}",
-                f"- Ohrozené tržby: €{summary['total_revenue_at_risk_eur']:,}",
-                ""
-            ])
+            lines.extend(
+                [
+                    f"## Región: {region}",
+                    f"- Počet lekární: {summary['pharmacy_count']}",
+                    f"- Celkové FTE: {summary['total_fte']}",
+                    f"- Poddimenzované: {summary['understaffed_count']}",
+                    f"- Ohrozené tržby: €{summary['total_revenue_at_risk_eur']:,}",
+                    "",
+                ]
+            )
 
         if pharmacy_ids:
             lines.append("## Analyzované lekárne")
@@ -1146,7 +1523,7 @@ class DrMaxAgent:
 
             for pid in pharmacy_ids:
                 p = self.tool_get_pharmacy_details(pid)
-                if 'error' not in p:
+                if "error" not in p:
                     lines.append(
                         f"| {p['id']} | {p['mesto']} | {p['typ']} | "
                         f"{p.get('fte_actual', 0):.1f} | "
@@ -1156,188 +1533,235 @@ class DrMaxAgent:
             lines.append("")
 
         if include_recommendations:
-            lines.extend([
-                "## Odporúčania",
-                "",
-                "1. Prioritizovať lekárne s najvyššími ohrozenými tržbami",
-                "2. Zvážiť prerozdelenie z naddimenzovaných prevádzok",
-                "3. Pri vysokom raste (+15%) proaktívne navýšiť personál",
-                ""
-            ])
+            lines.extend(
+                [
+                    "## Odporúčania",
+                    "",
+                    "1. Prioritizovať lekárne s najvyššími ohrozenými tržbami",
+                    "2. Zvážiť prerozdelenie z naddimenzovaných prevádzok",
+                    "3. Pri vysokom raste (+15%) proaktívne navýšiť personál",
+                    "",
+                ]
+            )
 
         report_content = "\n".join(lines)
 
         return {
-            'format': 'markdown',
-            'content': report_content,
-            'word_count': len(report_content.split())
+            "format": "markdown",
+            "content": report_content,
+            "word_count": len(report_content.split()),
         }
 
     def tool_get_segment_comparison(self) -> dict:
         """Compare performance across all segments (A-E)."""
         df = self.sanitized_data
-        segments = df['typ'].unique()
+        segments = df["typ"].unique()
 
         summaries = []
         for segment in sorted(segments):
-            seg_df = df[df['typ'] == segment]
-            understaffed = seg_df[seg_df['fte_gap'] > 0.5]  # Positive gap = understaffed
-            overstaffed = seg_df[seg_df['fte_gap'] < -0.5]  # Negative gap = overstaffed
+            seg_df = df[df["typ"] == segment]
+            understaffed = seg_df[
+                seg_df["fte_gap"] > FTE_GAP_NOTABLE
+            ]  # Positive gap = understaffed
+            overstaffed = seg_df[seg_df["fte_gap"] < -FTE_GAP_NOTABLE]  # Negative gap = overstaffed
             # Urgent: understaffed + revenue at risk (same criteria as app)
-            urgent = seg_df[(seg_df['fte_gap'] > 0.5) & (seg_df['revenue_at_risk_eur'] > 0)]
+            urgent = seg_df[
+                (seg_df["fte_gap"] > FTE_GAP_NOTABLE) & (seg_df["revenue_at_risk_eur"] > 0)
+            ]
 
             # FTE-weighted productivity (more accurate than simple average)
-            total_fte = seg_df['fte_actual'].sum()
-            weighted_prod = (seg_df['productivity_index'] * seg_df['fte_actual']).sum() / total_fte if total_fte > 0 else 100
+            total_fte = seg_df["fte_actual"].sum()
+            weighted_prod = (
+                (seg_df["productivity_index"] * seg_df["fte_actual"]).sum() / total_fte
+                if total_fte > 0
+                else 100
+            )
 
             # Average growth (bloky_trend) - FTE-weighted
-            weighted_trend = (seg_df['bloky_trend'] * seg_df['fte_actual']).sum() / total_fte if total_fte > 0 else 0
+            weighted_trend = (
+                (seg_df["bloky_trend"] * seg_df["fte_actual"]).sum() / total_fte
+                if total_fte > 0
+                else 0
+            )
 
-            summaries.append({
-                'segment': segment,
-                'pharmacy_count': len(seg_df),
-                'total_trzby': int(seg_df['trzby'].sum()),
-                'total_fte_actual': round(seg_df['fte_actual'].sum(), 1),
-                'total_fte_recommended': round(seg_df['fte_recommended'].sum(), 1),
-                'understaffed_count': len(understaffed),
-                'overstaffed_count': len(overstaffed),
-                'urgent_count': len(urgent),  # Matches app's urgent criteria
-                'revenue_at_risk_eur': int(urgent['revenue_at_risk_eur'].sum()),
-                'avg_productivity_index': int(weighted_prod),  # FTE-weighted average
-                'avg_bloky_trend_pct': round(weighted_trend * 100, 1),  # FTE-weighted, as %
-                'avg_bloky': int(seg_df['bloky'].mean()),
-                'avg_trzby': int(seg_df['trzby'].mean())
-            })
+            summaries.append(
+                {
+                    "segment": segment,
+                    "pharmacy_count": len(seg_df),
+                    "total_trzby": int(seg_df["trzby"].sum()),
+                    "total_fte_actual": round(seg_df["fte_actual"].sum(), 1),
+                    "total_fte_recommended": round(seg_df["fte_recommended"].sum(), 1),
+                    "understaffed_count": len(understaffed),
+                    "overstaffed_count": len(overstaffed),
+                    "urgent_count": len(urgent),  # Matches app's urgent criteria
+                    "revenue_at_risk_eur": int(urgent["revenue_at_risk_eur"].sum()),
+                    "avg_productivity_index": int(
+                        weighted_prod
+                    ),  # FTE-weighted average
+                    "avg_bloky_trend_pct": round(
+                        weighted_trend * 100, 1
+                    ),  # FTE-weighted, as %
+                    "avg_bloky": int(seg_df["bloky"].mean()),
+                    "avg_trzby": int(seg_df["trzby"].mean()),
+                }
+            )
 
         # Sort by revenue at risk (highest first)
-        summaries.sort(key=lambda x: x['revenue_at_risk_eur'], reverse=True)
-        total_risk = sum(s['revenue_at_risk_eur'] for s in summaries)
+        summaries.sort(key=lambda x: x["revenue_at_risk_eur"], reverse=True)
+        total_risk = sum(s["revenue_at_risk_eur"] for s in summaries)
 
         return {
-            'segment_count': len(summaries),
-            'total_revenue_at_risk_eur': total_risk,
-            'segments': summaries
+            "segment_count": len(summaries),
+            "total_revenue_at_risk_eur": total_risk,
+            "segments": summaries,
         }
 
     def tool_get_city_summary(self, mesto: str) -> dict:
         """Get aggregate statistics for a city with multiple pharmacies."""
         df = self.sanitized_data
-        city_df = df[df['mesto'].str.contains(mesto, case=False, na=False)]
+        city_df = df[df["mesto"].str.contains(mesto, case=False, na=False)]
 
         if city_df.empty:
-            return {'error': f'No pharmacies found in city: {mesto}'}
+            raise DataNotFoundError(
+                f"No pharmacies found in city: {mesto}",
+                tool_name="get_city_summary",
+                hint="Use get_cities_pharmacy_count to see available cities",
+            )
 
-        understaffed = city_df[city_df['fte_gap'] > 0.5]  # Positive gap = understaffed
-        overstaffed = city_df[city_df['fte_gap'] < -0.5]  # Negative gap = overstaffed
+        understaffed = city_df[city_df["fte_gap"] > FTE_GAP_NOTABLE]  # Positive gap = understaffed
+        overstaffed = city_df[city_df["fte_gap"] < -FTE_GAP_NOTABLE]  # Negative gap = overstaffed
         # Urgent: understaffed + revenue at risk (same criteria as app)
-        urgent = city_df[(city_df['fte_gap'] > 0.5) & (city_df['revenue_at_risk_eur'] > 0)]
+        urgent = city_df[
+            (city_df["fte_gap"] > FTE_GAP_NOTABLE) & (city_df["revenue_at_risk_eur"] > 0)
+        ]
 
         # Get list of pharmacies in the city
         pharmacies = []
         for _, row in city_df.iterrows():
-            pharmacies.append({
-                'id': int(row['id']),
-                'mesto': row['mesto'],
-                'typ': row['typ'],
-                'fte_actual': round(row['fte_actual'], 1),
-                'fte_recommended': round(row['fte_recommended'], 1),
-                'fte_gap': round(row['fte_gap'], 1),
-                'revenue_at_risk_eur': int(row['revenue_at_risk_eur']),
-                'productivity_index': int(row['productivity_index'])
-            })
+            pharmacies.append(
+                {
+                    "id": int(row["id"]),
+                    "mesto": row["mesto"],
+                    "typ": row["typ"],
+                    "fte_actual": round(row["fte_actual"], 1),
+                    "fte_recommended": round(row["fte_recommended"], 1),
+                    "fte_gap": round(row["fte_gap"], 1),
+                    "revenue_at_risk_eur": int(row["revenue_at_risk_eur"]),
+                    "productivity_index": int(row["productivity_index"]),
+                }
+            )
 
         # FTE-weighted productivity
-        total_fte = city_df['fte_actual'].sum()
-        weighted_prod = (city_df['productivity_index'] * city_df['fte_actual']).sum() / total_fte if total_fte > 0 else 100
+        total_fte = city_df["fte_actual"].sum()
+        weighted_prod = (
+            (city_df["productivity_index"] * city_df["fte_actual"]).sum() / total_fte
+            if total_fte > 0
+            else 100
+        )
 
         return {
-            'city': mesto,
-            'pharmacy_count': len(city_df),
-            'total_fte_actual': round(city_df['fte_actual'].sum(), 1),
-            'total_fte_recommended': round(city_df['fte_recommended'].sum(), 1),
-            'total_fte_gap': round(city_df['fte_gap'].sum(), 1),
-            'understaffed_count': len(understaffed),
-            'overstaffed_count': len(overstaffed),
-            'urgent_count': len(urgent),  # Matches app's urgent criteria
-            'total_revenue_at_risk_eur': int(urgent['revenue_at_risk_eur'].sum()),
-            'avg_productivity_index': int(weighted_prod),  # FTE-weighted
-            'pharmacies': pharmacies,
-            'transfer_possible': len(understaffed) > 0 and len(overstaffed) > 0
+            "city": mesto,
+            "pharmacy_count": len(city_df),
+            "total_fte_actual": round(city_df["fte_actual"].sum(), 1),
+            "total_fte_recommended": round(city_df["fte_recommended"].sum(), 1),
+            "total_fte_gap": round(city_df["fte_gap"].sum(), 1),
+            "understaffed_count": len(understaffed),
+            "overstaffed_count": len(overstaffed),
+            "urgent_count": len(urgent),  # Matches app's urgent criteria
+            "total_revenue_at_risk_eur": int(urgent["revenue_at_risk_eur"].sum()),
+            "avg_productivity_index": int(weighted_prod),  # FTE-weighted
+            "pharmacies": pharmacies,
+            "transfer_possible": len(understaffed) > 0 and len(overstaffed) > 0,
         }
 
-    def tool_get_cities_pharmacy_count(self, min_count: int = 1, limit: int = 50) -> dict:
+    def tool_get_cities_pharmacy_count(
+        self, min_count: int = 1, limit: int = 50
+    ) -> dict:
         """Get count of pharmacies per city, sorted by count descending."""
         df = self.sanitized_data
 
         # Use 'city' column (clean city name extracted from 'mesto')
-        if 'city' not in df.columns:
+        if "city" not in df.columns:
             # Fallback: extract city from mesto
             def extract_city(mesto):
-                if ',' in str(mesto):
-                    return str(mesto).split(',')[0].strip()
-                if ' - ' in str(mesto):
-                    return str(mesto).split(' - ')[0].strip()
+                if "," in str(mesto):
+                    return str(mesto).split(",")[0].strip()
+                if " - " in str(mesto):
+                    return str(mesto).split(" - ")[0].strip()
                 return str(mesto).strip()
-            df['city'] = df['mesto'].apply(extract_city)
 
-        city_counts = df['city'].value_counts()
+            df["city"] = df["mesto"].apply(extract_city)
+
+        city_counts = df["city"].value_counts()
 
         # Filter by min_count and limit
         filtered = city_counts[city_counts >= min_count].head(limit)
 
         cities = []
         for city, count in filtered.items():
-            city_df = df[df['city'] == city]
-            cities.append({
-                'city': city,
-                'pharmacy_count': int(count),
-                'total_fte': round(city_df['fte_actual'].sum(), 1),
-                'total_revenue_at_risk': int(city_df['revenue_at_risk_eur'].sum())
-            })
+            city_df = df[df["city"] == city]
+            cities.append(
+                {
+                    "city": city,
+                    "pharmacy_count": int(count),
+                    "total_fte": round(city_df["fte_actual"].sum(), 1),
+                    "total_revenue_at_risk": int(city_df["revenue_at_risk_eur"].sum()),
+                }
+            )
 
         return {
-            'total_cities': len(city_counts),
-            'cities_with_multiple': len(city_counts[city_counts >= 2]),
-            'cities': cities
+            "total_cities": len(city_counts),
+            "cities_with_multiple": len(city_counts[city_counts >= 2]),
+            "cities": cities,
         }
 
     def tool_get_network_overview(self) -> dict:
         """Get quick health snapshot of the entire pharmacy network."""
         df = self.sanitized_data
 
-        understaffed = df[df['fte_gap'] > 0.5]  # Positive gap = understaffed
-        overstaffed = df[df['fte_gap'] < -0.5]  # Negative gap = overstaffed
-        optimal = df[(df['fte_gap'] >= -0.5) & (df['fte_gap'] <= 0.5)]
+        understaffed = df[df["fte_gap"] > FTE_GAP_NOTABLE]  # Positive gap = understaffed
+        overstaffed = df[df["fte_gap"] < -FTE_GAP_NOTABLE]  # Negative gap = overstaffed
+        optimal = df[(df["fte_gap"] >= -FTE_GAP_NOTABLE) & (df["fte_gap"] <= FTE_GAP_NOTABLE)]
 
-        # Urgent: understaffed > 0.5 FTE + revenue at risk (same criteria as app)
-        # This matches server.py lines 745-754
-        urgent = df[(df['fte_gap'] > 0.5) & (df['revenue_at_risk_eur'] > 0)]
+        # Urgent: understaffed + above-avg productivity (same criteria as app)
+        # Only above-avg productivity pharmacies have real "revenue at risk"
+        # Use is_above_avg_gross if available (matches app exactly), else fallback to productivity_index
+        if "is_above_avg_gross" in df.columns:
+            urgent = df[(df["fte_gap"] > FTE_GAP_NOTABLE) & (df["is_above_avg_gross"] == True)]
+        else:
+            urgent = df[(df["fte_gap"] > FTE_GAP_NOTABLE) & (df["productivity_index"] > 100)]
 
         # FTE-weighted productivity
-        total_fte = df['fte_actual'].sum()
-        weighted_prod = (df['productivity_index'] * df['fte_actual']).sum() / total_fte if total_fte > 0 else 100
+        total_fte = df["fte_actual"].sum()
+        weighted_prod = (
+            (df["productivity_index"] * df["fte_actual"]).sum() / total_fte
+            if total_fte > 0
+            else 100
+        )
 
         return {
-            'total_pharmacies': len(df),
-            'total_fte_actual': round(df['fte_actual'].sum(), 1),
-            'total_fte_recommended': round(df['fte_recommended'].sum(), 1),
-            'total_fte_gap': round(df['fte_gap'].sum(), 1),
-            'understaffed_count': len(understaffed),
-            'overstaffed_count': len(overstaffed),
-            'optimal_count': len(optimal),
-            'understaffed_pct': round(len(understaffed) / len(df) * 100, 1),
-            'overstaffed_pct': round(len(overstaffed) / len(df) * 100, 1),
-            'optimal_pct': round(len(optimal) / len(df) * 100, 1),
-            'total_revenue_at_risk_eur': int(urgent['revenue_at_risk_eur'].sum()),
-            'urgent_count': len(urgent),
-            'avg_productivity_index': int(weighted_prod),  # FTE-weighted
-            'total_bloky': int(df['bloky'].sum()),
-            'total_trzby': int(df['trzby'].sum()),
-            'region_count': df['region_code'].nunique(),
-            'segment_breakdown': df['typ'].value_counts().to_dict()
+            "total_pharmacies": len(df),
+            "total_fte_actual": round(df["fte_actual"].sum(), 1),
+            "total_fte_recommended": round(df["fte_recommended"].sum(), 1),
+            "total_fte_gap": round(df["fte_gap"].sum(), 1),
+            "understaffed_count": len(understaffed),
+            "overstaffed_count": len(overstaffed),
+            "optimal_count": len(optimal),
+            "understaffed_pct": round(len(understaffed) / len(df) * 100, 1),
+            "overstaffed_pct": round(len(overstaffed) / len(df) * 100, 1),
+            "optimal_pct": round(len(optimal) / len(df) * 100, 1),
+            "total_revenue_at_risk_eur": int(urgent["revenue_at_risk_eur"].sum()),
+            "urgent_count": len(urgent),
+            "avg_productivity_index": int(weighted_prod),  # FTE-weighted
+            "total_bloky": int(df["bloky"].sum()),
+            "total_trzby": int(df["trzby"].sum()),
+            "region_count": df["region_code"].nunique(),
+            "segment_breakdown": df["typ"].value_counts().to_dict(),
         }
 
-    def tool_get_trend_analysis(self, trend_threshold: float = 10.0, limit: int = 20) -> dict:
+    def tool_get_trend_analysis(
+        self, trend_threshold: float = 10.0, limit: int = 20
+    ) -> dict:
         """Identify pharmacies with significant transaction trends (growing/declining)."""
         # Ensure types
         trend_threshold = float(trend_threshold) if trend_threshold else 10.0
@@ -1346,38 +1770,42 @@ class DrMaxAgent:
         df = self.sanitized_data.copy()
 
         # Convert bloky_trend to percentage if needed (stored as decimal)
-        df['trend_pct'] = df['bloky_trend'] * 100
+        df["trend_pct"] = df["bloky_trend"] * 100
 
         # Growing pharmacies (positive trend above threshold)
-        growing = df[df['trend_pct'] >= trend_threshold].copy()
-        growing = growing.sort_values('trend_pct', ascending=False)
+        growing = df[df["trend_pct"] >= trend_threshold].copy()
+        growing = growing.sort_values("trend_pct", ascending=False)
 
         # Declining pharmacies (negative trend below -threshold)
-        declining = df[df['trend_pct'] <= -trend_threshold].copy()
-        declining = declining.sort_values('trend_pct')
+        declining = df[df["trend_pct"] <= -trend_threshold].copy()
+        declining = declining.sort_values("trend_pct")
 
         def format_pharmacy(row):
             return {
-                'id': int(row['id']),
-                'mesto': row['mesto'],
-                'typ': row['typ'],
-                'bloky_trend_pct': round(row['trend_pct'], 1),
-                'bloky': int(row['bloky']),
-                'fte_actual': round(row['fte_actual'], 1),
-                'fte_gap': round(row['fte_gap'], 1),
-                'productivity_index': int(row['productivity_index'])
+                "id": int(row["id"]),
+                "mesto": row["mesto"],
+                "typ": row["typ"],
+                "bloky_trend_pct": round(row["trend_pct"], 1),
+                "bloky": int(row["bloky"]),
+                "fte_actual": round(row["fte_actual"], 1),
+                "fte_gap": round(row["fte_gap"], 1),
+                "productivity_index": int(row["productivity_index"]),
             }
 
         return {
-            'threshold_pct': trend_threshold,
-            'growing_count': len(growing),
-            'declining_count': len(declining),
-            'growing_pharmacies': [format_pharmacy(row) for _, row in growing.head(limit).iterrows()],
-            'declining_pharmacies': [format_pharmacy(row) for _, row in declining.head(limit).iterrows()],
-            'recommendation': (
-                'Rastúce lekárne môžu potrebovať navýšenie FTE. '
-                'Klesajúce lekárne zvážiť pre optimalizáciu personálu.'
-            )
+            "threshold_pct": trend_threshold,
+            "growing_count": len(growing),
+            "declining_count": len(declining),
+            "growing_pharmacies": [
+                format_pharmacy(row) for _, row in growing.head(limit).iterrows()
+            ],
+            "declining_pharmacies": [
+                format_pharmacy(row) for _, row in declining.head(limit).iterrows()
+            ],
+            "recommendation": (
+                "Rastúce lekárne môžu potrebovať navýšenie FTE. "
+                "Klesajúce lekárne zvážiť pre optimalizáciu personálu."
+            ),
         }
 
     def tool_get_priority_actions(self, limit: int = 10) -> dict:
@@ -1387,59 +1815,323 @@ class DrMaxAgent:
 
         # Only consider understaffed pharmacies with revenue at risk
         # Positive gap = understaffed (need more FTE)
-        candidates = df[(df['fte_gap'] > 0.5) & (df['revenue_at_risk_eur'] > 0)].copy()
+        candidates = df[(df["fte_gap"] > FTE_GAP_NOTABLE) & (df["revenue_at_risk_eur"] > 0)].copy()
 
         if candidates.empty:
             return {
-                'count': 0,
-                'actions': [],
-                'message': 'Žiadne lekárne s ohrozenými tržbami'
+                "count": 0,
+                "actions": [],
+                "message": "Žiadne lekárne s ohrozenými tržbami",
             }
 
         # Priority score: higher = more urgent
         # Factors: revenue at risk (normalized), productivity (above avg = higher), FTE gap magnitude
-        max_risk = candidates['revenue_at_risk_eur'].max()
-        candidates['risk_score'] = candidates['revenue_at_risk_eur'] / max_risk * 40  # 0-40 points
+        max_risk = candidates["revenue_at_risk_eur"].max()
+        candidates["risk_score"] = (
+            candidates["revenue_at_risk_eur"] / max_risk * 40
+        )  # 0-40 points
 
         # Productivity bonus: above average gets points
-        candidates['prod_score'] = ((candidates['productivity_index'] - 100) / 20).clip(0, 30)  # 0-30 points
+        candidates["prod_score"] = ((candidates["productivity_index"] - 100) / 20).clip(
+            0, 30
+        )  # 0-30 points
 
         # FTE gap magnitude: bigger gap = more urgent (positive gap = understaffed)
-        max_gap = candidates['fte_gap'].max()
-        candidates['gap_score'] = (candidates['fte_gap'] / max_gap) * 30 if max_gap > 0 else 0  # 0-30 points
+        max_gap = candidates["fte_gap"].max()
+        candidates["gap_score"] = (
+            (candidates["fte_gap"] / max_gap) * 30 if max_gap > 0 else 0
+        )  # 0-30 points
 
-        candidates['priority_score'] = (
-            candidates['risk_score'] +
-            candidates['prod_score'] +
-            candidates['gap_score']
+        candidates["priority_score"] = (
+            candidates["risk_score"]
+            + candidates["prod_score"]
+            + candidates["gap_score"]
         )
 
         # Sort by priority score
-        candidates = candidates.sort_values('priority_score', ascending=False)
+        candidates = candidates.sort_values("priority_score", ascending=False)
 
         actions = []
         for _, row in candidates.head(limit).iterrows():
-            action_type = 'URGENTNÉ' if row['priority_score'] >= 70 else (
-                'VYSOKÁ' if row['priority_score'] >= 50 else 'STREDNÁ'
+            action_type = (
+                "URGENTNÉ"
+                if row["priority_score"] >= 70
+                else ("VYSOKÁ" if row["priority_score"] >= 50 else "STREDNÁ")
             )
-            actions.append({
-                'priority': action_type,
-                'priority_score': round(row['priority_score'], 0),
-                'id': int(row['id']),
-                'mesto': row['mesto'],
-                'typ': row['typ'],
-                'fte_gap': round(row['fte_gap'], 1),
-                'fte_needed': round(abs(row['fte_gap']), 1),
-                'revenue_at_risk_eur': int(row['revenue_at_risk_eur']),
-                'productivity_index': int(row['productivity_index']),
-                'action': f"Pridať {abs(row['fte_gap']):.1f} FTE, ohrozené €{int(row['revenue_at_risk_eur']):,}"
-            })
+            actions.append(
+                {
+                    "priority": action_type,
+                    "priority_score": round(row["priority_score"], 0),
+                    "id": int(row["id"]),
+                    "mesto": row["mesto"],
+                    "typ": row["typ"],
+                    "fte_gap": round(row["fte_gap"], 1),
+                    "fte_needed": round(abs(row["fte_gap"]), 1),
+                    "revenue_at_risk_eur": int(row["revenue_at_risk_eur"]),
+                    "productivity_index": int(row["productivity_index"]),
+                    "action": f"Pridať {abs(row['fte_gap']):.1f} FTE, ohrozené €{int(row['revenue_at_risk_eur']):,}",
+                }
+            )
 
         return {
-            'count': len(actions),
-            'total_fte_needed': round(sum(a['fte_needed'] for a in actions), 1),
-            'total_revenue_at_risk_eur': sum(a['revenue_at_risk_eur'] for a in actions),
-            'actions': actions
+            "count": len(actions),
+            "total_fte_needed": round(sum(a["fte_needed"] for a in actions), 1),
+            "total_revenue_at_risk_eur": sum(a["revenue_at_risk_eur"] for a in actions),
+            "actions": actions,
+        }
+
+    def tool_get_zastup_analysis(
+        self,
+        segment: str = None,
+        region: str = None,
+        min_zastup_pct: float = None,
+        min_zastup_fte: float = 0.1,
+        max_productivity: float = None,
+        limit: int = 20,
+    ) -> dict:
+        """Analyze zastup (borrowed staff) usage across network."""
+        df = self.sanitized_data.copy()
+
+        # Filter by segment if specified
+        if segment:
+            segment_upper = segment.upper()
+            df = df[df["typ"].str.upper().str.startswith(segment_upper)]
+
+        # Filter by region if specified
+        if region:
+            region_col = "regional" if "regional" in df.columns else "region_code"
+            df = df[df[region_col].str.upper() == region.upper()]
+
+        # Get pharmacies with significant zastup
+        if "zastup" not in df.columns or "zastup_pct" not in df.columns:
+            return {
+                "error": "Zastup data not available in dataset",
+                "message": "Dáta o zástupoch nie sú k dispozícii",
+            }
+
+        # Filter by min zastup (FTE or percentage)
+        min_fte = float(min_zastup_fte) if min_zastup_fte else 0.1
+        limit = int(limit) if limit else 20
+
+        pharmacies_with_zastup = df[df["zastup"] >= min_fte].copy()
+
+        # Additional filter by percentage if specified
+        if min_zastup_pct:
+            pharmacies_with_zastup = pharmacies_with_zastup[
+                pharmacies_with_zastup["zastup_pct"] >= float(min_zastup_pct)
+            ]
+
+        # Filter by max productivity if specified (for "low productivity" queries)
+        if max_productivity:
+            pharmacies_with_zastup = pharmacies_with_zastup[
+                pharmacies_with_zastup["productivity_index"] <= float(max_productivity)
+            ]
+
+        # Segment summary
+        segment_stats = []
+        for typ in [
+            "A - shopping premium",
+            "B - shopping",
+            "C - street +",
+            "D - street",
+            "E - poliklinika",
+        ]:
+            seg_df = df[df["typ"] == typ]
+            if not seg_df.empty:
+                segment_stats.append(
+                    {
+                        "segment": typ.split(" - ")[0],
+                        "segment_name": typ,
+                        "pharmacy_count": len(seg_df),
+                        "total_zastup_fte": round(seg_df["zastup"].sum(), 1),
+                        "avg_zastup_pct": round(seg_df["zastup_pct"].mean(), 1),
+                        "pharmacies_with_zastup": len(
+                            seg_df[seg_df["zastup_pct"] >= 5]
+                        ),
+                    }
+                )
+
+        # Sort pharmacies by zastup percentage
+        pharmacies_with_zastup = pharmacies_with_zastup.sort_values(
+            "zastup_pct", ascending=False
+        )
+
+        # Build result list
+        pharmacies = []
+        for _, row in pharmacies_with_zastup.head(limit).iterrows():
+            pharmacies.append(
+                {
+                    "id": int(row["id"]),
+                    "mesto": row["mesto"],
+                    "typ": row["typ"],
+                    "zastup_fte": round(row["zastup"], 2),
+                    "zastup_pct": round(row["zastup_pct"], 1),
+                    "fte_actual": round(row["fte_actual"], 1),
+                    "fte_gap": round(row["fte_gap"], 1),
+                    "productivity_index": int(row.get("productivity_index", 100)),
+                    "interpretation": "OVERSTAFFED"
+                    if row["fte_gap"] < -FTE_GAP_NOTABLE
+                    else ("UNDERSTAFFED" if row["fte_gap"] > FTE_GAP_NOTABLE else "OPTIMAL"),
+                }
+            )
+
+        # Network totals
+        total_zastup = df["zastup"].sum()
+        total_fte = df["fte_actual"].sum()
+
+        # Generate insight based on available data
+        if len(segment_stats) > 1:
+            # Find segment with most zastup
+            max_zastup_seg = max(segment_stats, key=lambda x: x["total_zastup_fte"])
+            insight = f"{max_zastup_seg['segment']}-segment využíva najviac zástupov ({max_zastup_seg['total_zastup_fte']} FTE). Zástupy sú personál zapožičaný z iných lekární na pokrytie neprítomnosti."
+        elif len(segment_stats) == 1:
+            seg = segment_stats[0]
+            insight = f"{seg['segment']}-segment: {seg['total_zastup_fte']} FTE zástupov, {seg['pharmacies_with_zastup']} lekární s >5% zástupom."
+        else:
+            insight = "Zástupy sú personál zapožičaný z iných lekární na pokrytie neprítomnosti."
+
+        return {
+            "summary": {
+                "total_zastup_fte": round(total_zastup, 1),
+                "total_fte": round(total_fte, 1),
+                "zastup_share_pct": round(total_zastup / total_fte * 100, 1)
+                if total_fte > 0
+                else 0,
+                "pharmacies_analyzed": len(df),
+                "pharmacies_with_zastup": len(pharmacies_with_zastup),
+            },
+            "segment_breakdown": segment_stats,
+            "pharmacies": pharmacies,
+            "insight": insight,
+        }
+
+    def tool_get_overstaffed_with_zastup(
+        self,
+        min_zastup_pct: float = 10.0,
+        max_productivity: float = None,
+        segment: str = None,
+        limit: int = 20,
+    ) -> dict:
+        """
+        Get overstaffed pharmacies with zastup data combined.
+
+        This tool solves the cross-reference problem by returning overstaffed
+        pharmacies with their zastup data already merged in a single output.
+
+        Args:
+            min_zastup_pct: Minimum zastup percentage (default 10%)
+            max_productivity: Maximum productivity index (e.g., 110 for "low productivity")
+            segment: Filter by segment (A/B/C/D/E)
+            limit: Maximum results
+        """
+        df = self.sanitized_data.copy()
+
+        # Filter by segment if specified
+        if segment:
+            segment_upper = segment.upper()
+            df = df[df["typ"].str.upper().str.startswith(segment_upper)]
+
+        # Filter for overstaffed (negative fte_gap = surplus FTE)
+        overstaffed = df[df["fte_gap"] < -0.3].copy()
+
+        # Filter by minimum zastup percentage
+        min_pct = float(min_zastup_pct) if min_zastup_pct else 10.0
+        overstaffed = overstaffed[overstaffed["zastup_pct"] >= min_pct]
+
+        # Filter by max productivity if specified
+        if max_productivity:
+            overstaffed = overstaffed[
+                overstaffed["productivity_index"] <= float(max_productivity)
+            ]
+
+        # Sort by zastup percentage descending
+        overstaffed = overstaffed.sort_values("zastup_pct", ascending=False)
+
+        # Build result list
+        limit = int(limit) if limit else 20
+        pharmacies = []
+        for _, row in overstaffed.head(limit).iterrows():
+            pharmacies.append(
+                {
+                    "id": int(row["id"]),
+                    "mesto": row["mesto"],
+                    "typ": row["typ"],
+                    "fte_actual": round(row["fte_actual"], 1),
+                    "fte_recommended": round(row["fte_recommended"], 1),
+                    "fte_gap": round(row["fte_gap"], 1),
+                    "fte_surplus": round(abs(row["fte_gap"]), 1),
+                    "zastup_fte": round(row["zastup"], 2),
+                    "zastup_pct": round(row["zastup_pct"], 1),
+                    "productivity_index": int(row.get("productivity_index", 100)),
+                    "insight": self._get_overstaffed_insight(row),
+                }
+            )
+
+        # Summary stats
+        if len(pharmacies) > 0:
+            total_surplus = sum(p["fte_surplus"] for p in pharmacies)
+            total_zastup = sum(p["zastup_fte"] for p in pharmacies)
+            insight = f"Nájdených {len(pharmacies)} lekární s prebytkom FTE a vysokým zástupom (>{min_pct}%). Celkový prebytok: {total_surplus:.1f} FTE, z toho {total_zastup:.1f} FTE je zástup."
+        else:
+            insight = (
+                f"Žiadne lekárne nespĺňajú kritériá: prebytok FTE + zástup >{min_pct}%"
+                + (f" + produktivita <{max_productivity}" if max_productivity else "")
+            )
+
+        return {
+            "count": len(pharmacies),
+            "filters_applied": {
+                "overstaffed": "fte_gap < -0.3",
+                "min_zastup_pct": min_pct,
+                "max_productivity": max_productivity,
+                "segment": segment,
+            },
+            "pharmacies": pharmacies,
+            "insight": insight,
+        }
+
+    def _get_overstaffed_insight(self, row) -> str:
+        """Generate insight for overstaffed pharmacy with zastup."""
+        zastup_pct = row["zastup_pct"]
+        surplus = abs(row["fte_gap"])
+        zastup_fte = row["zastup"]
+
+        if zastup_fte >= surplus:
+            return f"Celý prebytok ({surplus:.1f} FTE) je pokrytý zástupom ({zastup_fte:.1f} FTE) - zástup možno zrušiť"
+        elif zastup_fte > 0:
+            permanent_surplus = surplus - zastup_fte
+            return f"Zástup {zastup_fte:.1f} FTE zrušiť, zostane prebytok {permanent_surplus:.1f} FTE stáleho personálu"
+        else:
+            return f"Prebytok {surplus:.1f} FTE je stály personál (bez zástupu)"
+
+    def tool_get_knowledge(self, topic: str) -> dict:
+        """
+        Get knowledge base content for explaining concepts to users.
+
+        Use this tool when users ask about:
+        - How the model works ("ako funguje model")
+        - App benefits ("výhody aplikácie", "prečo používať")
+        - FTE interpretation ("čo znamená FTE gap", "produktivita")
+        - Action planning ("čo robiť", "ako prioritizovať")
+        - Common questions ("prečo...", "ako je možné...")
+
+        Args:
+            topic: One of: "model_explanation", "app_benefits", "fte_interpretation",
+                   "action_planning", "faq"
+        """
+        valid_topics = list(KNOWLEDGE_BASE.keys())
+
+        if topic not in KNOWLEDGE_BASE:
+            return {
+                "error": f"Neznáma téma: {topic}",
+                "valid_topics": valid_topics,
+                "hint": "Použi jednu z platných tém",
+            }
+
+        return {
+            "topic": topic,
+            "content": KNOWLEDGE_BASE[topic],
+            "available_topics": valid_topics,
         }
 
     # === TOOL DEFINITIONS FOR CLAUDE ===
@@ -1455,46 +2147,46 @@ class DrMaxAgent:
                     "properties": {
                         "mesto": {
                             "type": "string",
-                            "description": "Mesto/lokalita lekárne (case-insensitive, partial match). Napr. 'Košice', 'Bratislava', 'Levice'"
+                            "description": "Mesto/lokalita lekárne (case-insensitive, partial match). Napr. 'Košice', 'Bratislava', 'Levice'",
                         },
                         "typ": {
                             "type": "string",
-                            "description": "Typ lekárne (A/B/C/D/E alebo celý názov)"
+                            "description": "Typ lekárne (A/B/C/D/E alebo celý názov)",
                         },
                         "region": {
                             "type": "string",
-                            "description": "Kód regiónu (napr. RR11, RR15)"
+                            "description": "Kód regiónu (napr. RR11, RR15)",
                         },
                         "min_bloky": {
                             "type": "integer",
-                            "description": "Minimálny počet blokov"
+                            "description": "Minimálny počet blokov",
                         },
                         "max_bloky": {
                             "type": "integer",
-                            "description": "Maximálny počet blokov"
+                            "description": "Maximálny počet blokov",
                         },
                         "understaffed_only": {
                             "type": "boolean",
-                            "description": "Len poddimenzované lekárne (fte_gap > 0.5)"
+                            "description": "Len poddimenzované lekárne (fte_gap > 0.5)",
                         },
                         "overstaffed_only": {
                             "type": "boolean",
-                            "description": "Len naddimenzované lekárne (fte_gap < -0.5) - vhodné pre presun personálu"
+                            "description": "Len naddimenzované lekárne (fte_gap < -0.5) - vhodné pre presun personálu",
                         },
                         "sort_by": {
                             "type": "string",
-                            "description": "Stĺpec pre zoradenie: 'bloky', 'trzby', 'fte_actual', 'productivity_index', 'revenue_at_risk_eur'. Default: 'bloky'"
+                            "description": "Stĺpec pre zoradenie: 'bloky', 'trzby', 'fte_actual', 'productivity_index', 'revenue_at_risk_eur'. Default: 'bloky'",
                         },
                         "sort_desc": {
                             "type": "boolean",
-                            "description": "Zoradiť zostupne (true=najväčšie prvé). Default: true"
+                            "description": "Zoradiť zostupne (true=najväčšie prvé). Default: true",
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet výsledkov (default 15, max 20)"
-                        }
-                    }
-                }
+                            "description": "Max počet výsledkov (default 15, max 20)",
+                        },
+                    },
+                },
             },
             {
                 "name": "get_pharmacy_details",
@@ -1502,13 +2194,10 @@ class DrMaxAgent:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "pharmacy_id": {
-                            "type": "integer",
-                            "description": "ID lekárne"
-                        }
+                        "pharmacy_id": {"type": "integer", "description": "ID lekárne"}
                     },
-                    "required": ["pharmacy_id"]
-                }
+                    "required": ["pharmacy_id"],
+                },
             },
             {
                 "name": "get_pharmacy_revenue_trend",
@@ -1516,13 +2205,10 @@ class DrMaxAgent:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "pharmacy_id": {
-                            "type": "integer",
-                            "description": "ID lekárne"
-                        }
+                        "pharmacy_id": {"type": "integer", "description": "ID lekárne"}
                     },
-                    "required": ["pharmacy_id"]
-                }
+                    "required": ["pharmacy_id"],
+                },
             },
             {
                 "name": "get_segment_position",
@@ -1530,13 +2216,10 @@ class DrMaxAgent:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "pharmacy_id": {
-                            "type": "integer",
-                            "description": "ID lekárne"
-                        }
+                        "pharmacy_id": {"type": "integer", "description": "ID lekárne"}
                     },
-                    "required": ["pharmacy_id"]
-                }
+                    "required": ["pharmacy_id"],
+                },
             },
             {
                 "name": "simulate_fte",
@@ -1546,31 +2229,31 @@ class DrMaxAgent:
                     "properties": {
                         "pharmacy_id": {
                             "type": "integer",
-                            "description": "ID lekárne (voliteľné - ak nie je zadané, musíš zadať bloky, trzby a typ)"
+                            "description": "ID lekárne (voliteľné - ak nie je zadané, musíš zadať bloky, trzby a typ)",
                         },
                         "bloky": {
                             "type": "number",
-                            "description": "Absolútny počet blokov (voliteľné)"
+                            "description": "Absolútny počet blokov (voliteľné)",
                         },
                         "trzby": {
                             "type": "number",
-                            "description": "Absolútne tržby v EUR (voliteľné)"
+                            "description": "Absolútne tržby v EUR (voliteľné)",
                         },
                         "bloky_change_pct": {
                             "type": "number",
-                            "description": "Percentuálna zmena blokov oproti súčasnosti (napr. 20 pre +20%, -10 pre -10%)"
+                            "description": "Percentuálna zmena blokov oproti súčasnosti (napr. 20 pre +20%, -10 pre -10%)",
                         },
                         "trzby_change_pct": {
                             "type": "number",
-                            "description": "Percentuálna zmena tržieb oproti súčasnosti (napr. 15 pre +15%)"
+                            "description": "Percentuálna zmena tržieb oproti súčasnosti (napr. 15 pre +15%)",
                         },
                         "typ": {
                             "type": "string",
-                            "description": "Typ lekárne (A-E), povinné ak nie je pharmacy_id"
-                        }
+                            "description": "Typ lekárne (A-E), povinné ak nie je pharmacy_id",
+                        },
                     },
-                    "required": []
-                }
+                    "required": [],
+                },
             },
             {
                 "name": "compare_to_peers",
@@ -1580,19 +2263,19 @@ class DrMaxAgent:
                     "properties": {
                         "pharmacy_id": {
                             "type": "integer",
-                            "description": "ID lekárne na porovnanie"
+                            "description": "ID lekárne na porovnanie",
                         },
                         "n_peers": {
                             "type": "integer",
-                            "description": "Počet podobných lekární (default 5)"
+                            "description": "Počet podobných lekární (default 5)",
                         },
                         "higher_fte_only": {
                             "type": "boolean",
-                            "description": "Len lekárne s vyšším FTE - pre hľadanie zdrojov na presun personálu"
-                        }
+                            "description": "Len lekárne s vyšším FTE - pre hľadanie zdrojov na presun personálu",
+                        },
                     },
-                    "required": ["pharmacy_id"]
-                }
+                    "required": ["pharmacy_id"],
+                },
             },
             {
                 "name": "get_understaffed",
@@ -1602,35 +2285,35 @@ class DrMaxAgent:
                     "properties": {
                         "mesto": {
                             "type": "string",
-                            "description": "Filter podľa mesta/lokality (case-insensitive, partial match). Napr. 'Košice', 'Bratislava'"
+                            "description": "Filter podľa mesta/lokality (case-insensitive, partial match). Napr. 'Košice', 'Bratislava'",
                         },
                         "region": {
                             "type": "string",
-                            "description": "Filter podľa regiónu (napr. RR11)"
+                            "description": "Filter podľa regiónu (napr. RR11)",
                         },
                         "min_gap": {
                             "type": "number",
-                            "description": "Minimálny FTE deficit (default -0.5)"
+                            "description": "Minimálny FTE deficit (default -0.5)",
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet výsledkov (default 20)"
+                            "description": "Max počet výsledkov (default 20)",
                         },
                         "high_risk_only": {
                             "type": "boolean",
-                            "description": "Len lekárne s ohrozenými tržbami > 0 EUR"
+                            "description": "Len lekárne s ohrozenými tržbami > 0 EUR",
                         },
                         "high_productivity_only": {
                             "type": "boolean",
-                            "description": "Len lekárne s nadpriemernou produktivitou (index > 100)"
+                            "description": "Len lekárne s nadpriemernou produktivitou (index > 100)",
                         },
                         "sort_by": {
                             "type": "string",
                             "enum": ["fte_gap", "revenue_at_risk", "productivity"],
-                            "description": "Zoradiť podľa: fte_gap (default), revenue_at_risk, productivity"
-                        }
-                    }
-                }
+                            "description": "Zoradiť podľa: fte_gap (default), revenue_at_risk, productivity",
+                        },
+                    },
+                },
             },
             {
                 "name": "get_regional_summary",
@@ -1640,11 +2323,11 @@ class DrMaxAgent:
                     "properties": {
                         "region": {
                             "type": "string",
-                            "description": "Kód regiónu (napr. RR11, RR15)"
+                            "description": "Kód regiónu (napr. RR11, RR15)",
                         }
                     },
-                    "required": ["region"]
-                }
+                    "required": ["region"],
+                },
             },
             {
                 "name": "get_all_regions_summary",
@@ -1655,10 +2338,10 @@ class DrMaxAgent:
                         "sort_by": {
                             "type": "string",
                             "enum": ["revenue_at_risk", "productivity", "understaffed"],
-                            "description": "Zoradiť podľa: revenue_at_risk (default), productivity, understaffed"
+                            "description": "Zoradiť podľa: revenue_at_risk (default), productivity, understaffed",
                         }
-                    }
-                }
+                    },
+                },
             },
             {
                 "name": "generate_report",
@@ -1666,34 +2349,28 @@ class DrMaxAgent:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "title": {
-                            "type": "string",
-                            "description": "Názov reportu"
-                        },
+                        "title": {"type": "string", "description": "Názov reportu"},
                         "pharmacy_ids": {
                             "type": "array",
                             "items": {"type": "integer"},
-                            "description": "Zoznam ID lekární na zahrnutie"
+                            "description": "Zoznam ID lekární na zahrnutie",
                         },
                         "region": {
                             "type": "string",
-                            "description": "Región pre súhrnné štatistiky"
+                            "description": "Región pre súhrnné štatistiky",
                         },
                         "include_recommendations": {
                             "type": "boolean",
-                            "description": "Zahrnúť odporúčania (default true)"
-                        }
+                            "description": "Zahrnúť odporúčania (default true)",
+                        },
                     },
-                    "required": ["title"]
-                }
+                    "required": ["title"],
+                },
             },
             {
                 "name": "get_segment_comparison",
                 "description": "Porovnaj výkonnosť všetkých segmentov (A-E). Vráti ohrozené tržby, FTE a produktivitu za segment.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {}
-                }
+                "input_schema": {"type": "object", "properties": {}},
             },
             {
                 "name": "get_city_summary",
@@ -1703,11 +2380,11 @@ class DrMaxAgent:
                     "properties": {
                         "mesto": {
                             "type": "string",
-                            "description": "Názov mesta (napr. 'Košice', 'Bratislava')"
+                            "description": "Názov mesta (napr. 'Košice', 'Bratislava')",
                         }
                     },
-                    "required": ["mesto"]
-                }
+                    "required": ["mesto"],
+                },
             },
             {
                 "name": "get_cities_pharmacy_count",
@@ -1717,22 +2394,19 @@ class DrMaxAgent:
                     "properties": {
                         "min_count": {
                             "type": "integer",
-                            "description": "Minimálny počet lekární v meste (default 1)"
+                            "description": "Minimálny počet lekární v meste (default 1)",
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet miest vo výsledku (default 50)"
-                        }
-                    }
-                }
+                            "description": "Max počet miest vo výsledku (default 50)",
+                        },
+                    },
+                },
             },
             {
                 "name": "get_network_overview",
                 "description": "Rýchly prehľad zdravia celej siete lekární. Celkové FTE, ohrozené tržby, % poddimenzovaných.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {}
-                }
+                "input_schema": {"type": "object", "properties": {}},
             },
             {
                 "name": "get_trend_analysis",
@@ -1742,14 +2416,14 @@ class DrMaxAgent:
                     "properties": {
                         "trend_threshold": {
                             "type": "number",
-                            "description": "Prahová hodnota trendu v % (default 10)"
+                            "description": "Prahová hodnota trendu v % (default 10)",
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet lekární v každej kategórii (default 20)"
-                        }
-                    }
-                }
+                            "description": "Max počet lekární v každej kategórii (default 20)",
+                        },
+                    },
+                },
             },
             {
                 "name": "get_priority_actions",
@@ -1759,71 +2433,190 @@ class DrMaxAgent:
                     "properties": {
                         "limit": {
                             "type": "integer",
-                            "description": "Max počet akcií (default 10)"
+                            "description": "Max počet akcií (default 10)",
                         }
-                    }
-                }
-            }
+                    },
+                },
+            },
+            {
+                "name": "get_zastup_analysis",
+                "description": "POVINNÉ pre otázky o zastupe/zástupe! Analýza ZÁSTUPU = personál zapožičaný Z INÝCH lekární. VŽDY použiť ak otázka obsahuje: 'zastup', 'zástup', 'zapožičaný', 'borrowed'. ZASTUP ≠ prebytok! Vracia presné hodnoty zastup_fte a zastup_pct pre každú lekáreň.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "segment": {
+                            "type": "string",
+                            "description": "Filter podľa segmentu (A/B/C/D/E)",
+                        },
+                        "region": {
+                            "type": "string",
+                            "description": "Filter podľa regiónu (napr. RR11)",
+                        },
+                        "min_zastup_pct": {
+                            "type": "number",
+                            "description": "Min. podiel zástupu v % (default 5)",
+                        },
+                        "min_zastup_fte": {
+                            "type": "number",
+                            "description": "Min. zastup v FTE (default 0.1)",
+                        },
+                        "max_productivity": {
+                            "type": "number",
+                            "description": "Max produktivita index (pre 'nízka produktivita' použiť 100)",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Max počet výsledkov (default 20)",
+                        },
+                    },
+                },
+            },
+            {
+                "name": "get_overstaffed_with_zastup",
+                "description": "⚠️ POVINNÉ pre: 'prebytok + zástup', 'overstaffed + zastup', 'naddimenzované so zástupom'. Kombinovaný nástroj - vracia lekárne s PREBYTKOM FTE a VYSOKÝM ZÁSTUPOM v jednom výstupe. Rieši problém cross-reference medzi dvoma nástrojmi.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "min_zastup_pct": {
+                            "type": "number",
+                            "description": "Min. podiel zástupu v % (default 10)",
+                        },
+                        "max_productivity": {
+                            "type": "number",
+                            "description": "Max produktivita index (napr. 110 pre 'nízka produktivita')",
+                        },
+                        "segment": {
+                            "type": "string",
+                            "description": "Filter podľa segmentu (A/B/C/D/E)",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Max počet výsledkov (default 20)",
+                        },
+                    },
+                },
+            },
+            {
+                "name": "get_knowledge",
+                "description": "⚠️ POVINNÉ pre vysvetľovacie otázky: 'ako funguje model', 'výhody aplikácie', 'čo znamená FTE/produktivita', 'prečo...'. Vráti štruktúrované znalosti pre odpoveď používateľovi.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "topic": {
+                            "type": "string",
+                            "enum": [
+                                "model_explanation",
+                                "app_benefits",
+                                "fte_interpretation",
+                                "action_planning",
+                                "faq",
+                            ],
+                            "description": "Téma: model_explanation (ako funguje model), app_benefits (výhody aplikácie), fte_interpretation (FTE, produktivita, gap), action_planning (čo robiť, prioritizácia), faq (časté otázky)",
+                        },
+                    },
+                    "required": ["topic"],
+                },
+            },
         ]
 
-    def execute_tool(self, tool_name: str, tool_input: dict, request_id: str = '') -> str:
-        """Execute a tool and return result as string."""
-        import time
-        start_time = time.time()
-
-        tool_map = {
-            'search_pharmacies': self.tool_search_pharmacies,
-            'get_pharmacy_details': self.tool_get_pharmacy_details,
-            'get_pharmacy_revenue_trend': self.tool_get_pharmacy_revenue_trend,
-            'get_segment_position': self.tool_get_segment_position,
-            'simulate_fte': self.tool_simulate_fte,
-            'compare_to_peers': self.tool_compare_to_peers,
-            'get_understaffed': self.tool_get_understaffed,
-            'get_regional_summary': self.tool_get_regional_summary,
-            'get_all_regions_summary': self.tool_get_all_regions_summary,
-            'generate_report': self.tool_generate_report,
-            'get_segment_comparison': self.tool_get_segment_comparison,
-            'get_city_summary': self.tool_get_city_summary,
-            'get_cities_pharmacy_count': self.tool_get_cities_pharmacy_count,
-            'get_network_overview': self.tool_get_network_overview,
-            'get_trend_analysis': self.tool_get_trend_analysis,
-            'get_priority_actions': self.tool_get_priority_actions
+    def _get_tool_map(self) -> dict:
+        """Get mapping of tool names to methods. Single source of truth."""
+        return {
+            "search_pharmacies": self.tool_search_pharmacies,
+            "get_pharmacy_details": self.tool_get_pharmacy_details,
+            "get_pharmacy_revenue_trend": self.tool_get_pharmacy_revenue_trend,
+            "get_segment_position": self.tool_get_segment_position,
+            "simulate_fte": self.tool_simulate_fte,
+            "compare_to_peers": self.tool_compare_to_peers,
+            "get_understaffed": self.tool_get_understaffed,
+            "get_regional_summary": self.tool_get_regional_summary,
+            "get_all_regions_summary": self.tool_get_all_regions_summary,
+            "generate_report": self.tool_generate_report,
+            "get_segment_comparison": self.tool_get_segment_comparison,
+            "get_city_summary": self.tool_get_city_summary,
+            "get_cities_pharmacy_count": self.tool_get_cities_pharmacy_count,
+            "get_network_overview": self.tool_get_network_overview,
+            "get_trend_analysis": self.tool_get_trend_analysis,
+            "get_priority_actions": self.tool_get_priority_actions,
+            "get_zastup_analysis": self.tool_get_zastup_analysis,
+            "get_overstaffed_with_zastup": self.tool_get_overstaffed_with_zastup,
+            "get_knowledge": self.tool_get_knowledge,
         }
 
-        if tool_name not in tool_map:
-            logger.warning(f"Unknown tool: {tool_name}", extra={"request_id": request_id})
-            return json.dumps({'error': f'Unknown tool: {tool_name}'})
+    def execute_tool(
+        self, tool_name: str, tool_input: dict, request_id: str = ""
+    ) -> str:
+        """Execute a tool and return result as string."""
+        import time
+
+        start_time = time.time()
+
+        # Use ALLOWED_TOOLS for validation
+        if tool_name not in ALLOWED_TOOLS:
+            logger.warning(
+                f"Unknown tool: {tool_name}", extra={"request_id": request_id}
+            )
+            return json.dumps({"error": f"Unknown tool: {tool_name}"})
+
+        tool_map = self._get_tool_map()
 
         try:
             result = tool_map[tool_name](**tool_input)
             duration = time.time() - start_time
 
+            # Apply context summarization to prevent overflow
+            if isinstance(result, dict):
+                result = summarize_tool_result(tool_name, result)
+
             # P2: Audit logging
             result_str = json.dumps(result, ensure_ascii=False, default=str)
-            logger.info(f"Tool OK: {tool_name} | {duration:.2f}s | {len(result_str)} chars", extra={"request_id": request_id})
+            logger.info(
+                f"Tool OK: {tool_name} | {duration:.2f}s | {len(result_str)} chars",
+                extra={"request_id": request_id},
+            )
 
             return result_str
 
+        except ToolExecutionError as e:
+            # Structured error from tool implementation
+            duration = time.time() - start_time
+            logger.warning(
+                f"Tool error: {tool_name} | {duration:.2f}s | {type(e).__name__}: {e}",
+                extra={"request_id": request_id},
+            )
+            return json.dumps(create_error_response(e), ensure_ascii=False)
+
         except TypeError as e:
             # P1: Invalid parameters - don't expose full error
-            logger.error(f"Tool error: {tool_name} invalid params: {e}", extra={"request_id": request_id})
-            return json.dumps({'error': 'Invalid tool parameters'})
+            logger.error(
+                f"Tool error: {tool_name} invalid params: {e}",
+                extra={"request_id": request_id},
+            )
+            return json.dumps(
+                {"error": "Invalid tool parameters", "error_type": "ValidationError"}
+            )
 
         except KeyError as e:
             # Missing data
-            logger.error(f"Tool error: {tool_name} missing key: {e}", extra={"request_id": request_id})
-            return json.dumps({'error': 'Required data not found'})
+            logger.error(
+                f"Tool error: {tool_name} missing key: {e}",
+                extra={"request_id": request_id},
+            )
+            return json.dumps(
+                {"error": "Required data not found", "error_type": "DataNotFoundError"}
+            )
 
         except Exception as e:
             # P1: Generic error - don't expose internal details
-            logger.exception(f"Tool error: {tool_name} {type(e).__name__}: {e}", extra={"request_id": request_id})
-            return json.dumps({'error': 'Tool execution failed'})
+            logger.exception(
+                f"Tool error: {tool_name} {type(e).__name__}: {e}",
+                extra={"request_id": request_id},
+            )
+            return json.dumps(
+                {"error": "Tool execution failed", "error_type": "ToolExecutionError"}
+            )
 
-    async def analyze(
-        self,
-        prompt: str,
-        max_rounds: int = 5
-    ) -> AsyncIterator[dict]:
+    async def analyze(self, prompt: str, max_rounds: int = 5) -> AsyncIterator[dict]:
         """
         Run autonomous analysis on the given prompt.
 
@@ -1837,7 +2630,7 @@ class DrMaxAgent:
         if not ANTHROPIC_AVAILABLE or not self.client:
             yield {
                 "type": "error",
-                "content": "Anthropic SDK not available. Install with: pip install anthropic"
+                "content": "Anthropic SDK not available. Install with: pip install anthropic",
             }
             return
 
@@ -1850,7 +2643,7 @@ class DrMaxAgent:
                 max_tokens=self.config.architect_max_tokens,
                 system=AGENT_SYSTEM_PROMPT,
                 tools=self.get_tools(),
-                messages=messages
+                messages=messages,
             )
 
             # Process response
@@ -1859,16 +2652,15 @@ class DrMaxAgent:
 
             for block in response.content:
                 if block.type == "text":
-                    yield {"type": "thinking" if has_tool_use else "response", "content": block.text}
+                    yield {
+                        "type": "thinking" if has_tool_use else "response",
+                        "content": block.text,
+                    }
                     assistant_content.append({"type": "text", "text": block.text})
 
                 elif block.type == "tool_use":
                     has_tool_use = True
-                    yield {
-                        "type": "tool_use",
-                        "tool": block.name,
-                        "input": block.input
-                    }
+                    yield {"type": "tool_use", "tool": block.name, "input": block.input}
 
                     # Execute tool
                     tool_result = self.execute_tool(block.name, block.input)
@@ -1876,26 +2668,34 @@ class DrMaxAgent:
                     yield {
                         "type": "tool_result",
                         "tool": block.name,
-                        "content": tool_result[:500] + "..." if len(tool_result) > 500 else tool_result
+                        "content": tool_result[:500] + "..."
+                        if len(tool_result) > 500
+                        else tool_result,
                     }
 
-                    assistant_content.append({
-                        "type": "tool_use",
-                        "id": block.id,
-                        "name": block.name,
-                        "input": block.input
-                    })
+                    assistant_content.append(
+                        {
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        }
+                    )
 
                     # Add tool result to messages
                     messages.append({"role": "assistant", "content": assistant_content})
-                    messages.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": tool_result
-                        }]
-                    })
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": block.id,
+                                    "content": tool_result,
+                                }
+                            ],
+                        }
+                    )
                     assistant_content = []
 
             # If no tool use, we're done
@@ -1903,21 +2703,18 @@ class DrMaxAgent:
                 yield {
                     "type": "done",
                     "content": "Analysis complete",
-                    "total_rounds": round_num + 1
+                    "total_rounds": round_num + 1,
                 }
                 return
 
         yield {
             "type": "done",
             "content": f"Reached max rounds ({max_rounds})",
-            "total_rounds": max_rounds
+            "total_rounds": max_rounds,
         }
 
     def analyze_sync(
-        self,
-        prompt: str,
-        request_id: str = '',
-        progress_callback=None
+        self, prompt: str, request_id: str = "", progress_callback=None
     ) -> dict:
         """
         Hybrid Sonnet + Haiku architecture for Flask.
@@ -1934,6 +2731,7 @@ class DrMaxAgent:
         Returns final response and metadata.
         """
         import time
+
         start_time = time.time()
 
         def emit(event):
@@ -1942,11 +2740,8 @@ class DrMaxAgent:
                 progress_callback(event)
 
         if not ANTHROPIC_AVAILABLE or not self.client:
-            emit({'phase': 'error', 'message': 'Anthropic SDK not available'})
-            return {
-                "error": "Anthropic SDK not available",
-                "response": None
-            }
+            emit({"phase": "error", "message": "Anthropic SDK not available"})
+            return {"error": "Anthropic SDK not available", "response": None}
 
         tools_used = []
         tool_results = []
@@ -1954,35 +2749,54 @@ class DrMaxAgent:
 
         # === STEP 1: SONNET PLANS ===
         logger.info("STEP 1: Sonnet planning...", extra={"request_id": request_id})
-        emit({'phase': 'planning', 'status': 'start'})
+        emit({"phase": "planning", "status": "start"})
 
         plan_start = time.time()
-        emit({'phase': 'ai_response', 'status': 'start', 'model': 'sonnet'})
+        emit({"phase": "ai_response", "status": "start", "model": "sonnet"})
         try:
             plan_response = self.client.messages.create(
                 model=self.config.architect_model,
                 max_tokens=self.config.architect_max_tokens,
                 system=ARCHITECT_PLAN_PROMPT,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
         except Exception as api_error:
             error_type = type(api_error).__name__
             error_msg = str(api_error)
-            logger.error(f"API error in planning: {error_type}: {error_msg}", extra={"request_id": request_id})
-            emit({'phase': 'error', 'message': f'API error: {error_type}'})
+            logger.error(
+                f"API error in planning: {error_type}: {error_msg}",
+                extra={"request_id": request_id},
+            )
+            emit({"phase": "error", "message": f"API error: {error_type}"})
             # Check if API key is set
             import os as agent_os
-            api_key = agent_os.environ.get('ANTHROPIC_API_KEY', '')
-            logger.debug(f"API key set: {bool(api_key)}, length: {len(api_key)}", extra={"request_id": request_id})
+
+            api_key = agent_os.environ.get("ANTHROPIC_API_KEY", "")
+            logger.debug(
+                f"API key set: {bool(api_key)}, length: {len(api_key)}",
+                extra={"request_id": request_id},
+            )
             return {
                 "error": f"Anthropic API error: {error_type}",
                 "error_detail": error_msg[:200],
-                "response": None
+                "response": None,
             }
 
         plan_duration = time.time() - plan_start
-        emit({'phase': 'ai_response', 'status': 'complete', 'duration': round(plan_duration, 2)})
-        emit({'phase': 'planning', 'status': 'complete', 'duration': round(plan_duration, 2)})
+        emit(
+            {
+                "phase": "ai_response",
+                "status": "complete",
+                "duration": round(plan_duration, 2),
+            }
+        )
+        emit(
+            {
+                "phase": "planning",
+                "status": "complete",
+                "duration": round(plan_duration, 2),
+            }
+        )
 
         plan_text = ""
         for block in plan_response.content:
@@ -1990,28 +2804,53 @@ class DrMaxAgent:
                 plan_text = block.text
                 break
 
-        # Parse plan (extract steps)
+        # Parse and validate plan
         import re
+
         steps = []
         plan_analysis = None
         synthesis_focus = None
         try:
             # Try to extract JSON from response
-            json_match = re.search(r'\{[\s\S]*\}', plan_text)
+            json_match = re.search(r"\{[\s\S]*\}", plan_text)
             if json_match:
                 plan_json = json.loads(json_match.group())
-                steps = plan_json.get('steps', [])
-                plan_analysis = plan_json.get('analysis', None)
-                synthesis_focus = plan_json.get('synthesis_focus', None)
-                logger.info(f'Plan: {plan_analysis[:100] if plan_analysis else "No analysis"}', extra={"request_id": request_id})
-                logger.info(f"Steps: {len(steps)}", extra={"request_id": request_id})
+                plan_analysis = plan_json.get("analysis", None)
+                synthesis_focus = plan_json.get("synthesis_focus", None)
+                logger.info(
+                    f"Plan: {plan_analysis[:100] if plan_analysis else 'No analysis'}",
+                    extra={"request_id": request_id},
+                )
+
+                # Validate plan using the validation function
+                is_valid, validated_steps, error_msg = validate_plan(
+                    plan_json, ALLOWED_TOOLS, request_id
+                )
+                if is_valid:
+                    steps = validated_steps
+                    logger.info(
+                        f"Steps: {len(steps)}", extra={"request_id": request_id}
+                    )
+                else:
+                    logger.warning(
+                        f"Plan validation failed: {error_msg}",
+                        extra={"request_id": request_id},
+                    )
         except json.JSONDecodeError:
-            logger.warning("Could not parse plan, using fallback", extra={"request_id": request_id})
-            pass
+            logger.warning(
+                "Could not parse plan JSON, using fallback",
+                extra={"request_id": request_id},
+            )
 
         # === STEP 2: HAIKU EXECUTES TOOLS ===
         logger.info("STEP 2: Executing tools...", extra={"request_id": request_id})
-        emit({'phase': 'executing', 'status': 'start', 'total_tools': len(steps) if steps else 0})
+        emit(
+            {
+                "phase": "executing",
+                "status": "start",
+                "total_tools": len(steps) if steps else 0,
+            }
+        )
         exec_start = time.time()
 
         if steps:
@@ -2020,38 +2859,52 @@ class DrMaxAgent:
             for i, step in enumerate(steps[:max_steps]):
                 # P2: Check tool call limit
                 if tool_call_count >= self.config.max_tool_calls:
-                    logger.warning(f"LIMIT: Max tool calls ({self.config.max_tool_calls}) reached", extra={"request_id": request_id})
+                    logger.warning(
+                        f"LIMIT: Max tool calls ({self.config.max_tool_calls}) reached",
+                        extra={"request_id": request_id},
+                    )
                     break
 
-                tool_name = step.get('tool', '')
-                tool_params = step.get('params', {})
+                tool_name = step.get("tool", "")
+                tool_params = step.get("params", {})
 
-                if tool_name in ['search_pharmacies', 'get_pharmacy_details',
-                                  'get_pharmacy_revenue_trend', 'get_segment_position',
-                                  'simulate_fte', 'compare_to_peers', 'get_understaffed',
-                                  'get_regional_summary', 'get_all_regions_summary',
-                                  'generate_report', 'get_segment_comparison',
-                                  'get_city_summary', 'get_network_overview',
-                                  'get_trend_analysis', 'get_priority_actions']:
-                    logger.debug(f"Step {i+1}: {tool_name}", extra={"request_id": request_id})
+                # Steps are already validated, but double-check against ALLOWED_TOOLS
+                if tool_name in ALLOWED_TOOLS:
+                    logger.debug(
+                        f"Step {i + 1}: {tool_name}", extra={"request_id": request_id}
+                    )
                     result = self.execute_tool(tool_name, tool_params, request_id)
                     tools_used.append(tool_name)
-                    tool_results.append({
-                        'tool': tool_name,
-                        'purpose': step.get('purpose', ''),
-                        'result': result
-                    })
+                    tool_results.append(
+                        {
+                            "tool": tool_name,
+                            "purpose": step.get("purpose", ""),
+                            "result": result,
+                        }
+                    )
                     tool_call_count += 1
-                    emit({'phase': 'executing', 'tool': tool_name, 'index': tool_call_count, 'total': len(steps)})
+                    emit(
+                        {
+                            "phase": "executing",
+                            "tool": tool_name,
+                            "index": tool_call_count,
+                            "total": len(steps),
+                        }
+                    )
         else:
             # Fallback: Let Haiku decide which tools to use
-            logger.info("Fallback: Haiku autonomous mode", extra={"request_id": request_id})
+            logger.info(
+                "Fallback: Haiku autonomous mode", extra={"request_id": request_id}
+            )
             haiku_messages = [{"role": "user", "content": f"Analyze: {prompt}"}]
 
             for round_num in range(3):
                 # P2: Check tool call limit before round
                 if tool_call_count >= self.config.max_tool_calls:
-                    logger.warning(f"LIMIT: Max tool calls ({self.config.max_tool_calls}) reached", extra={"request_id": request_id})
+                    logger.warning(
+                        f"LIMIT: Max tool calls ({self.config.max_tool_calls}) reached",
+                        extra={"request_id": request_id},
+                    )
                     break
 
                 haiku_response = self.client.messages.create(
@@ -2059,7 +2912,7 @@ class DrMaxAgent:
                     max_tokens=self.config.worker_max_tokens,
                     system=WORKER_PROMPT,
                     tools=self.get_tools(),
-                    messages=haiku_messages
+                    messages=haiku_messages,
                 )
 
                 has_tool_use = False
@@ -2069,52 +2922,85 @@ class DrMaxAgent:
                     if block.type == "tool_use":
                         # P2: Check limit per tool call
                         if tool_call_count >= self.config.max_tool_calls:
-                            logger.warning(f"LIMIT: Skipping {block.name}, limit reached", extra={"request_id": request_id})
+                            logger.warning(
+                                f"LIMIT: Skipping {block.name}, limit reached",
+                                extra={"request_id": request_id},
+                            )
                             break
 
                         has_tool_use = True
-                        logger.debug(f"Haiku tool: {block.name}", extra={"request_id": request_id})
+                        logger.debug(
+                            f"Haiku tool: {block.name}",
+                            extra={"request_id": request_id},
+                        )
                         result = self.execute_tool(block.name, block.input, request_id)
                         tools_used.append(block.name)
-                        tool_results.append({
-                            'tool': block.name,
-                            'purpose': '',
-                            'result': result
-                        })
+                        tool_results.append(
+                            {"tool": block.name, "purpose": "", "result": result}
+                        )
                         tool_call_count += 1
-                        emit({'phase': 'executing', 'tool': block.name, 'index': tool_call_count})
+                        emit(
+                            {
+                                "phase": "executing",
+                                "tool": block.name,
+                                "index": tool_call_count,
+                            }
+                        )
 
-                        haiku_content.append({
-                            "type": "tool_use",
-                            "id": block.id,
-                            "name": block.name,
-                            "input": block.input
-                        })
+                        haiku_content.append(
+                            {
+                                "type": "tool_use",
+                                "id": block.id,
+                                "name": block.name,
+                                "input": block.input,
+                            }
+                        )
 
-                        haiku_messages.append({"role": "assistant", "content": haiku_content})
-                        haiku_messages.append({
-                            "role": "user",
-                            "content": [{
-                                "type": "tool_result",
-                                "tool_use_id": block.id,
-                                "content": result
-                            }]
-                        })
+                        haiku_messages.append(
+                            {"role": "assistant", "content": haiku_content}
+                        )
+                        haiku_messages.append(
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": block.id,
+                                        "content": result,
+                                    }
+                                ],
+                            }
+                        )
                         haiku_content = []
 
                 if not has_tool_use:
                     break
 
         exec_duration = time.time() - exec_start
-        emit({'phase': 'executing', 'status': 'complete', 'duration': round(exec_duration, 2), 'tool_count': tool_call_count})
+        emit(
+            {
+                "phase": "executing",
+                "status": "complete",
+                "duration": round(exec_duration, 2),
+                "tool_count": tool_call_count,
+            }
+        )
 
         # === STEP 3: HAIKU SYNTHESIZES ===
         logger.info("STEP 3: Haiku synthesizing...", extra={"request_id": request_id})
-        emit({'phase': 'synthesizing', 'status': 'start'})
-        logger.info(f"Tool results: {len(tool_results)}, Tool calls: {tool_call_count}", extra={"request_id": request_id})
+        emit({"phase": "synthesizing", "status": "start"})
+        logger.info(
+            f"Tool results: {len(tool_results)}, Tool calls: {tool_call_count}",
+            extra={"request_id": request_id},
+        )
         for tr in tool_results:
-            result_preview = tr['result'][:100] if len(tr['result']) > 100 else tr['result']
-            logger.debug(f'{tr["tool"]}: {len(tr["result"])} chars', extra={"request_id": request_id})
+            result_preview = (
+                tr["result"][:100] if len(tr["result"]) > 100 else tr["result"]
+            )
+            logger.debug(
+                f"{tr['tool']}: {len(tr['result'])} chars",
+                extra={"request_id": request_id},
+            )
 
         # Build synthesis prompt with all results
         synthesis_input = f"""PÔVODNÁ OTÁZKA:
@@ -2124,26 +3010,28 @@ VÝSLEDKY Z NÁSTROJOV:
 """
         for tr in tool_results:
             synthesis_input += f"\n--- {tr['tool']} ---\n"
-            if tr['purpose']:
+            if tr["purpose"]:
                 synthesis_input += f"Účel: {tr['purpose']}\n"
             # Smart truncation for JSON results
-            result_str = tr['result']
+            result_str = tr["result"]
             if len(result_str) > 4000:
                 # Try to truncate JSON smartly (at array item boundary)
                 try:
                     result_json = json.loads(result_str)
                     # Limit arrays to keep size manageable
-                    if 'peers' in result_json:
-                        result_json['peers'] = result_json['peers'][:3]
-                        result_json['_note'] = 'Zobrazené 3 z viacerých peers'
-                    if 'pharmacies' in result_json:
-                        result_json['pharmacies'] = result_json['pharmacies'][:20]
-                        if result_json.get('count', 0) > 20:
-                            result_json['_note'] = f"Zobrazených 20 z {result_json.get('count', 'viacerých')}"
+                    if "peers" in result_json:
+                        result_json["peers"] = result_json["peers"][:3]
+                        result_json["_note"] = "Zobrazené 3 z viacerých peers"
+                    if "pharmacies" in result_json:
+                        result_json["pharmacies"] = result_json["pharmacies"][:20]
+                        if result_json.get("count", 0) > 20:
+                            result_json["_note"] = (
+                                f"Zobrazených 20 z {result_json.get('count', 'viacerých')}"
+                            )
                     result_str = json.dumps(result_json, ensure_ascii=False)
                 except (json.JSONDecodeError, KeyError):
                     # Fallback: just truncate but ensure valid ending
-                    result_str = result_str[:4000] + '... (skrátené)'
+                    result_str = result_str[:4000] + "... (skrátené)"
             synthesis_input += f"{result_str}\n"
 
         synthesis_input += "\nVytvor prehľadnú odpoveď pre používateľa."
@@ -2154,7 +3042,7 @@ VÝSLEDKY Z NÁSTROJOV:
             model=self.config.worker_model,  # Haiku - faster synthesis
             max_tokens=self.config.architect_max_tokens,
             system=ARCHITECT_SYNTHESIZE_PROMPT,
-            messages=[{"role": "user", "content": synthesis_input}]
+            messages=[{"role": "user", "content": synthesis_input}],
         )
         synth_duration = time.time() - synth_start
 
@@ -2164,10 +3052,19 @@ VÝSLEDKY Z NÁSTROJOV:
                 final_response = block.text
                 break
 
-        emit({'phase': 'synthesizing', 'status': 'complete', 'duration': round(synth_duration, 2)})
+        emit(
+            {
+                "phase": "synthesizing",
+                "status": "complete",
+                "duration": round(synth_duration, 2),
+            }
+        )
 
         duration = time.time() - start_time
-        logger.info(f"COMPLETE: {duration:.2f}s, {tool_call_count} tool calls, tools: {tools_used}", extra={"request_id": request_id})
+        logger.info(
+            f"COMPLETE: {duration:.2f}s, {tool_call_count} tool calls, tools: {tools_used}",
+            extra={"request_id": request_id},
+        )
 
         return {
             "response": final_response,
@@ -2182,6 +3079,6 @@ VÝSLEDKY Z NÁSTROJOV:
                 "plan_analysis": plan_analysis,
                 "synthesis_focus": synthesis_focus,
                 "planned_steps": steps,
-                "tool_results": tool_results
-            }
+                "tool_results": tool_results,
+            },
         }

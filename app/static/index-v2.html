@@ -1045,6 +1045,9 @@ input:checked + .toggle-slider:before {
   text-align: center;
   margin-bottom: 20px;
 }
+.breakdown.has-zastup {
+  grid-template-columns: repeat(4, 1fr);
+}
 
 .breakdown-item {
   background: var(--bg-card);
@@ -1061,6 +1064,19 @@ input:checked + .toggle-slider:before {
 .breakdown-item:nth-child(1) { animation-delay: 0.1s; }
 .breakdown-item:nth-child(2) { animation-delay: 0.2s; }
 .breakdown-item:nth-child(3) { animation-delay: 0.3s; }
+.breakdown-item:nth-child(4) { animation-delay: 0.4s; }
+
+/* Zastup item - dark blue theme */
+.breakdown-zastup {
+  border-color: rgba(30, 64, 175, 0.3);
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, var(--bg-card) 100%);
+}
+.breakdown-zastup .breakdown-val {
+  color: #1e40af;
+}
+.breakdown-zastup .breakdown-lbl {
+  color: #1e3a8a;
+}
 
 .breakdown-item:hover {
   transform: translateY(-3px);
@@ -2862,6 +2878,15 @@ input:checked + .toggle-slider:before {
 
 .segment-table .total-row td {
   border-bottom: none;
+}
+
+/* Zastup column styling - dark blue */
+.segment-table .zastup-header {
+  color: #1e40af;
+}
+.segment-table .zastup-cell {
+  color: #1e40af;
+  font-weight: 600;
 }
 
 .status-badge {
@@ -5043,6 +5068,752 @@ input:checked + .toggle-slider:before {
   font-size: 0.875rem;
 }
 
+/* ============================================
+   PRODUCTION VISION TAB - Future Showcase
+   ============================================ */
+
+/* Tab button special styling */
+.tab-btn.vision-tab {
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%);
+  position: relative;
+}
+
+.tab-btn.vision-tab::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-warm);
+  border-radius: 50%;
+  animation: visionPulse 2s ease-in-out infinite;
+}
+
+@keyframes visionPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.tab-btn.vision-tab .tab-icon {
+  color: var(--accent-warm);
+  opacity: 0.9;
+}
+
+.tab-btn.vision-tab:hover {
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+}
+
+.tab-btn.vision-tab.active {
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--accent-warm) 100%);
+}
+
+.tab-btn.vision-tab.active::after {
+  display: none;
+}
+
+.tab-btn.vision-tab.active .tab-icon {
+  color: white;
+}
+
+/* Vision Tab Header */
+.vision-header {
+  text-align: center;
+  padding: 24px 20px 32px;
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.06) 0%, rgba(245, 158, 11, 0.06) 100%);
+  border-radius: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.vision-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(120, 190, 32, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.vision-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--accent-warm) 100%);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.vision-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.vision-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.vision-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Autopilot Panel */
+.autopilot-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.autopilot-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.autopilot-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.3);
+}
+
+.autopilot-icon svg {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.autopilot-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.autopilot-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--brand-green-dark);
+  background: var(--brand-green-light);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.autopilot-status-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--brand-green);
+  border-radius: 50%;
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Schedule Items */
+.schedule-group {
+  margin-bottom: 16px;
+}
+
+.schedule-group:last-child {
+  margin-bottom: 0;
+}
+
+.schedule-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.schedule-group-header svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.schedule-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.schedule-item:hover {
+  background: var(--brand-green-light);
+}
+
+.schedule-item-status {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.schedule-item-status.completed {
+  background: var(--brand-green);
+  color: white;
+}
+
+.schedule-item-status.pending {
+  background: var(--border-medium);
+  color: var(--text-muted);
+}
+
+.schedule-item-status.running {
+  background: var(--accent-warm);
+  color: white;
+  animation: runningPulse 1s ease-in-out infinite;
+}
+
+@keyframes runningPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+
+.schedule-item-status svg {
+  width: 12px;
+  height: 12px;
+}
+
+.schedule-item-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.schedule-item-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Agent Workflow */
+.workflow-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.workflow-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.workflow-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.25);
+}
+
+.workflow-icon svg {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.workflow-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.workflow-pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 10px;
+}
+
+.workflow-pipeline::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 60px;
+  right: 60px;
+  height: 2px;
+  background: var(--border-medium);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.workflow-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+
+.workflow-stage-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 2px solid var(--border-medium);
+  transition: all 0.3s ease;
+}
+
+.workflow-stage-circle svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.workflow-stage.completed .workflow-stage-circle {
+  background: var(--brand-green);
+  border-color: var(--brand-green);
+  box-shadow: 0 4px 12px rgba(120, 190, 32, 0.3);
+}
+
+.workflow-stage.completed .workflow-stage-circle svg {
+  color: white;
+}
+
+.workflow-stage.active .workflow-stage-circle {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  animation: stageActive 1.5s ease-in-out infinite;
+}
+
+@keyframes stageActive {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.workflow-stage.active .workflow-stage-circle svg {
+  color: white;
+}
+
+.workflow-stage-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workflow-stage.completed .workflow-stage-label,
+.workflow-stage.active .workflow-stage-label {
+  color: var(--text-primary);
+}
+
+/* Workflow Arrow Connectors */
+.workflow-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--border-medium);
+  z-index: 1;
+}
+
+.workflow-arrow.arrow-1 { left: calc(33% - 8px); }
+.workflow-arrow.arrow-2 { left: calc(66% - 8px); }
+
+.workflow-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+.workflow-arrow.completed {
+  color: var(--brand-green);
+}
+
+/* Workflow Stats */
+.workflow-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.workflow-stat {
+  text-align: center;
+}
+
+.workflow-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.workflow-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Feedback Cycle (Uzavretý Cyklus Zlepšovania) */
+.feedback-cycle-card {
+  background: var(--bg-card);
+}
+
+
+.feedback-cycle-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cycle-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cycle-step:last-child {
+  border-bottom: none;
+}
+
+.cycle-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cycle-step-content {
+  flex: 1;
+}
+
+.cycle-step-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cycle-step-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.feedback-cycle-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 16px;
+  padding: 14px 0;
+  background: var(--bg-subtle);
+  border-radius: 10px;
+}
+
+.feedback-stat {
+  text-align: center;
+}
+
+.feedback-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--brand-green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.feedback-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.feedback-tip {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  border-left: 3px solid var(--brand-green);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.feedback-tip strong {
+  color: var(--text-primary);
+}
+
+/* Integrations Grid */
+.integrations-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.integrations-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.integrations-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.integrations-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+}
+
+.integrations-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.integrations-section {
+  margin-bottom: 16px;
+}
+
+.integrations-section:last-child {
+  margin-bottom: 0;
+}
+
+.integrations-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.integrations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.integration-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  background: var(--bg-subtle);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.integration-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.integration-logo {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.integration-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.integration-status {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.integration-status.ready {
+  background: var(--brand-green);
+  box-shadow: 0 0 0 2px rgba(120, 190, 32, 0.2);
+}
+
+.integration-status.planned {
+  background: var(--accent-warm);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.integration-status.future {
+  background: var(--border-medium);
+}
+
+/* Legend */
+.integrations-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-dot.ready { background: var(--brand-green); }
+.legend-dot.planned { background: var(--accent-warm); }
+.legend-dot.future { background: var(--border-medium); }
+
+/* CTA Button */
+.vision-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(120, 190, 32, 0.3);
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+.vision-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(120, 190, 32, 0.4);
+}
+
+.vision-cta svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Simulate Button */
+.btn-simulate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.btn-simulate:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+  color: var(--brand-green-dark);
+}
+
+.btn-simulate svg {
+  width: 14px;
+  height: 14px;
+}
+
 </style>
 </head>
 <body>
@@ -5204,6 +5975,12 @@ input:checked + .toggle-slider:before {
         <line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
     </button>
+    <button class="tab-btn vision-tab" data-tab="vision" title="Produkčná Vízia">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+    </button>
   </div>
 
   <!-- CALCULATOR TAB -->
@@ -5330,6 +6107,11 @@ input:checked + .toggle-slider:before {
         <div class="breakdown-lbl">Laborant</div>
         <div class="breakdown-pct" id="pct-l"></div>
       </div>
+      <div class="breakdown-item breakdown-zastup" id="breakdown-zastup" style="display:none;">
+        <div class="breakdown-val" id="fte-zastup">-</div>
+        <div class="breakdown-lbl">Zástup</div>
+        <div class="breakdown-pct" id="pct-zastup"></div>
+      </div>
     </div>
 
     <div class="trust-box result-stagger-5" id="trust-box">
@@ -5442,16 +6224,18 @@ input:checked + .toggle-slider:before {
         </div>
         <div id="segment-table-container" style="display:none;">
           <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">
-            Skutočné FTE (2020-21) vs. optimálne FTE vypočítané modelom
+            Stály personál <span style="color:#1e40af;font-weight:600;">+ zástup</span> = spolu vs. optimálne FTE. Rozdiel = spolu mínus optimálne.
           </div>
           <table class="segment-table">
             <thead>
               <tr>
                 <th>Segment</th>
                 <th>Počet</th>
-                <th>Skutočné</th>
+                <th title="Stály personál (bez zástupov)">Stály</th>
+                <th title="Zástup = personál zapožičaný z inej lekárne" class="zastup-header">+ Zástup</th>
+                <th title="Stály + Zástup">=&nbsp;Spolu</th>
                 <th>Optimálne</th>
-                <th>Rozdiel</th>
+                <th title="Spolu mínus Optimálne">Rozdiel</th>
               </tr>
             </thead>
             <tbody id="segment-tbody">
@@ -5919,6 +6703,10 @@ input:checked + .toggle-slider:before {
                 <span class="sample-text">Generuj report za región</span>
                 <span class="sample-arrow">→</span>
               </button>
+              <button class="sample-question" data-query="Lekárne s prebytkom personálu, vysokým zástupom a produktivitou pod 110">
+                <span class="sample-text">Prebytok + vysoký zástup</span>
+                <span class="sample-arrow">→</span>
+              </button>
             </div>
           </div>
 
@@ -6077,6 +6865,399 @@ input:checked + .toggle-slider:before {
   </div>
   <!-- END ROZVRH TAB -->
 
+  <!-- PRODUCTION VISION TAB -->
+  <div id="tab-vision" class="tab-content">
+
+    <!-- Vision Header -->
+    <div class="vision-header">
+      <div class="vision-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Produkčná Vízia
+      </div>
+      <h2 class="vision-title">Inteligentný FTE Manažment</h2>
+      <p class="vision-subtitle">Takto by vyzeral plne automatizovaný systém<br>pre správu personálneho obsadenia</p>
+    </div>
+
+    <!-- Autopilot Panel -->
+    <div class="autopilot-card">
+      <div class="autopilot-header">
+        <div class="autopilot-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <h3 class="autopilot-title">Autopilot Režim</h3>
+        <div class="autopilot-status">
+          <span class="autopilot-status-dot"></span>
+          Aktívny
+        </div>
+        <button class="btn-simulate" onclick="simulateAutopilot()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          Simulovať
+        </button>
+      </div>
+
+      <!-- 06:00 - Data Import -->
+      <div class="schedule-group">
+        <div class="schedule-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          06:00 - Import a validácia
+        </div>
+        <div class="schedule-items">
+          <div class="schedule-item">
+            <span class="schedule-item-status completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Import mesačných dát z ERP</span>
+            <span class="schedule-item-time">06:00</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Validácia dát: 286 lekární OK</span>
+            <span class="schedule-item-time">06:02</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status completed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Detekcia anomálií: 3 upozornenia</span>
+            <span class="schedule-item-time">06:03</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 06:05 - Analysis -->
+      <div class="schedule-group">
+        <div class="schedule-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          06:05 - Analýza a predikcie
+        </div>
+        <div class="schedule-items">
+          <div class="schedule-item">
+            <span class="schedule-item-status running">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Prepočet FTE pre 286 lekární</span>
+            <span class="schedule-item-time">prebieha</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status pending">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Porovnanie predikcie vs. realita (M-1)</span>
+            <span class="schedule-item-time">06:08</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status pending">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Identifikácia Top 10 príležitostí</span>
+            <span class="schedule-item-time">06:10</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 06:12 - Reporting -->
+      <div class="schedule-group">
+        <div class="schedule-group-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          06:12 - Reporty a notifikácie
+        </div>
+        <div class="schedule-items">
+          <div class="schedule-item">
+            <span class="schedule-item-status pending">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Executive summary pre vedenie</span>
+            <span class="schedule-item-time">06:12</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status pending">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Regionálne reporty (email)</span>
+            <span class="schedule-item-time">06:14</span>
+          </div>
+          <div class="schedule-item">
+            <span class="schedule-item-status pending">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+              </svg>
+            </span>
+            <span class="schedule-item-text">Slack notifikácie manažérom</span>
+            <span class="schedule-item-time">06:15</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Workflow -->
+    <div class="workflow-card">
+      <div class="workflow-header">
+        <div class="workflow-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+            <path d="M12 2a10 10 0 0 1 10 10"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+        </div>
+        <h3 class="workflow-title">Agent Pipeline</h3>
+      </div>
+
+      <div class="workflow-pipeline">
+        <div class="workflow-stage completed">
+          <div class="workflow-stage-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </div>
+          <span class="workflow-stage-label">Planner</span>
+        </div>
+
+        <div class="workflow-stage active">
+          <div class="workflow-stage-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </div>
+          <span class="workflow-stage-label">Analyzer</span>
+        </div>
+
+        <div class="workflow-stage">
+          <div class="workflow-stage-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 11 12 14 22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
+          <span class="workflow-stage-label">Reviewer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Loop - Complete Cycle -->
+    <div class="workflow-card feedback-cycle-card">
+      <div class="workflow-header">
+        <div class="workflow-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </div>
+        <h3 class="workflow-title">Uzavretý Cyklus Zlepšovania</h3>
+      </div>
+
+      <!-- Cycle Steps -->
+      <div class="feedback-cycle-steps">
+        <div class="cycle-step">
+          <div class="cycle-step-number">1</div>
+          <div class="cycle-step-content">
+            <div class="cycle-step-title">Odporúčanie</div>
+            <div class="cycle-step-desc">Model identifikuje potrebu +0.5 FTE</div>
+          </div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-step-number">2</div>
+          <div class="cycle-step-content">
+            <div class="cycle-step-title">Implementácia</div>
+            <div class="cycle-step-desc">Prevádzka pridá zamestnanca na špičkové hodiny</div>
+          </div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-step-number">3</div>
+          <div class="cycle-step-content">
+            <div class="cycle-step-title">Monitoring</div>
+            <div class="cycle-step-desc">Sledovanie tržieb a produktivity (90 dní)</div>
+          </div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-step-number">4</div>
+          <div class="cycle-step-content">
+            <div class="cycle-step-title">Vyhodnotenie</div>
+            <div class="cycle-step-desc">Porovnanie predikcie so skutočnosťou</div>
+          </div>
+        </div>
+        <div class="cycle-step">
+          <div class="cycle-step-number">5</div>
+          <div class="cycle-step-content">
+            <div class="cycle-step-title">Spätná väzba</div>
+            <div class="cycle-step-desc">Zlepšenie modelu → presnejšie predikcie</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="feedback-cycle-stats">
+        <div class="feedback-stat">
+          <div class="feedback-stat-value">1-5%</div>
+          <div class="feedback-stat-label">Ohrozené tržby</div>
+        </div>
+        <div class="feedback-stat">
+          <div class="feedback-stat-value">min. 3.7M€</div>
+          <div class="feedback-stat-label">Ročne</div>
+        </div>
+        <div class="feedback-stat">
+          <div class="feedback-stat-value">90 dní</div>
+          <div class="feedback-stat-label">Vyhodnotenie</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Integrations -->
+    <div class="integrations-card">
+      <div class="integrations-header">
+        <div class="integrations-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2"/>
+            <rect x="2" y="14" width="20" height="8" rx="2"/>
+            <line x1="6" y1="6" x2="6.01" y2="6"/>
+            <line x1="6" y1="18" x2="6.01" y2="18"/>
+          </svg>
+        </div>
+        <h3 class="integrations-title">Možné Integrácie</h3>
+      </div>
+
+      <!-- Data Sources -->
+      <div class="integrations-section">
+        <div class="integrations-section-title">Zdroje Dát</div>
+        <div class="integrations-grid">
+          <div class="integration-item">
+            <span class="integration-status ready"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#4285F4">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+              </svg>
+            </div>
+            <span class="integration-name">BigQuery</span>
+          </div>
+          <div class="integration-item">
+            <span class="integration-status planned"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#0FAAFF">
+                <path d="M12.001 2.571L3.857 8.286v7.428L12 21.43l8.143-5.715V8.286L12.001 2.571zm5.143 11.715l-5.143 3.428-5.143-3.428V9.714L12 6.286l5.143 3.428v4.572z"/>
+              </svg>
+            </div>
+            <span class="integration-name">SAP HR</span>
+          </div>
+          <div class="integration-item">
+            <span class="integration-status future"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#6B7280">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <line x1="6" y1="8" x2="6" y2="8.01" stroke-width="2"/>
+                <line x1="6" y1="12" x2="18" y2="12"/>
+                <line x1="6" y1="16" x2="14" y2="16"/>
+              </svg>
+            </div>
+            <span class="integration-name">POS Live</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="integrations-section">
+        <div class="integrations-section-title">Výstupy</div>
+        <div class="integrations-grid">
+          <div class="integration-item">
+            <span class="integration-status planned"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#E01E5A">
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 0 1 2.52-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.52V8.834zm-1.271 0a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521V2.522A2.528 2.528 0 0 1 15.166 0a2.528 2.528 0 0 1 2.521 2.522v6.312zm-2.521 10.124a2.528 2.528 0 0 1 2.521 2.52A2.528 2.528 0 0 1 15.166 24a2.528 2.528 0 0 1-2.521-2.522v-2.52h2.521zm0-1.271a2.528 2.528 0 0 1-2.521-2.521 2.528 2.528 0 0 1 2.521-2.521h6.312A2.528 2.528 0 0 1 24 15.166a2.528 2.528 0 0 1-2.522 2.521h-6.312z"/>
+              </svg>
+            </div>
+            <span class="integration-name">Slack</span>
+          </div>
+          <div class="integration-item">
+            <span class="integration-status ready"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#EA4335">
+                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+              </svg>
+            </div>
+            <span class="integration-name">Email</span>
+          </div>
+          <div class="integration-item">
+            <span class="integration-status planned"></span>
+            <div class="integration-logo">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="#F2C811">
+                <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM10 17H5v-2h5v2zm0-4H5v-2h5v2zm0-4H5V7h5v2zm9 8h-7V7h7v10z"/>
+              </svg>
+            </div>
+            <span class="integration-name">Power BI</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="integrations-legend">
+        <div class="legend-item">
+          <span class="legend-dot ready"></span>
+          <span>Pripravené</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot planned"></span>
+          <span>Plánované</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot future"></span>
+          <span>Budúce</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <a href="mailto:marian.svatko@gmail.com?subject=Mám%20záujem%20o%20produkčnú%20implementáciu&body=Dobrý%20deň,%0A%0Amám%20záujem%20o%20produkčnú%20implementáciu%20AI-riadeného%20FTE%20systému.%0A%0ADakujem" class="vision-cta">
+      <span>Mám záujem</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </a>
+
+  </div>
+  <!-- END PRODUCTION VISION TAB -->
+
 </div>
 
 <!-- AI Chat Assistant -->
@@ -6097,9 +7278,8 @@ input:checked + .toggle-slider:before {
     </div>
   </div>
   <div class="chat-suggestions" id="chat-suggestions">
-    <button class="chat-suggestion" data-q="Ako je na tom personálne ID 33?">Stav ID 33</button>
-    <button class="chat-suggestion" data-q="Uveď 5 B lekární výkonom podobné ID 33, ktoré majú viac FTE">Podobné s vyšším FTE</button>
-    <button class="chat-suggestion" data-q="Porovnaj ID 33 a 36">Porovnaj ID 33 vs 36</button>
+    <button class="chat-suggestion" data-q="Vysvetli stav personálneho obsadenia uvedenej lekárne">Vysvetli stav lekárne</button>
+    <button class="chat-suggestion" data-q="Uveď 5 lekární v segmente výkonom podobné uvedenej lekárne, ktoré majú viac FTE">Podobné s vyšším FTE</button>
   </div>
   <!-- Agent mode suggestions (hidden by default) -->
   <div class="chat-suggestions agent-suggestions" id="agent-suggestions" style="display:none;">
@@ -6317,7 +7497,9 @@ async function loadPharmacyById(pharmacyId) {
       is_above_avg_productivity: data.is_above_avg_productivity,
       revenue_at_risk: data.revenue_at_risk,
       bloky_trend: data.bloky_trend,
-      hospital_supply: data.hospital_supply
+      hospital_supply: data.hospital_supply,
+      zastup: data.zastup || 0,
+      zastup_pct: data.zastup_pct || 0
     };
     window.selectedPharmacyExact = {
       bloky: data.bloky,
@@ -6672,6 +7854,20 @@ calcBtn.onclick = async () => {
     document.getElementById("pct-f").textContent = `${pctF}% z celku`;
     document.getElementById("pct-l").textContent = `${pctL}% z celku`;
 
+    // Zastup breakdown - show only for loaded pharmacies with zastup >= 0.1 FTE
+    const zastupEl = document.getElementById("breakdown-zastup");
+    const breakdownContainer = document.querySelector(".breakdown");
+    const zastupData = window.selectedPharmacyData;
+    if (zastupData && zastupData.zastup >= 0.1) {
+      document.getElementById("fte-zastup").textContent = zastupData.zastup.toFixed(1);
+      document.getElementById("pct-zastup").textContent = `${zastupData.zastup_pct.toFixed(0)}% z FTE`;
+      zastupEl.style.display = "block";
+      breakdownContainer.classList.add("has-zastup");
+    } else {
+      zastupEl.style.display = "none";
+      breakdownContainer.classList.remove("has-zastup");
+    }
+
     // Comparable count removed - field replaced with productivity toggle
     if (r.segment && r.benchmark) {
       document.getElementById("bloky-tooltip").textContent =
@@ -6920,28 +8116,39 @@ async function loadNetworkData() {
 
     data.segments.forEach(seg => {
       const shortType = seg.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
-      const diffClass = Math.abs(seg.diff) < 3 ? 'ok' : 'warning';
-      const diffSign = seg.diff >= 0 ? '+' : '';
+      const zastupVal = seg.zastup || 0;
+      const stalyVal = seg.actual_fte - zastupVal;  // Permanent staff
+      const realDiff = seg.actual_fte - seg.predicted_fte;  // Difference (total vs optimal)
+      const diffClass = Math.abs(realDiff) < 3 ? 'ok' : 'warning';
+      const diffSign = realDiff >= 0 ? '+' : '';
 
       tbody.innerHTML += `
         <tr>
           <td class="segment-name">${shortType}</td>
           <td>${seg.count}</td>
-          <td>${seg.actual_fte.toFixed(1)}</td>
+          <td>${stalyVal.toFixed(1)}</td>
+          <td class="zastup-cell">${zastupVal.toFixed(1)}</td>
+          <td style="color:var(--text-muted);">${seg.actual_fte.toFixed(1)}</td>
           <td>${seg.predicted_fte.toFixed(1)}</td>
-          <td><span class="status-badge ${diffClass}">${diffSign}${seg.diff.toFixed(1)}</span></td>
+          <td><span class="status-badge ${diffClass}">${diffSign}${realDiff.toFixed(1)}</span></td>
         </tr>
       `;
     });
 
     // Total row
+    const totalZastup = data.summary.total_zastup || 0;
+    const totalStaly = data.summary.total_actual_fte - totalZastup;
+    const totalRealDiff = data.summary.total_actual_fte - data.summary.total_predicted_fte;  // Total vs optimal
+    const totalDiffClass = Math.abs(totalRealDiff) < 10 ? 'ok' : 'warning';
     tbody.innerHTML += `
       <tr class="total-row">
         <td class="segment-name">Celkom</td>
         <td>${data.summary.total_pharmacies}</td>
-        <td>${data.summary.total_actual_fte.toFixed(1)}</td>
+        <td>${totalStaly.toFixed(1)}</td>
+        <td class="zastup-cell">${totalZastup.toFixed(1)}</td>
+        <td style="color:var(--text-muted);">${data.summary.total_actual_fte.toFixed(1)}</td>
         <td>${data.summary.total_predicted_fte.toFixed(1)}</td>
-        <td><span class="status-badge ok">${data.summary.diff >= 0 ? '+' : ''}${data.summary.diff.toFixed(1)}</span></td>
+        <td><span class="status-badge ${totalDiffClass}">${totalRealDiff >= 0 ? '+' : ''}${totalRealDiff.toFixed(1)}</span></td>
       </tr>
     `;
 
@@ -7002,9 +8209,10 @@ function renderPriorityList(type, items) {
       // Overstaffed - show excess FTE
       const excess = Math.abs(p.diff || 0);
       valueHtml = `<span class="priority-item-value optimize">+${excess.toFixed(1)} FTE</span>`;
+      const zastupInfo = (p.zastup || 0) >= 0.1 ? ` | Zástup ${(p.zastup || 0).toFixed(1)} FTE` : '';
       subtitleHtml = p.hospital_supply
-        ? `<span class="priority-item-subtitle">FTE zásobuje nemocnicu</span>`
-        : `<span class="priority-item-subtitle">Možné prerozdelenie</span>`;
+        ? `<span class="priority-item-subtitle">FTE zásobuje nemocnicu${zastupInfo}</span>`
+        : `<span class="priority-item-subtitle">Možné prerozdelenie${zastupInfo}</span>`;
     } else if (type === 'monitor') {
       // Growing - show trend
       valueHtml = `<span class="priority-item-value monitor">+${p.bloky_trend || 0}%</span>`;
@@ -7097,8 +8305,8 @@ function exportCSV(type) {
     },
     optimize: {
       filename: 'fte_surplus.csv',
-      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Prebytok FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %', 'Nemocnica'],
-      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, Math.abs(p.diff || 0).toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend, p.hospital_supply ? 'Áno' : '']
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Prebytok FTE', 'Zástup FTE', 'Zástup %', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %', 'Nemocnica'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, Math.abs(p.diff || 0).toFixed(1), (p.zastup || 0).toFixed(2), (p.zastup_pct || 0).toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend, p.hospital_supply ? 'Áno' : '']
     }
   };
 
@@ -7763,8 +8971,8 @@ function analyzeOutlier(jsonStr) {
   // Show suggestions
   chatSuggestions.style.display = 'flex';
   chatSuggestions.innerHTML = `
-    <button class="chat-suggestion" onclick="sendChatMessage('Prečo ${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)} FTE?')">Prečo ${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)} FTE?</button>
-    <button class="chat-suggestion" onclick="sendChatMessage('Vysvetli odporúčanie')">Vysvetli</button>
+    <button class="chat-suggestion" onclick="sendChatMessage('Vysvetli stav personálneho obsadenia uvedenej lekárne ${p.id}')">Vysvetli stav lekárne</button>
+    <button class="chat-suggestion" onclick="sendChatMessage('Uveď 5 lekární v segmente výkonom podobné uvedenej lekárni ${p.id}, ktoré majú viac FTE')">Podobné s vyšším FTE</button>
   `;
 
   chatInput.focus();
@@ -8625,6 +9833,194 @@ function animateScheduleHeroValue(targetValue) {
   }
 
   requestAnimationFrame(update);
+}
+
+// ============================================
+// PRODUCTION VISION TAB - Simulation
+// ============================================
+function simulateAutopilot() {
+  const btn = event.target.closest('.btn-simulate');
+  if (btn.disabled) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+      <path d="M21 12a9 9 0 11-6.219-8.56"/>
+    </svg>
+    Simulujem...
+  `;
+
+  // Add spin animation
+  const style = document.createElement('style');
+  style.textContent = `
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  `;
+  document.head.appendChild(style);
+
+  // Simulate workflow progression
+  const stages = document.querySelectorAll('#tab-vision .workflow-stage');
+  const scheduleItems = document.querySelectorAll('#tab-vision .schedule-item');
+  // Items: 0-2 = Import (completed), 3-5 = Analysis (3=running, 4-5=pending), 6-8 = Reports (pending)
+
+  let step = 0;
+  const interval = setInterval(() => {
+    step++;
+
+    if (step === 1) {
+      // Complete first analysis task (index 3)
+      if (scheduleItems[3]) {
+        const status = scheduleItems[3].querySelector('.schedule-item-status');
+        status.classList.remove('running');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[3].querySelector('.schedule-item-time').textContent = '06:07';
+      }
+    }
+
+    if (step === 2) {
+      // Complete second analysis task (index 4)
+      if (scheduleItems[4]) {
+        const status = scheduleItems[4].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[4].querySelector('.schedule-item-time').textContent = '06:09';
+      }
+      // Move workflow to next stage
+      if (stages[1]) {
+        stages[1].classList.remove('active');
+        stages[1].classList.add('completed');
+      }
+      if (stages[2]) {
+        stages[2].classList.add('active');
+      }
+    }
+
+    if (step === 3) {
+      // Complete third analysis task (index 5)
+      if (scheduleItems[5]) {
+        const status = scheduleItems[5].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[5].querySelector('.schedule-item-time').textContent = '06:11';
+      }
+    }
+
+    if (step === 4) {
+      // Complete first report task (index 6)
+      if (scheduleItems[6]) {
+        const status = scheduleItems[6].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[6].querySelector('.schedule-item-time').textContent = '06:13';
+      }
+
+      // Update stats
+      const statValues = document.querySelectorAll('#tab-vision .workflow-stat-value');
+      if (statValues[0]) statValues[0].textContent = '4,231';
+      if (statValues[1]) statValues[1].textContent = '96%';
+      if (statValues[2]) statValues[2].textContent = '$0.06';
+    }
+
+    if (step === 5) {
+      // Complete remaining report tasks (indices 7, 8)
+      [7, 8].forEach((idx, i) => {
+        if (scheduleItems[idx]) {
+          const status = scheduleItems[idx].querySelector('.schedule-item-status');
+          status.classList.remove('pending');
+          status.classList.add('completed');
+          status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+          scheduleItems[idx].querySelector('.schedule-item-time').textContent = i === 0 ? '06:14' : '06:15';
+        }
+      });
+
+      // Complete workflow
+      if (stages[2]) {
+        stages[2].classList.remove('active');
+        stages[2].classList.add('completed');
+      }
+
+      // Show success toast
+      showToast('Mesačný cyklus dokončený za 15 minút! Všetky úlohy spracované.', 'success', 5000);
+
+      clearInterval(interval);
+
+      // Reset button
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Resetovať
+      `;
+
+      // Change button to reset
+      btn.onclick = resetAutopilot;
+    }
+  }, 600);
+}
+
+function resetAutopilot() {
+  const stages = document.querySelectorAll('#tab-vision .workflow-stage');
+  const scheduleItems = document.querySelectorAll('#tab-vision .schedule-item');
+
+  // Reset workflow stages
+  stages.forEach((stage, i) => {
+    stage.classList.remove('completed', 'active');
+    if (i === 0) stage.classList.add('completed');
+    if (i === 1) stage.classList.add('active');
+  });
+
+  // Reset analysis items (indices 3, 4, 5)
+  const analysisDefaults = [
+    { time: 'prebieha', status: 'running', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>` },
+    { time: '06:08', status: 'pending', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>` },
+    { time: '06:10', status: 'pending', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>` }
+  ];
+
+  [3, 4, 5].forEach((idx, i) => {
+    if (scheduleItems[idx]) {
+      const status = scheduleItems[idx].querySelector('.schedule-item-status');
+      status.classList.remove('completed');
+      status.classList.add(analysisDefaults[i].status);
+      status.innerHTML = analysisDefaults[i].icon;
+      scheduleItems[idx].querySelector('.schedule-item-time').textContent = analysisDefaults[i].time;
+    }
+  });
+
+  // Reset report items (indices 6, 7, 8)
+  const reportDefaults = ['06:12', '06:14', '06:15'];
+  [6, 7, 8].forEach((idx, i) => {
+    if (scheduleItems[idx]) {
+      const status = scheduleItems[idx].querySelector('.schedule-item-status');
+      status.classList.remove('completed');
+      status.classList.add('pending');
+      status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>`;
+      scheduleItems[idx].querySelector('.schedule-item-time').textContent = reportDefaults[i];
+    }
+  });
+
+  // Reset stats
+  const statValues = document.querySelectorAll('#tab-vision .workflow-stat-value');
+  if (statValues[0]) statValues[0].textContent = '2,847';
+  if (statValues[1]) statValues[1].textContent = '92%';
+  if (statValues[2]) statValues[2].textContent = '$0.04';
+
+  // Reset button
+  const btn = event.target.closest('.btn-simulate');
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+    Simulovať
+  `;
+  btn.onclick = simulateAutopilot;
+
+  showToast('Simulácia resetovaná', 'info', 2000);
 }
 </script>
 

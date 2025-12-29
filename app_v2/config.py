@@ -170,6 +170,38 @@ AGENT_WORKER_MAX_TOKENS = int(get_optional_env('AGENT_WORKER_MAX_TOKENS', '2048'
 AGENT_MAX_TOOL_CALLS = int(get_optional_env('AGENT_MAX_TOOL_CALLS', '10'))
 AGENT_MAX_PLAN_STEPS = int(get_optional_env('AGENT_MAX_PLAN_STEPS', '5'))
 
+# Tool execution timeouts (in seconds)
+TOOL_TIMEOUTS: dict = {
+    'get_pharmacy_details': 5,
+    'get_pharmacy_revenue_trend': 5,
+    'search_pharmacies': 10,
+    'get_segment_position': 5,
+    'simulate_fte': 15,
+    'compare_to_peers': 10,
+    'get_understaffed': 10,
+    'get_regional_summary': 5,
+    'get_all_regions_summary': 10,
+    'generate_report': 30,
+    'get_segment_comparison': 5,
+    'get_city_summary': 5,
+    'get_cities_pharmacy_count': 5,
+    'get_network_overview': 10,
+    'get_trend_analysis': 10,
+    'get_priority_actions': 10,
+    'get_zastup_analysis': 10,
+    'get_overstaffed_with_zastup': 10,
+}
+TOOL_TIMEOUT_DEFAULT: int = 15
+
+# Context summarization limits (to avoid overflowing Claude's context)
+CONTEXT_LIMITS: dict = {
+    'pharmacies': 15,      # Max pharmacies in list results
+    'peers': 5,            # Max peer comparisons
+    'cities': 20,          # Max cities in list
+    'actions': 10,         # Max priority actions
+    'monthly_data': 12,    # Max months of data per year
+}
+
 # ============================================================
 # VALIDATION
 # ============================================================

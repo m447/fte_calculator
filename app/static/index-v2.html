@@ -324,16 +324,11 @@ h1 {
   font-weight: 400;
 }
 
-.data-period-badge {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 4px 10px;
-  background: var(--accent-warm-light);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 4px;
-  font-size: 0.7rem;
-  color: var(--accent-warm);
-  font-weight: 600;
+.data-period-note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 6px 0 0 0;
+  font-weight: 400;
 }
 
 /* ============================================
@@ -5920,7 +5915,7 @@ input:checked + .toggle-slider:before {
   <div class="header animate-in">
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> Inteligentný FTE Manažment</h1>
     <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast</p>
-    <span class="data-period-badge">Dáta: 2019-2021 | Retrospektívna validácia</span>
+    <p class="data-period-note">Dáta: 2019-2021 | Retrospektívna validácia</p>
     <button onclick="document.getElementById('about-modal').style.display='flex'" style="
       position: absolute;
       top: 12px;

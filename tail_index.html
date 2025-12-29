@@ -1,0 +1,2000 @@
+        // Remove ready class after animation
+        setTimeout(() => input.classList.remove('ready'), 2000);
+      }, 150);
+    }
+  };
+});
+
+// ============================================
+// NETWORK DASHBOARD
+// ============================================
+async function loadNetworkData() {
+  const loadingEl = document.getElementById('network-loading');
+  const contentEl = document.getElementById('network-content');
+  
+  loadingEl.style.display = 'flex';
+  loadingEl.innerHTML = 'Pripravujem prehľad siete...';
+  contentEl.style.display = 'none';
+
+  try {
+    const response = await fetch('/api/network');
+    if (!response.ok) throw new Error('Network response was not ok');
+    const data = await response.json();
+
+    // Store data globally for CSV export
+    window.networkData = data;
+
+    // Priority Summary stats
+    const priorities = data.priorities || {};
+    const totalRevenueAtRisk = priorities.total_revenue_at_risk || 0;
+    const urgentCount = priorities.urgent_count || 0;
+    const monitorCount = priorities.monitor_count || 0;
+    const optimizeCount = priorities.optimize_count || 0;
+
+    // Format revenue at risk for hero stat
+    const revenueText = totalRevenueAtRisk > 0
+      ? (totalRevenueAtRisk >= 1000000
+          ? `${(totalRevenueAtRisk / 1000000).toFixed(1)}M €`
+          : `${Math.round(totalRevenueAtRisk / 1000)}K €`)
+      : '0 €';
+
+    // Hero stat with counting animation
+    const heroValueEl = document.getElementById('net-revenue-at-risk');
+    animateCurrency(heroValueEl, totalRevenueAtRisk, 1200);
+    heroValueEl.classList.add('pulse');
+    setTimeout(() => heroValueEl.classList.remove('pulse'), 1200);
+
+    // Hero detail
+    document.getElementById('hero-revenue-detail').textContent =
+      `${urgentCount} lekární s vysokou produktivitou a nedostatkom personálu`;
+
+    // Quick stats row
+    document.getElementById('net-urgent-count').textContent = urgentCount;
+    document.getElementById('net-monitor-count').textContent = monitorCount;
+    document.getElementById('net-optimize-count').textContent = optimizeCount;
+
+    // Priority section counts
+    document.getElementById('priority-urgent-count').textContent = urgentCount;
+    document.getElementById('priority-monitor-count').textContent = monitorCount;
+    document.getElementById('priority-optimize-count').textContent = optimizeCount;
+
+    // Priority section totals
+    const urgentTotal = (priorities.urgent || []).reduce((sum, p) => sum + (p.revenue_at_risk || 0), 0);
+    const monitorTotal = (priorities.monitor || []).reduce((sum, p) => sum + Math.abs(p.bloky_trend || 0), 0);
+    const optimizeTotal = (priorities.optimize || []).reduce((sum, p) => sum + Math.abs(p.diff || 0), 0);
+
+    document.getElementById('priority-urgent-total').textContent = urgentTotal >= 1000
+      ? `-${Math.round(urgentTotal / 1000)}K` : `-${Math.round(urgentTotal)}`;
+    document.getElementById('priority-monitor-total').textContent = `+${Math.round(monitorTotal / monitorCount || 0)}%`;
+    document.getElementById('priority-optimize-total').textContent = `+${optimizeTotal.toFixed(1)} FTE`;
+
+    // Render priority lists
+    renderPriorityList('urgent', priorities.urgent || []);
+    renderPriorityList('optimize', priorities.optimize || []);
+    renderPriorityList('monitor', priorities.monitor || []);
+
+    // Segment table
+    const tbody = document.getElementById('segment-tbody');
+    tbody.innerHTML = '';
+
+    data.segments.forEach(seg => {
+      const shortType = seg.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
+      const zastupVal = seg.zastup || 0;
+      const stalyVal = seg.actual_fte - zastupVal;  // Permanent staff
+      const realDiff = seg.actual_fte - seg.predicted_fte;  // Difference (total vs optimal)
+      const diffClass = Math.abs(realDiff) < 3 ? 'ok' : 'warning';
+      const diffSign = realDiff >= 0 ? '+' : '';
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="segment-name">${shortType}</td>
+          <td>${seg.count}</td>
+          <td>${stalyVal.toFixed(1)}</td>
+          <td class="zastup-cell">${zastupVal.toFixed(1)}</td>
+          <td style="color:var(--text-muted);">${seg.actual_fte.toFixed(1)}</td>
+          <td>${seg.predicted_fte.toFixed(1)}</td>
+          <td><span class="status-badge ${diffClass}">${diffSign}${realDiff.toFixed(1)}</span></td>
+        </tr>
+      `;
+    });
+
+    // Total row
+    const totalZastup = data.summary.total_zastup || 0;
+    const totalStaly = data.summary.total_actual_fte - totalZastup;
+    const totalRealDiff = data.summary.total_actual_fte - data.summary.total_predicted_fte;  // Total vs optimal
+    const totalDiffClass = Math.abs(totalRealDiff) < 10 ? 'ok' : 'warning';
+    tbody.innerHTML += `
+      <tr class="total-row">
+        <td class="segment-name">Celkom</td>
+        <td>${data.summary.total_pharmacies}</td>
+        <td>${totalStaly.toFixed(1)}</td>
+        <td class="zastup-cell">${totalZastup.toFixed(1)}</td>
+        <td style="color:var(--text-muted);">${data.summary.total_actual_fte.toFixed(1)}</td>
+        <td>${data.summary.total_predicted_fte.toFixed(1)}</td>
+        <td><span class="status-badge ${totalDiffClass}">${totalRealDiff >= 0 ? '+' : ''}${totalRealDiff.toFixed(1)}</span></td>
+      </tr>
+    `;
+
+    // Show content, hide loading
+    document.getElementById('network-loading').style.display = 'none';
+    document.getElementById('network-content').style.display = 'block';
+
+    networkDataLoaded = true;
+
+  } catch (error) {
+    console.error('Error loading network data:', error);
+    document.getElementById('network-loading').innerHTML = `
+      <div style="text-align:center;">
+        <p style="margin-bottom:10px;">Nepodarilo sa načítať prehľad</p>
+        <button onclick="loadNetworkData()" class="btn-load">⟳ Skúsiť znova</button>
+      </div>
+    `;
+    showToast('Nepodarilo sa načítať prehľad. Skúste to znova.');
+  }
+}
+
+// Priority dashboard helper functions
+const DISPLAY_LIMIT = 10; // Show top 10 in UI, CSV exports all
+
+function renderPriorityList(type, items) {
+  const list = document.getElementById(`priority-${type}-list`);
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (items.length === 0) {
+    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">Žiadne lekárne v tejto kategórii</div>';
+    return;
+  }
+
+  // Display only top 10, but full list is available for CSV
+  const displayItems = items.slice(0, DISPLAY_LIMIT);
+  const totalCount = items.length;
+
+  displayItems.forEach((p, index) => {
+    const shortType = p.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
+    const pData = encodeURIComponent(JSON.stringify(p));
+    const rank = index + 1;
+    const hospitalBadge = p.hospital_supply ? '<span class="hospital-badge" title="Zásobuje nemocnicu">H</span>' : '';
+
+    let valueHtml = '';
+    let subtitleHtml = '';
+
+    if (type === 'urgent') {
+      // Revenue at risk - Kahneman loss framing
+      const revenueAtRisk = p.revenue_at_risk || 0;
+      const revenueText = revenueAtRisk >= 1000
+        ? `${Math.round(revenueAtRisk / 1000)}K`
+        : Math.round(revenueAtRisk).toString();
+      valueHtml = `<span class="priority-item-value urgent">-${revenueText}</span>`;
+      subtitleHtml = `<span class="priority-item-subtitle">Chýba ${Math.abs(p.diff).toFixed(1)} FTE | Prod. +${p.prod_pct || 0}%</span>`;
+    } else if (type === 'optimize') {
+      // Overstaffed - show excess FTE
+      const excess = Math.abs(p.diff || 0);
+      valueHtml = `<span class="priority-item-value optimize">+${excess.toFixed(1)} FTE</span>`;
+      const zastupInfo = (p.zastup || 0) >= 0.1 ? ` | Zástup ${(p.zastup || 0).toFixed(1)} FTE` : '';
+      subtitleHtml = p.hospital_supply
+        ? `<span class="priority-item-subtitle">FTE zásobuje nemocnicu${zastupInfo}</span>`
+        : `<span class="priority-item-subtitle">Možné prerozdelenie${zastupInfo}</span>`;
+    } else if (type === 'monitor') {
+      // Growing - show trend
+      valueHtml = `<span class="priority-item-value monitor">+${p.bloky_trend || 0}%</span>`;
+      subtitleHtml = `<span class="priority-item-subtitle">Rast transakcií YoY</span>`;
+    }
+
+    list.innerHTML += `
+      <div class="priority-item ${type}" onclick="analyzePriorityItem(decodeURIComponent('${pData}'))">
+        <span class="priority-item-rank">${rank}</span>
+        <div class="priority-item-info">
+          <div class="priority-item-name">
+            ${p.id} - ${p.mesto}
+            <span class="priority-item-id">${shortType}</span>
+            ${hospitalBadge}
+          </div>
+          ${subtitleHtml}
+        </div>
+        ${valueHtml}
+        <span class="priority-item-action">→</span>
+      </div>
+    `;
+  });
+
+  // Add note if there are more items than displayed
+  if (totalCount > DISPLAY_LIMIT) {
+    list.innerHTML += `
+      <div style="padding:10px 14px;color:var(--text-muted);font-size:0.75rem;text-align:center;font-style:italic;">
+        Zobrazených ${DISPLAY_LIMIT} z ${totalCount} · Kompletný zoznam v CSV exporte
+      </div>
+    `;
+  }
+}
+
+function togglePriority(type) {
+  const section = document.querySelector(`.priority-${type}-section`);
+  const arrow = document.getElementById(`${type}-arrow`);
+  if (!section || !arrow) return;
+
+  const isExpanded = section.classList.contains('expanded');
+  section.classList.toggle('expanded');
+  arrow.textContent = isExpanded ? '▼' : '▲';
+
+  // Re-trigger animations when expanding
+  if (!isExpanded) {
+    const items = section.querySelectorAll('.priority-item');
+    items.forEach((item, i) => {
+      item.style.animation = 'none';
+      item.offsetHeight; // Trigger reflow
+      item.style.animation = '';
+    });
+  }
+}
+
+function exportCSV(type) {
+  // Get priority data from cached network data
+  if (!window.networkData || !window.networkData.priorities) {
+    alert('Data nie su dostupne. Skuste obnovit stranku.');
+    return;
+  }
+
+  const priorities = window.networkData.priorities;
+  const data = priorities[type] || [];
+
+  if (data.length === 0) {
+    alert('Ziadne data na export.');
+    return;
+  }
+
+  // Helper to escape CSV values (wrap in quotes if contains comma, quote, or newline)
+  const csvEscape = (val) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  };
+
+  // Define headers and filename based on type (with complete pharmacy info)
+  const configs = {
+    urgent: {
+      filename: 'revenue_at_risk.csv',
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Gap FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Ohrozené tržby (EUR)', 'Trend %'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, p.diff?.toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, Math.round(p.revenue_at_risk || 0), p.bloky_trend]
+    },
+    monitor: {
+      filename: 'growth_alert.csv',
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Gap FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %', 'Ohrozené tržby (EUR)'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, p.diff?.toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend, Math.round(p.revenue_at_risk || 0)]
+    },
+    optimize: {
+      filename: 'fte_surplus.csv',
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Prebytok FTE', 'Zástup FTE', 'Zástup %', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Trend %', 'Nemocnica'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, Math.abs(p.diff || 0).toFixed(1), (p.zastup || 0).toFixed(2), (p.zastup_pct || 0).toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, p.bloky_trend, p.hospital_supply ? 'Áno' : '']
+    }
+  };
+
+  const config = configs[type];
+
+  // Build CSV content with UTF-8 BOM for Excel compatibility
+  const BOM = '\uFEFF';
+  let csv = BOM + config.headers.map(csvEscape).join(',') + '\n';
+  data.forEach(p => {
+    csv += config.row(p).map(csvEscape).join(',') + '\n';
+  });
+
+  // Download file
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = config.filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function toggleSegmentTable() {
+  const container = document.getElementById('segment-table-container');
+  const arrow = document.getElementById('segment-toggle-arrow');
+  if (!container || !arrow) return;
+
+  const isHidden = container.style.display === 'none';
+  container.style.display = isHidden ? 'block' : 'none';
+  arrow.textContent = isHidden ? '▼' : '▶';
+}
+
+function toggleModelInfo() {
+  const container = document.getElementById('model-info-container');
+  const arrow = document.getElementById('model-info-arrow');
+  if (!container || !arrow) return;
+
+  const isHidden = container.style.display === 'none';
+  container.style.display = isHidden ? 'block' : 'none';
+  arrow.textContent = isHidden ? '▼' : '▶';
+}
+
+function analyzePriorityItem(dataStr) {
+  const p = JSON.parse(dataStr);
+
+  // Switch to calculator tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('[data-tab="calculator"]').classList.add('active');
+  document.getElementById('tab-calculator').classList.add('active');
+
+  // Load pharmacy into calculator
+  document.getElementById('pharmacy-id-input').value = p.id;
+  document.getElementById('pharmacy-load-btn').click();
+}
+
+function renderOutlierList(type, outliers) {
+  const list = document.getElementById(type + '-list');
+  list.innerHTML = '';
+
+  if (outliers.length === 0) {
+    list.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:0.85rem;">Žiadne lekárne</div>';
+    return;
+  }
+
+  outliers.forEach(p => {
+    const diffClass = p.diff > 0 ? 'positive' : 'negative';
+    const diffSign = p.diff > 0 ? '+' : '';
+    const shortType = p.typ.replace(' - ', '-').replace('shopping premium', 'prem.');
+    const pData = encodeURIComponent(JSON.stringify(p));
+
+    list.innerHTML += `
+      <div class="outlier-item" onclick="analyzeOutlier(decodeURIComponent('${pData}'))">
+        <div class="outlier-chat-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg></div>
+        <div class="outlier-info">
+          <div class="outlier-name">${p.mesto} <span style="color:var(--text-muted);font-weight:400;">#${p.id}</span></div>
+          <div class="outlier-type">${shortType} | ${(p.bloky/1000).toFixed(0)}k bloky | ${(p.trzby/1000000).toFixed(1)}M € | ${p.podiel_rx}% Rx</div>
+        </div>
+        <div class="outlier-diff ${diffClass}">${diffSign}${p.diff.toFixed(1)}</div>
+      </div>
+    `;
+  });
+}
+
+function toggleOutliers(type) {
+  const header = document.querySelector(`#${type}-list`).previousElementSibling;
+  const list = document.getElementById(type + '-list');
+  const arrow = document.getElementById(type + '-arrow');
+
+  header.classList.toggle('expanded');
+  list.classList.toggle('expanded');
+  arrow.textContent = list.classList.contains('expanded') ? '▲' : '▼';
+}
+
+// ============================================
+// AI CHAT ASSISTANT
+// ============================================
+let lastCalculationResult = null;
+let chatOpen = false;
+
+const chatTrigger = document.getElementById('chat-trigger');
+const chatPanel = document.getElementById('chat-panel');
+const chatClose = document.getElementById('chat-close');
+const chatMessages = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+const chatSuggestions = document.getElementById('chat-suggestions');
+
+// Question history for arrow up/down navigation
+const questionHistory = [];
+let historyIndex = -1;
+let tempInput = '';  // Store current input when navigating history
+
+// Store segment histograms for FTE chart
+let segmentHistograms = null;
+
+// FTE Comparison
+function renderFteComparison(fteValue, benchmark, comparable, isActual) {
+  // Render FTE position in segment (as 4th row in position charts)
+  // Shows actual FTE when pharmacy loaded, recommended otherwise
+  const fteHist = segmentHistograms ? segmentHistograms.fte : null;
+  renderPositionChart('fte', benchmark.min, benchmark.max, benchmark.avg, fteValue, '', 1, fteHist);
+}
+
+// Segment position chart
+function renderPositionCharts(segment, hourly, inputs, typ) {
+
+  // Convert inputs to display units
+  const yourBloky = inputs.bloky / 1000;  // to thousands
+  const yourTrzby = inputs.trzby / 1000000;  // to millions
+  const yourRx = inputs.podiel_rx * 100;  // to percentage
+
+  // Get histograms (if available) and store for FTE chart
+  const hist = segment.histograms || {};
+  segmentHistograms = hist;
+
+  // Render each chart with histogram
+  renderPositionChart('bloky', segment.bloky_min, segment.bloky_max, segment.bloky_avg, yourBloky, 'k', 0, hist.bloky);
+  renderPositionChart('trzby', segment.trzby_min, segment.trzby_max, segment.trzby_avg, yourTrzby, 'M', 1, hist.trzby);
+  renderPositionChart('rx', segment.rx_min, segment.rx_max, segment.rx_avg, yourRx, '%', 0, hist.rx);
+
+  // Render additional metrics if hourly data available
+  if (hourly) {
+    renderPositionChart('basket', hourly.segment_basket_min, hourly.segment_basket_max, hourly.segment_basket_avg, hourly.basket_value, '€', 1, hist.basket);
+    renderPositionChart('blokyhod', hourly.segment_bloky_hour_min, hourly.segment_bloky_hour_max, hourly.segment_bloky_hour_avg, hourly.bloky_per_hour, '', 1, hist.blokyhod);
+    renderPositionChart('trzbyhod', hourly.segment_trzby_hour_min, hourly.segment_trzby_hour_max, hourly.segment_trzby_hour_avg, hourly.trzby_per_hour, '€', 0, hist.trzbyhod);
+  }
+
+  // Update efficiency and trend zone indicators based on current pharmacy data
+  updateEfficiencyIndicator();
+  updateTrendIndicator();
+}
+
+function renderPositionChart(name, min, max, avg, you, unit, decimals, histogram) {
+  const range = max - min;
+
+  // Calculate positions (0-100%)
+  const avgPos = range > 0 ? ((avg - min) / range) * 100 : 50;
+  const youPos = range > 0 ? Math.max(0, Math.min(100, ((you - min) / range) * 100)) : 50;
+
+  // Position markers
+  const avgMarker = document.getElementById(`pos-${name}-avg`);
+  const youMarker = document.getElementById(`pos-${name}-you`);
+  if (avgMarker) avgMarker.style.left = avgPos + '%';
+  if (youMarker) youMarker.style.left = youPos + '%';
+
+  // Update min/max labels
+  document.getElementById(`pos-${name}-min`).textContent = min + unit;
+  document.getElementById(`pos-${name}-max`).textContent = max + unit;
+
+  // Update your value display
+  const valueEl = document.getElementById(`pos-${name}-value`);
+  valueEl.textContent = you.toFixed(decimals) + unit;
+
+  // Calculate difference from average
+  const diff = you - avg;
+  const diffPct = avg > 0 ? (diff / avg) * 100 : 0;
+  const isAbove = diff >= 0;
+
+  // Calculate percentile (rough estimate based on position)
+  const percentile = Math.round(youPos);
+
+  // Determine indicator type and text
+  const indicatorEl = document.getElementById(`pos-${name}-indicator`);
+  const tooltipEl = document.getElementById(`pos-${name}-tooltip`);
+
+  let indicatorClass, indicatorSymbol, tooltipText;
+
+  if (Math.abs(diffPct) < 5) {
+    // Close to average (within 5%)
+    indicatorClass = 'neutral';
+    indicatorSymbol = '≈';
+    tooltipText = `≈ priemer segmentu`;
+  } else if (isAbove) {
+    // Above average
+    indicatorClass = 'positive';
+    indicatorSymbol = '↑';
+    const topPct = 100 - percentile;
+    tooltipText = `+${diffPct.toFixed(0)}% vs priemer · Top ${topPct < 50 ? topPct : percentile}%`;
+  } else {
+    // Below average
+    indicatorClass = 'negative';
+    indicatorSymbol = '↓';
+    tooltipText = `${diffPct.toFixed(0)}% vs priemer · ${percentile}. percentil`;
+  }
+
+  if (indicatorEl) {
+    indicatorEl.className = `position-indicator ${indicatorClass}`;
+    indicatorEl.textContent = indicatorSymbol;
+  }
+
+  if (tooltipEl) {
+    tooltipEl.textContent = tooltipText;
+  }
+
+  // Render histogram if available
+  if (histogram && histogram.length > 0) {
+    const histEl = document.getElementById(`hist-${name}`);
+    if (histEl) {
+      const maxVal = Math.max(...histogram);
+      histEl.innerHTML = histogram.map(h =>
+        `<div class="histogram-bar" style="height:${maxVal > 0 ? (h / maxVal) * 100 : 0}%"></div>`
+      ).join('');
+    }
+  }
+}
+
+// Simulation - Simplified (2 sliders: Tržby + Produktivita)
+let sensitivityCoeffs = null;
+let baseFteTotal = null;
+
+function initSensitivitySliders(sensitivity, baseFte) {
+  // Store coefficients
+  sensitivityCoeffs = {
+    trzby: sensitivity.trzby_10pct / 10,  // FTE per 1% revenue change
+    prod: 0.5                              // FTE saved per 1σ productivity improvement
+  };
+  baseFteTotal = baseFte;
+
+  // Get slider elements
+  const trzbySlider = document.getElementById('sens-trzby');
+  const prodSlider = document.getElementById('sens-prod');
+
+  // Reset sliders to 0
+  trzbySlider.value = 0;
+  prodSlider.value = 0;
+
+  // Add event listeners
+  trzbySlider.oninput = updateSimulationDisplay;
+  prodSlider.oninput = updateSimulationDisplay;
+
+  // Reset button
+  document.getElementById('sim-reset-btn').addEventListener('click', function() {
+    trzbySlider.value = 0;
+    prodSlider.value = 0;
+    updateSimulationDisplay();
+  });
+
+  // Initial display
+  updateSimulationDisplay();
+
+  // Show content, hide empty state
+  document.getElementById('analyza-empty').style.display = 'none';
+  document.getElementById('analyza-content').style.display = 'block';
+}
+
+function updateSimulationDisplay() {
+  const trzbyVal = parseInt(document.getElementById('sens-trzby').value);
+  const prodVal = parseInt(document.getElementById('sens-prod').value) / 10;  // Scale: 0-20 -> 0-2.0σ
+
+  // Calculate FTE impacts
+  const trzbyFte = trzbyVal * sensitivityCoeffs.trzby;
+  const prodFte = -prodVal * sensitivityCoeffs.prod;  // Negative = saves FTE
+
+  const totalFte = trzbyFte + prodFte;
+
+  // Update Tržby display
+  const trzbyResultEl = document.getElementById('sens-trzby-result');
+  const trzbyFteEl = document.getElementById('sens-trzby-fte');
+  const trzbyValEl = document.getElementById('sens-trzby-val');
+
+  trzbyFteEl.textContent = (trzbyFte >= 0 ? '+' : '') + trzbyFte.toFixed(1);
+  trzbyResultEl.classList.remove('negative', 'zero');
+
+  // Show input value next to label
+  if (trzbyVal !== 0) {
+    trzbyValEl.textContent = (trzbyVal >= 0 ? '+' : '') + trzbyVal + '%';
+    trzbyValEl.classList.add('visible');
+    trzbyValEl.classList.toggle('negative', trzbyVal < 0);
+  } else {
+    trzbyValEl.classList.remove('visible');
+  }
+
+  if (Math.abs(trzbyFte) < 0.05) {
+    trzbyResultEl.classList.add('zero');
+  } else if (trzbyFte < 0) {
+    trzbyResultEl.classList.add('negative');
+  }
+
+  // Update Productivity display
+  const prodResultEl = document.getElementById('sens-prod-result');
+  const prodFteEl = document.getElementById('sens-prod-fte');
+  const prodValEl = document.getElementById('sens-prod-val');
+
+  prodFteEl.textContent = prodFte.toFixed(1);
+  prodResultEl.classList.remove('negative', 'zero');
+
+  // Show input value next to label
+  if (prodVal > 0) {
+    prodValEl.textContent = '+' + prodVal.toFixed(1) + 'σ';
+    prodValEl.classList.add('visible');
+  } else {
+    prodValEl.classList.remove('visible');
+  }
+
+  if (Math.abs(prodFte) < 0.05) {
+    prodResultEl.classList.add('zero');
+  } else {
+    prodResultEl.classList.add('negative');
+  }
+
+  // Update total with pulse animation
+  const totalEl = document.getElementById('sens-total-fte');
+  totalEl.textContent = (totalFte >= 0 ? '+' : '') + totalFte.toFixed(1) + ' FTE';
+
+  totalEl.classList.remove('pulse');
+  void totalEl.offsetWidth; // Trigger reflow
+  totalEl.classList.add('pulse');
+
+  document.getElementById('sens-base-fte').textContent = baseFteTotal.toFixed(1);
+  document.getElementById('sens-new-fte').textContent = (baseFteTotal + totalFte).toFixed(1) + ' FTE';
+}
+
+// Backwards compatibility wrapper
+function renderSensitivity(sensitivity) {
+  // Called from calcBtn.onclick - use actual FTE as base (if available), otherwise predicted
+  if (lastCalculationResult) {
+    const baseFte = lastCalculationResult.fte_actual || lastCalculationResult.fte_total;
+    if (baseFte) {
+      initSensitivitySliders(sensitivity, baseFte);
+    }
+  }
+}
+
+// Store calculation result for chat context
+function storeCalculationResult(result, inputs, displayedFteTotal = null) {
+  lastCalculationResult = {
+    pharmacy_id: inputs.pharmacy_id,
+    pharmacy_name: window.selectedPharmacyData ? window.selectedPharmacyData.mesto : null,
+    fte_actual: window.selectedPharmacyData ? window.selectedPharmacyData.actual_fte : null,
+    fte_diff: window.selectedPharmacyData ? window.selectedPharmacyData.fte_diff : null,
+    revenue_at_risk: window.selectedPharmacyData ? window.selectedPharmacyData.revenue_at_risk : null,
+    bloky_trend: window.selectedPharmacyData ? window.selectedPharmacyData.bloky_trend : null,
+    is_above_avg_productivity: window.selectedPharmacyIsAboveAvgProd || false,
+    typ: inputs.typ,
+    bloky: inputs.bloky,
+    trzby: inputs.trzby,
+    podiel_rx: inputs.podiel_rx,
+    effective_bloky: result.inputs?.effective_bloky || 0,
+    fte_total: displayedFteTotal || result.fte.total,
+    fte_min: result.fte.min,
+    fte_max: result.fte.max,
+    fte_F: result.breakdown.F,
+    fte_L: result.breakdown.L,
+    fte_ZF: result.breakdown.ZF,
+    comparable_count: result.comparable?.count || 0,
+    comparable_avg: result.comparable?.avg_fte || null,
+    comparable_min: result.comparable?.min_fte || null,
+    comparable_max: result.comparable?.max_fte || null,
+    benchmark_avg: result.benchmark?.avg || null,
+    benchmark_count: result.benchmark?.count || 0,
+    bloky_per_hour: result.hourly?.bloky_per_hour || null,
+    trzby_per_hour: result.hourly?.trzby_per_hour || null,
+    segment_bloky_hour_avg: result.hourly?.segment_bloky_hour_avg || null,
+    segment_bloky_hour_min: result.hourly?.segment_bloky_hour_min || null,
+    segment_bloky_hour_max: result.hourly?.segment_bloky_hour_max || null,
+    segment_rx_avg: result.segment?.rx_avg || null,
+    segment_bloky_avg: result.segment?.bloky_avg || null,
+    segment_trzby_avg: result.segment?.trzby_avg || null
+  };
+  // Show chat trigger when we have calculation result
+  chatTrigger.classList.add('visible');
+}
+
+// Toggle chat panel
+chatTrigger.onclick = () => {
+  chatOpen = !chatOpen;
+  chatPanel.classList.toggle('open', chatOpen);
+  if (chatOpen) {
+    chatInput.focus();
+  }
+};
+
+chatClose.onclick = () => {
+  chatOpen = false;
+  chatPanel.classList.remove('open');
+};
+
+// Send message
+async function sendChatMessage(question) {
+  if (!question.trim()) return;
+
+  // Add to question history (avoid duplicates)
+  const trimmedQ = question.trim();
+  if (questionHistory.length === 0 || questionHistory[questionHistory.length - 1] !== trimmedQ) {
+    questionHistory.push(trimmedQ);
+  }
+  historyIndex = -1;  // Reset history navigation
+  tempInput = '';
+
+  // If no context, provide a generic helpful message instead of failing silently
+  if (!lastCalculationResult) {
+    addChatMessage(question, 'user');
+    chatInput.value = '';
+    setTimeout(() => {
+      addChatMessage("Najprv prosím vypočítajte FTE pre lekáreň v záložke Kalkulačka alebo vyberte lekáreň v záložke Prehľad, aby som vám mohol poradiť s konkrétnymi dátami. Zatiaľ vám môžem vysvetliť princípy modelu.", 'assistant');
+    }, 500);
+    return;
+  }
+
+  // Add user message
+  addChatMessage(question, 'user');
+  chatInput.value = '';
+  chatSend.disabled = true;
+
+  // Hide suggestions after first question
+  chatSuggestions.style.display = 'none';
+
+  // Show typing indicator
+  const typingId = showTypingIndicator();
+
+  // Set up 90-second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        context: lastCalculationResult
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    const data = await response.json();
+    removeTypingIndicator(typingId);
+
+    if (data.error) {
+      addChatMessage('Prepáčte, nastala chyba: ' + data.error, 'assistant');
+    } else {
+      addChatMessage(formatAnswer(data.answer), 'assistant');
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+    removeTypingIndicator(typingId);
+    if (error.name === 'AbortError') {
+      addChatMessage('Prepáčte, odpoveď trvala príliš dlho. Skúste znova alebo položte jednoduchšiu otázku.', 'assistant');
+    } else {
+      addChatMessage('Prepáčte, nepodarilo sa spojiť so serverom.', 'assistant');
+    }
+  }
+
+  chatSend.disabled = false;
+}
+
+function addChatMessage(text, role) {
+  const msg = document.createElement('div');
+  msg.className = 'chat-message ' + role;
+  msg.innerHTML = '<div class="bubble">' + text + '</div>';
+  chatMessages.appendChild(msg);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function formatAnswer(text) {
+  // First convert markdown tables to HTML
+  text = convertMarkdownTables(text);
+
+  // Convert markdown-like formatting to HTML
+  return text
+    // Remove markdown code block markers
+    .replace(/```\n?/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Style revenue at risk lines in red
+    .replace(/(⚠[^<\n]*(?:ohrozené|Ohrozené)[^<\n]*)/gi, '<span class="risk-text">$1</span>')
+    // Style bar characters (filled and empty)
+    .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
+    .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
+    // Productivity indicators
+    .replace(/↑↑/g, '<span class="prod-up">↑↑</span>')
+    .replace(/↑/g, '<span class="prod-up">↑</span>')
+    .replace(/↓/g, '<span class="prod-down">↓</span>')
+    // Gap values
+    .replace(/\+(\d+\.?\d*)/g, '<span class="gap-positive">+$1</span>')
+    .replace(/-(\d+\.?\d*)/g, '<span class="gap-negative">-$1</span>')
+    .replace(/\n/g, '<br>');
+}
+
+// === AGENT MODE ===
+const agentSuggestions = document.getElementById('agent-suggestions');
+
+// Handle agent suggestion clicks
+document.querySelectorAll('.chat-suggestion.agent').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const q = btn.dataset.q;
+    if (q) sendAgentMessage(q);
+  });
+});
+
+async function sendAgentMessage(prompt) {
+  if (!prompt.trim()) return;
+
+  // Add to question history (avoid duplicates)
+  const trimmedQ = prompt.trim();
+  if (questionHistory.length === 0 || questionHistory[questionHistory.length - 1] !== trimmedQ) {
+    questionHistory.push(trimmedQ);
+  }
+  historyIndex = -1;  // Reset history navigation
+  tempInput = '';
+
+  // Add user message
+  addChatMessage(prompt, 'user');
+  chatInput.value = '';
+  chatSend.disabled = true;
+  agentSuggestions.style.display = 'none';
+
+  // Show typing indicator
+  const typingId = showTypingIndicator();
+
+  try {
+    const response = await fetch('/api/agent/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt })
+    });
+
+    const data = await response.json();
+    removeTypingIndicator(typingId);
+
+    if (data.error) {
+      addChatMessage('Prepáčte, nastala chyba: ' + data.error, 'assistant');
+    } else {
+      // Format response with agent indicator
+      const formattedResponse = formatAnswer(data.response);
+      addChatMessage(formattedResponse, 'assistant');
+    }
+  } catch (error) {
+    removeTypingIndicator(typingId);
+    addChatMessage('Prepáčte, nepodarilo sa spojiť s Claude agentom.', 'assistant');
+  }
+
+  chatSend.disabled = false;
+}
+
+function showTypingIndicator() {
+  const id = 'typing-' + Date.now();
+  const typing = document.createElement('div');
+  typing.id = id;
+  typing.className = 'chat-message assistant';
+  typing.innerHTML = '<div class="bubble"><div class="chat-typing"><span></span><span></span><span></span></div></div>';
+  chatMessages.appendChild(typing);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return id;
+}
+
+function removeTypingIndicator(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// Event listeners
+chatSend.onclick = () => sendChatMessage(chatInput.value);
+chatInput.onkeypress = (e) => {
+  if (e.key === 'Enter') sendChatMessage(chatInput.value);
+};
+
+// Arrow up/down for question history
+chatInput.onkeydown = (e) => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (questionHistory.length === 0) return;
+
+    // Save current input when starting to navigate
+    if (historyIndex === -1) {
+      tempInput = chatInput.value;
+    }
+
+    // Move up in history
+    if (historyIndex < questionHistory.length - 1) {
+      historyIndex++;
+      chatInput.value = questionHistory[questionHistory.length - 1 - historyIndex];
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIndex === -1) return;
+
+    // Move down in history
+    historyIndex--;
+    if (historyIndex === -1) {
+      // Back to current input
+      chatInput.value = tempInput;
+    } else {
+      chatInput.value = questionHistory[questionHistory.length - 1 - historyIndex];
+    }
+  }
+};
+
+// Suggestion buttons
+document.querySelectorAll('.chat-suggestion').forEach(btn => {
+  btn.onclick = () => sendChatMessage(btn.dataset.q);
+});
+
+// Analyze outlier from Network tab
+function analyzeOutlier(jsonStr) {
+  const p = JSON.parse(jsonStr);
+  const rxFactor = 0.41;
+  const effectiveBloky = p.bloky * (1 + rxFactor * (p.podiel_rx / 100));
+
+  // Set chat context with outlier data
+  lastCalculationResult = {
+    pharmacy_id: p.id,
+    typ: p.typ,
+    bloky: p.bloky,
+    trzby: p.trzby,
+    podiel_rx: p.podiel_rx / 100,
+    effective_bloky: effectiveBloky,
+    fte_total: p.predicted_fte,
+    fte_actual: p.actual_fte,
+    fte_diff: p.diff,
+    revenue_at_risk: p.revenue_at_risk || 0,
+    bloky_trend: p.bloky_trend || 0,
+    is_above_avg_productivity: p.is_above_avg_productivity || false,
+    fte_min: null,
+    fte_max: null,
+    fte_F: null,
+    fte_L: null,
+    fte_ZF: null,
+    comparable_count: 0,
+    comparable_avg: null,
+    benchmark_avg: null,
+    benchmark_count: null,
+    bloky_per_hour: null,
+    trzby_per_hour: null,
+    pharmacy_name: p.mesto
+  };
+
+  // Show chat trigger and open panel
+  chatTrigger.classList.add('visible');
+  chatPanel.classList.add('open');
+  chatOpen = true;
+
+  // Reset chat messages
+  const hospitalNote = p.hospital_supply ? '<br><em style="color:#0ea5e9;font-size:0.85em;">Lekáreň zásobuje nemocnicu - FTE zahŕňa aj nemocničnú logistiku</em>' : '';
+  chatMessages.innerHTML = `
+    <div class="chat-message assistant">
+      <div class="bubble"><strong>${p.mesto}</strong> (${p.typ})${hospitalNote}<br><br>Model odporúča ${p.predicted_fte.toFixed(1)} FTE, aktuálne má ${p.actual_fte.toFixed(1)} FTE (${p.diff > 0 ? '+' : ''}${p.diff.toFixed(1)}). Opýtajte sa prečo.</div>
+    </div>
+  `;
+
+  // Show suggestions
+  chatSuggestions.style.display = 'flex';
+  chatSuggestions.innerHTML = `
+    <button class="chat-suggestion" onclick="sendChatMessage('Vysvetli stav personálneho obsadenia uvedenej lekárne ${p.id}')">Vysvetli stav lekárne</button>
+    <button class="chat-suggestion" onclick="sendChatMessage('Uveď 5 lekární v segmente výkonom podobné uvedenej lekárni ${p.id}, ktoré majú viac FTE')">Podobné s vyšším FTE</button>
+  `;
+
+  chatInput.focus();
+}
+
+// Count-up animation for FTE result
+function animateValue(elementId, start, end, duration) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const startTime = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easedProgress = easeOutQuart(progress);
+    const current = start + (end - start) * easedProgress;
+
+    const parts = current.toFixed(1).split('.');
+    el.innerHTML = parts[0] + '<span class="decimal">.' + parts[1] + '</span>';
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+// Animate currency value with K/M suffix
+function animateCurrency(element, targetValue, duration = 1000) {
+  if (!element || targetValue <= 0) {
+    element.textContent = '0 €';
+    return;
+  }
+
+  const startTime = performance.now();
+  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+
+  function formatCurrency(value) {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M €`;
+    }
+    return `${Math.round(value / 1000)}K €`;
+  }
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easedProgress = easeOutQuart(progress);
+    const current = targetValue * easedProgress;
+
+    element.textContent = formatCurrency(current);
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+// === AGENT TAB FUNCTIONALITY ===
+const agentInput = document.getElementById('agent-input');
+const agentSubmit = document.getElementById('agent-submit');
+const agentResults = document.getElementById('agent-results');
+const quickActions = document.querySelectorAll('.quick-action');
+
+// Store original welcome HTML for restoration
+const originalWelcomeHTML = document.getElementById('agent-welcome').outerHTML;
+
+// Query history for arrow-up
+let agentHistory = [];
+let agentHistoryIndex = -1;
+
+// Quick action buttons - populate input for review, don't auto-submit
+quickActions.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const query = btn.dataset.query;
+    agentInput.value = query;
+    agentInput.focus();
+    // Select all text so user can easily modify or press Enter to submit
+    agentInput.select();
+  });
+});
+
+// Tools toggle button - show/hide extra tools
+const toolsToggle = document.getElementById('tools-toggle');
+const toolsExtra = document.getElementById('tools-extra');
+if (toolsToggle && toolsExtra) {
+  toolsToggle.addEventListener('click', () => {
+    toolsToggle.classList.toggle('expanded');
+    toolsExtra.classList.toggle('visible');
+    const span = toolsToggle.querySelector('span');
+    if (toolsExtra.classList.contains('visible')) {
+      span.textContent = 'Skryť ďalšie nástroje';
+    } else {
+      span.textContent = 'Zobraziť ďalšie nástroje (6)';
+    }
+  });
+}
+
+// Intro panel toggle
+const introPanel = document.getElementById('intro-panel');
+const introPanelToggle = document.getElementById('intro-panel-toggle');
+if (introPanelToggle && introPanel) {
+  introPanelToggle.addEventListener('click', () => {
+    introPanel.classList.toggle('expanded');
+  });
+}
+
+// Intro panel CTA button
+document.querySelectorAll('.intro-panel-cta').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const query = btn.dataset.query;
+    if (query) {
+      agentInput.value = query;
+      agentInput.focus();
+    }
+  });
+});
+
+// Sample question buttons - populate input for user review
+document.querySelectorAll('.sample-question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const query = btn.dataset.query;
+    if (query) {
+      agentInput.value = query;
+      agentInput.focus();
+    }
+  });
+});
+
+// Submit button
+agentSubmit.addEventListener('click', submitAgentQuery);
+
+// Enter to submit
+agentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitAgentQuery();
+  }
+  // Arrow up for history
+  if (e.key === 'ArrowUp' && agentInput.value === '') {
+    e.preventDefault();
+    if (agentHistory.length > 0) {
+      if (agentHistoryIndex < agentHistory.length - 1) {
+        agentHistoryIndex++;
+      }
+      agentInput.value = agentHistory[agentHistory.length - 1 - agentHistoryIndex];
+    }
+  }
+  // Arrow down for history
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (agentHistoryIndex > 0) {
+      agentHistoryIndex--;
+      agentInput.value = agentHistory[agentHistory.length - 1 - agentHistoryIndex];
+    } else {
+      agentHistoryIndex = -1;
+      agentInput.value = '';
+    }
+  }
+});
+
+async function submitAgentQuery() {
+  const query = agentInput.value.trim();
+  if (!query) return;
+
+  // Add to history
+  agentHistory.push(query);
+  agentHistoryIndex = -1;
+  agentInput.value = '';
+
+  // Show streaming progress UI with 4 phases
+  agentResults.innerHTML = `
+    <div class="agent-streaming">
+      <div class="streaming-steps">
+        <div class="streaming-step active" id="step-planning">
+          <div class="step-icon"><div class="spinner-small"></div></div>
+          <div class="step-text">Plánovanie</div>
+          <div class="step-timer"></div>
+        </div>
+        <div class="streaming-step" id="step-ai-response">
+          <div class="step-icon">○</div>
+          <div class="step-text">Odpoveď AI</div>
+          <div class="step-timer"></div>
+        </div>
+        <div class="streaming-step" id="step-tools">
+          <div class="step-icon">○</div>
+          <div class="step-text">Zber dát</div>
+          <div class="step-timer"></div>
+          <div class="step-tools" id="tools-list"></div>
+        </div>
+        <div class="streaming-step" id="step-synthesis">
+          <div class="step-icon">○</div>
+          <div class="step-text">Generovanie</div>
+          <div class="step-timer"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  agentSubmit.disabled = true;
+
+  const toolsCollected = [];
+  let finalResponse = null;
+  let finalError = null;
+
+  try {
+    // Use streaming endpoint
+    const response = await fetch('/api/agent/analyze/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: query })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6));
+            handleStreamEvent(event, toolsCollected);
+
+            if (event.type === 'result') {
+              finalResponse = event;
+            } else if (event.type === 'error') {
+              finalError = event;
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE event:', line);
+          }
+        }
+      }
+    }
+
+    // Handle errors (result is rendered immediately via handleStreamEvent)
+    if (finalError && !finalResponse) {
+      agentResults.innerHTML = `
+        <div class="agent-response-actions">
+          <button class="back-to-tools" onclick="showAgentWelcome()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Späť na nástroje
+          </button>
+        </div>
+        <div class="agent-response">
+          <p style="color: #dc2626;">Chyba: ${finalError.message || finalError.content || 'Neznáma chyba'}</p>
+        </div>
+      `;
+    }
+  } catch (error) {
+    agentResults.innerHTML = `
+      <div class="agent-response-actions">
+        <button class="back-to-tools" onclick="showAgentWelcome()">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Späť na nástroje
+        </button>
+      </div>
+      <div class="agent-response">
+        <p style="color: #dc2626;">Chyba pri komunikácii so serverom: ${error.message}</p>
+      </div>
+    `;
+  }
+
+  agentSubmit.disabled = false;
+}
+
+// Track timing for each phase
+let phaseStartTime = null;
+let phaseTimerInterval = null;
+
+function updatePhaseTimer(stepElement) {
+  if (!phaseStartTime || !stepElement) return;
+  const elapsed = ((Date.now() - phaseStartTime) / 1000).toFixed(1);
+  const timerEl = stepElement.querySelector('.step-timer');
+  if (timerEl) {
+    timerEl.textContent = `${elapsed}s`;
+  }
+}
+
+function handleStreamEvent(event, toolsCollected) {
+  const stepPlanning = document.getElementById('step-planning');
+  const stepAiResponse = document.getElementById('step-ai-response');
+  const stepTools = document.getElementById('step-tools');
+  const stepSynthesis = document.getElementById('step-synthesis');
+  const toolsList = document.getElementById('tools-list');
+
+  // Helper to mark step as done
+  function markStepDone(step, duration) {
+    if (!step) return;
+    step.classList.remove('active');
+    step.classList.add('done');
+    step.querySelector('.step-icon').textContent = '✓';
+    if (duration !== undefined) {
+      step.querySelector('.step-timer').textContent = `${duration}s`;
+    }
+  }
+
+  // Helper to activate step
+  function activateStep(step) {
+    if (!step) return;
+    if (phaseTimerInterval) clearInterval(phaseTimerInterval);
+    phaseStartTime = Date.now();
+    step.classList.add('active');
+    step.querySelector('.step-icon').innerHTML = '<div class="spinner-small"></div>';
+    phaseTimerInterval = setInterval(() => updatePhaseTimer(step), 100);
+  }
+
+  switch (event.type) {
+    case 'status':
+      const phase = event.phase;
+      const status = event.status;
+
+      if (phase === 'planning') {
+        if (status === 'start') {
+          activateStep(stepPlanning);
+        } else if (status === 'complete') {
+          markStepDone(stepPlanning, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'ai_response') {
+        if (status === 'start') {
+          // Planning done (instant), AI response starts
+          markStepDone(stepPlanning, '0.1');
+          activateStep(stepAiResponse);
+        } else if (status === 'complete') {
+          markStepDone(stepAiResponse, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'executing') {
+        if (status === 'start') {
+          activateStep(stepTools);
+        } else if (status === 'complete') {
+          markStepDone(stepTools, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      } else if (phase === 'synthesizing') {
+        if (status === 'start') {
+          activateStep(stepSynthesis);
+        } else if (status === 'complete') {
+          markStepDone(stepSynthesis, event.duration || ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+        }
+      }
+      break;
+
+    case 'tool':
+      toolsCollected.push(event.tool);
+      if (toolsList) {
+        const toolSpan = document.createElement('span');
+        toolSpan.className = 'tool-badge';
+        toolSpan.textContent = event.tool;
+        toolsList.appendChild(toolSpan);
+      }
+      break;
+
+    case 'result':
+      // Stop timer
+      if (phaseTimerInterval) clearInterval(phaseTimerInterval);
+      // Mark synthesis done if not already
+      if (stepSynthesis && !stepSynthesis.classList.contains('done')) {
+        markStepDone(stepSynthesis, ((Date.now() - phaseStartTime) / 1000).toFixed(1));
+      }
+      // Render immediately - don't wait for stream to end
+      renderAgentResult(event, toolsCollected);
+      break;
+  }
+}
+
+function renderAgentResult(event, toolsCollected) {
+  const actionsHTML = `
+    <div class="agent-response-actions">
+      <button class="back-to-tools" onclick="showAgentWelcome()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Späť na nástroje
+      </button>
+    </div>
+  `;
+
+  const formattedResponse = formatAgentResponse(event.response || '');
+
+  agentResults.innerHTML = `
+    ${actionsHTML}
+    <div class="agent-response" id="agent-response-content">${formattedResponse}</div>
+  `;
+}
+
+function formatAgentResponse(text) {
+  console.log('[formatAgentResponse] Input:', text.substring(0, 200));
+
+  // First, convert markdown tables to HTML tables
+  text = convertMarkdownTables(text);
+  console.log('[formatAgentResponse] After table conversion:', text.substring(0, 200));
+
+  // Configure marked for clean rendering
+  marked.setOptions({
+    breaks: false,
+    gfm: true,
+    headerIds: false,
+    mangle: false
+  });
+
+  // Parse remaining markdown to HTML
+  let html = marked.parse(text);
+
+  // Post-process: style indicators and special characters
+  html = html
+    .replace(/([█]+)/g, '<span class="bar-filled">$1</span>')
+    .replace(/([░]+)/g, '<span class="bar-empty">$1</span>')
+    .replace(/(⚠[^<\n]*)/gi, '<span class="risk-text">$1</span>')
+    // Productivity indicators
+    .replace(/↑↑/g, '<span class="prod-up">↑↑</span>')
+    .replace(/↑/g, '<span class="prod-up">↑</span>')
+    .replace(/↓/g, '<span class="prod-down">↓</span>')
+    // Gap values
+    .replace(/\+(\d+\.?\d*)/g, '<span class="gap-positive">+$1</span>')
+    .replace(/-(\d+\.?\d*)/g, '<span class="gap-negative">-$1</span>');
+
+  return html;
+}
+
+function convertMarkdownTables(text) {
+  // Simple regex-based conversion for markdown tables
+  const tableRegex = /\|(.+)\|\n\|[\s:|-]+\|\n((?:\|.+\|\n?)+)/g;
+
+  return text.replace(tableRegex, (match, headerRow, bodyRows) => {
+    console.log('[convertMarkdownTables] Found table match');
+
+    // Parse header
+    const headers = headerRow.split('|').map(h => h.trim()).filter(h => h);
+    let html = '<table><thead><tr>';
+    headers.forEach(h => { html += `<th>${h}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    // Parse body rows
+    const rows = bodyRows.trim().split('\n');
+    rows.forEach(row => {
+      const cells = row.split('|').map(c => c.trim()).filter(c => c);
+      if (cells.length > 0) {
+        html += '<tr>';
+        cells.forEach(c => { html += `<td>${c}</td>`; });
+        html += '</tr>';
+      }
+    });
+
+    html += '</tbody></table>';
+    return html;
+  });
+}
+
+// Show agent welcome/tools showcase
+function showAgentWelcome() {
+  // Restore from stored HTML
+  agentResults.innerHTML = originalWelcomeHTML;
+
+  // Re-attach event listeners for the cloned elements (populate input only, no auto-submit)
+  document.querySelectorAll('.sample-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const query = btn.dataset.query;
+      if (query) {
+        agentInput.value = query;
+        agentInput.focus();
+      }
+    });
+  });
+
+  // Re-attach tools toggle
+  const newToolsToggle = document.getElementById('tools-toggle');
+  const newToolsExtra = document.getElementById('tools-extra');
+  if (newToolsToggle && newToolsExtra) {
+    newToolsToggle.addEventListener('click', () => {
+      newToolsToggle.classList.toggle('expanded');
+      newToolsExtra.classList.toggle('visible');
+      const span = newToolsToggle.querySelector('span');
+      if (newToolsExtra.classList.contains('visible')) {
+        span.textContent = 'Skryť ďalšie nástroje';
+      } else {
+        span.textContent = 'Zobraziť ďalšie nástroje (6)';
+      }
+    });
+  }
+}
+
+// ============================================
+// REVENUE TREND CHART
+// ============================================
+const trendMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+const trendMargin = { top: 20, right: 20, bottom: 30, left: 50 };
+const trendWidth = 580 - trendMargin.left - trendMargin.right;
+const trendHeight = 240 - trendMargin.top - trendMargin.bottom;
+
+function trendScaleX(month) {
+  return trendMargin.left + ((month - 1) / 11) * trendWidth;
+}
+
+function trendScaleY(value, minVal, maxVal) {
+  return trendMargin.top + trendHeight - ((value - minVal) / (maxVal - minVal)) * trendHeight;
+}
+
+function formatTrendCurrency(value) {
+  return new Intl.NumberFormat('sk-SK', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+function createTrendPath(data, minVal, maxVal) {
+  return data.map((d, i) => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minVal, maxVal);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+}
+
+function createTrendAreaPath(data, minVal, maxVal) {
+  const linePath = data.map((d, i) => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minVal, maxVal);
+    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
+
+  const lastX = trendScaleX(data[data.length - 1].month);
+  const firstX = trendScaleX(data[0].month);
+  const bottomY = trendMargin.top + trendHeight;
+
+  return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+}
+
+function renderTrendChart(revenueData, currentMonth, forecastData = []) {
+  const svg = document.getElementById('trend-chart');
+  const chartCard = document.getElementById('trend-chart-card');
+
+  if (!svg || !chartCard) return;
+
+  // Check if we have data
+  const hasData = revenueData && (revenueData[2019]?.length > 0 || revenueData[2020]?.length > 0 || revenueData[2021]?.length > 0);
+
+  if (!hasData) {
+    chartCard.style.display = 'none';
+    return;
+  }
+
+  chartCard.style.display = 'block';
+
+  // Find min/max values for scaling (including forecast)
+  const allValues = [...Object.values(revenueData).flat().map(d => d.revenue), ...forecastData.map(d => d.revenue)];
+  const minValue = Math.min(...allValues) * 0.9;
+  const maxValue = Math.max(...allValues) * 1.05;
+
+  let svgContent = '';
+
+  // Grid lines
+  const gridStep = (maxValue - minValue) / 4;
+  for (let i = 0; i <= 4; i++) {
+    const value = minValue + gridStep * i;
+    const y = trendScaleY(value, minValue, maxValue);
+    svgContent += `<line class="trend-grid-line" x1="${trendMargin.left}" y1="${y}" x2="${trendMargin.left + trendWidth}" y2="${y}" />`;
+    svgContent += `<text class="trend-axis-label trend-axis-label-value" x="${trendMargin.left - 8}" y="${y + 3}">${(value/1000).toFixed(0)}k</text>`;
+  }
+
+  // Month labels
+  trendMonthNames.forEach((name, i) => {
+    const x = trendScaleX(i + 1);
+    svgContent += `<text class="trend-axis-label trend-axis-label-month" x="${x}" y="${trendMargin.top + trendHeight + 18}">${name}</text>`;
+  });
+
+  // Areas (back to front)
+  if (revenueData[2019]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2019" d="${createTrendAreaPath(revenueData[2019], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2020]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2020" d="${createTrendAreaPath(revenueData[2020], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2021]?.length > 0) {
+    svgContent += `<path class="trend-area trend-area-2021" d="${createTrendAreaPath(revenueData[2021], minValue, maxValue)}" />`;
+  }
+
+  // Lines (back to front)
+  if (revenueData[2019]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2019" d="${createTrendPath(revenueData[2019], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2020]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2020" d="${createTrendPath(revenueData[2020], minValue, maxValue)}" />`;
+  }
+  if (revenueData[2021]?.length > 0) {
+    svgContent += `<path class="trend-line trend-line-2021" d="${createTrendPath(revenueData[2021], minValue, maxValue)}" />`;
+  }
+
+  // Forecast line (dashed, continuing from last 2021 data point)
+  if (forecastData.length > 0 && revenueData[2021]?.length > 0) {
+    const lastActual = revenueData[2021][revenueData[2021].length - 1];
+    const forecastWithConnection = [lastActual, ...forecastData];
+    const forecastLinePath = forecastWithConnection.map((d, i) => {
+      const x = trendScaleX(d.month);
+      const y = trendScaleY(d.revenue, minValue, maxValue);
+      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+    svgContent += `<path class="trend-line-forecast" d="${forecastLinePath}" />`;
+  }
+
+  // Current month marker on 2021 line
+  if (revenueData[2021]?.length > 0) {
+    const currentData = revenueData[2021].find(d => d.month === currentMonth);
+    if (currentData) {
+      const cx = trendScaleX(currentData.month);
+      const cy = trendScaleY(currentData.revenue, minValue, maxValue);
+      svgContent += `<g class="trend-current-marker" style="transform-origin: ${cx}px ${cy}px;">
+        <circle cx="${cx}" cy="${cy}" r="5" fill="var(--brand-green)" />
+        <circle cx="${cx}" cy="${cy}" r="3" fill="white" />
+      </g>`;
+    }
+  }
+
+  // Interactive hover points
+  Object.entries(revenueData).forEach(([year, data]) => {
+    data.forEach(d => {
+      const x = trendScaleX(d.month);
+      const y = trendScaleY(d.revenue, minValue, maxValue);
+      svgContent += `<circle
+        class="trend-hover-point"
+        cx="${x}"
+        cy="${y}"
+        r="12"
+        fill="transparent"
+        data-year="${year}"
+        data-month="${d.month}"
+        data-revenue="${d.revenue}"
+        style="cursor: pointer;"
+      />`;
+    });
+  });
+
+  // Forecast hover points
+  forecastData.forEach(d => {
+    const x = trendScaleX(d.month);
+    const y = trendScaleY(d.revenue, minValue, maxValue);
+    svgContent += `<circle
+      class="trend-hover-point"
+      cx="${x}"
+      cy="${y}"
+      r="12"
+      fill="transparent"
+      data-year="2021"
+      data-month="${d.month}"
+      data-revenue="${d.revenue}"
+      data-forecast="true"
+      style="cursor: pointer;"
+    />`;
+  });
+
+  svg.innerHTML = svgContent;
+
+  // Add hover interactions
+  const tooltip = document.getElementById('trend-tooltip');
+  const hoverPoints = svg.querySelectorAll('.trend-hover-point');
+
+  hoverPoints.forEach(point => {
+    point.addEventListener('mouseenter', (e) => {
+      const year = e.target.getAttribute('data-year');
+      const month = parseInt(e.target.getAttribute('data-month'));
+      const revenue = parseFloat(e.target.getAttribute('data-revenue'));
+      const isForecast = e.target.getAttribute('data-forecast') === 'true';
+
+      const label = isForecast ? `${trendMonthNames[month - 1]} ${year} (prognóza)` : `${trendMonthNames[month - 1]} ${year}`;
+      tooltip.innerHTML = `${label}: ${formatTrendCurrency(revenue)}`;
+      tooltip.style.opacity = '1';
+
+      const rect = svg.getBoundingClientRect();
+      const x = parseFloat(e.target.getAttribute('cx'));
+      const y = parseFloat(e.target.getAttribute('cy'));
+
+      const tooltipX = (x / 580) * rect.width;
+      const tooltipY = (y / 240) * rect.height;
+
+      tooltip.style.left = `${tooltipX}px`;
+      tooltip.style.top = `${tooltipY - 35}px`;
+      tooltip.style.transform = 'translateX(-50%)';
+    });
+
+    point.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+  });
+}
+
+function updateTrendYoY(yoy2020, yoy2021) {
+  const el2020 = document.getElementById('trend-yoy-2020');
+  const el2021 = document.getElementById('trend-yoy-2021');
+
+  if (el2020) {
+    if (yoy2020 !== null && !isNaN(yoy2020)) {
+      el2020.textContent = (yoy2020 >= 0 ? '+' : '') + yoy2020.toFixed(1) + '%';
+      el2020.classList.toggle('positive', yoy2020 >= 0);
+      el2020.classList.toggle('negative', yoy2020 < 0);
+    } else {
+      el2020.textContent = '-';
+      el2020.classList.remove('positive', 'negative');
+    }
+  }
+
+  if (el2021) {
+    if (yoy2021 !== null && !isNaN(yoy2021)) {
+      el2021.textContent = (yoy2021 >= 0 ? '+' : '') + yoy2021.toFixed(1) + '%';
+      el2021.classList.toggle('positive', yoy2021 >= 0);
+      el2021.classList.toggle('negative', yoy2021 < 0);
+    } else {
+      el2021.textContent = '-';
+      el2021.classList.remove('positive', 'negative');
+    }
+  }
+}
+
+async function loadTrendChart(pharmacyId) {
+  try {
+    const response = await fetch(`/api/pharmacy/${pharmacyId}/revenue`);
+    if (!response.ok) {
+      document.getElementById('trend-chart-card').style.display = 'none';
+      return;
+    }
+
+    const data = await response.json();
+
+    // Update YoY values
+    updateTrendYoY(data.yoy_growth_2020, data.yoy_growth_2021);
+
+    // Render chart with forecast
+    renderTrendChart(data.monthly, data.current_month || 8, data.forecast || []);
+
+  } catch (error) {
+    console.error('Error loading trend chart:', error);
+    document.getElementById('trend-chart-card').style.display = 'none';
+  }
+}
+
+// ============================================
+// ROZVRH TAB - Schedule with Kahneman Principles
+// ============================================
+let rozvrhDataLoaded = false;
+
+// Static demo data (from utilization.html)
+const rozvrhMonthlyLoss = {
+  'Po': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 364, 17: 463, 18: 134, 19: 0},
+  'Ut': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 160, 17: 234, 18: 173, 19: 0},
+  'St': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 255, 17: 251, 18: 0, 19: 0},
+  'Št': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 225, 17: 394, 18: 0, 19: 0},
+  'Pi': {8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 372, 17: 372, 18: 234, 19: 0},
+  'So': {8: 0, 9: 355, 10: 662, 11: 615, 12: 165, 13: 0, 14: 0, 15: 0, 16: 169, 17: 204, 18: 264, 19: 0},
+  'Ne': {8: 0, 9: 238, 10: 394, 11: 277, 12: 121, 13: 152, 14: 247, 15: 156, 16: 178, 17: 0, 18: 143, 19: 0}
+};
+
+const rozvrhWeeklyStaff = {
+  'Po': {8: 3.9, 9: 3.9, 10: 4.1, 11: 4.0, 12: 4.0, 13: 3.9, 14: 4.0, 15: 3.9, 16: 3.1, 17: 3.0, 18: 3.0, 19: 2.7},
+  'Ut': {8: 4.4, 9: 4.4, 10: 4.2, 11: 3.8, 12: 4.2, 13: 4.3, 14: 4.2, 15: 4.0, 16: 3.5, 17: 3.0, 18: 3.0, 19: 2.8},
+  'St': {8: 4.4, 9: 4.2, 10: 4.4, 11: 4.4, 12: 4.0, 13: 4.0, 14: 3.6, 15: 4.2, 16: 3.2, 17: 3.0, 18: 3.0, 19: 3.0},
+  'Št': {8: 4.6, 9: 4.4, 10: 4.6, 11: 4.4, 12: 4.1, 13: 4.1, 14: 4.1, 15: 4.1, 16: 3.3, 17: 3.0, 18: 3.0, 19: 2.9},
+  'Pi': {8: 4.3, 9: 4.1, 10: 4.4, 11: 4.4, 12: 4.4, 13: 4.1, 14: 4.1, 15: 4.4, 16: 3.4, 17: 3.0, 18: 3.0, 19: 3.0},
+  'So': {8: 3.0, 9: 3.0, 10: 3.0, 11: 3.0, 12: 3.0, 13: 3.0, 14: 3.0, 15: 2.9, 16: 2.1, 17: 2.0, 18: 2.0, 19: 2.0},
+  'Ne': {8: 2.0, 9: 2.0, 10: 2.0, 11: 2.0, 12: 2.0, 13: 2.0, 14: 2.0, 15: 2.0, 16: 2.0, 17: 2.0, 18: 2.0, 19: 2.0}
+};
+
+const rozvrhDays = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+const rozvrhHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+function getRozvrhLossClass(loss) {
+  // Simplified: only ok or loss (single red shade)
+  return loss === 0 ? 'loss-0' : 'loss-active';
+}
+
+function loadRozvrhData() {
+  const loadingEl = document.getElementById('rozvrh-loading');
+  const contentEl = document.getElementById('rozvrh-content');
+
+  loadingEl.style.display = 'flex';
+  contentEl.style.display = 'none';
+
+  // Simulate brief loading for effect
+  setTimeout(() => {
+    buildScheduleHeatmap();
+
+    // Calculate total loss
+    let totalLoss = 0;
+    rozvrhDays.forEach(day => {
+      rozvrhHours.forEach(hour => {
+        totalLoss += rozvrhMonthlyLoss[day][hour];
+      });
+    });
+
+    // Animate the hero value
+    animateScheduleHeroValue(totalLoss);
+
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+    rozvrhDataLoaded = true;
+  }, 600);
+}
+
+function buildScheduleHeatmap() {
+  const heatmap = document.getElementById('schedule-heatmap');
+
+  rozvrhDays.forEach(day => {
+    // Row label
+    const label = document.createElement('div');
+    label.className = 'schedule-heatmap-day';
+    label.textContent = day;
+    heatmap.appendChild(label);
+
+    // Cells for each hour - only show loss amount, hide FTE
+    rozvrhHours.forEach(hour => {
+      const loss = rozvrhMonthlyLoss[day][hour];
+      const staff = rozvrhWeeklyStaff[day][hour];
+
+      const cell = document.createElement('div');
+      cell.className = 'schedule-heatmap-cell ' + getRozvrhLossClass(loss);
+
+      // Only show opportunity value, no FTE
+      if (loss > 0) {
+        cell.innerHTML = `<span class="cell-value">+${loss}€</span>`;
+      }
+
+      cell.dataset.day = day;
+      cell.dataset.hour = hour;
+      cell.dataset.loss = loss;
+      cell.dataset.staff = staff;
+
+      heatmap.appendChild(cell);
+    });
+  });
+}
+
+function animateScheduleHeroValue(targetValue) {
+  const el = document.getElementById('schedule-total-loss');
+  const duration = 1500;
+  const start = performance.now();
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(targetValue * eased);
+
+    el.textContent = '+' + current.toLocaleString('sk-SK') + ' €';
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+// ============================================
+// PRODUCTION VISION TAB - Simulation
+// ============================================
+function simulateAutopilot() {
+  const btn = event.target.closest('.btn-simulate');
+  if (btn.disabled) return;
+
+  btn.disabled = true;
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+      <path d="M21 12a9 9 0 11-6.219-8.56"/>
+    </svg>
+    Simulujem...
+  `;
+
+  // Add spin animation
+  const style = document.createElement('style');
+  style.textContent = `
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  `;
+  document.head.appendChild(style);
+
+  // Simulate workflow progression
+  const stages = document.querySelectorAll('#tab-vision .workflow-stage');
+  const scheduleItems = document.querySelectorAll('#tab-vision .schedule-item');
+  // Items: 0-2 = Import (completed), 3-5 = Analysis (3=running, 4-5=pending), 6-8 = Reports (pending)
+
+  let step = 0;
+  const interval = setInterval(() => {
+    step++;
+
+    if (step === 1) {
+      // Complete first analysis task (index 3)
+      if (scheduleItems[3]) {
+        const status = scheduleItems[3].querySelector('.schedule-item-status');
+        status.classList.remove('running');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[3].querySelector('.schedule-item-time').textContent = '06:07';
+      }
+    }
+
+    if (step === 2) {
+      // Complete second analysis task (index 4)
+      if (scheduleItems[4]) {
+        const status = scheduleItems[4].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[4].querySelector('.schedule-item-time').textContent = '06:09';
+      }
+      // Move workflow to next stage
+      if (stages[1]) {
+        stages[1].classList.remove('active');
+        stages[1].classList.add('completed');
+      }
+      if (stages[2]) {
+        stages[2].classList.add('active');
+      }
+    }
+
+    if (step === 3) {
+      // Complete third analysis task (index 5)
+      if (scheduleItems[5]) {
+        const status = scheduleItems[5].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[5].querySelector('.schedule-item-time').textContent = '06:11';
+      }
+    }
+
+    if (step === 4) {
+      // Complete first report task (index 6)
+      if (scheduleItems[6]) {
+        const status = scheduleItems[6].querySelector('.schedule-item-status');
+        status.classList.remove('pending');
+        status.classList.add('completed');
+        status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        scheduleItems[6].querySelector('.schedule-item-time').textContent = '06:13';
+      }
+
+      // Update stats
+      const statValues = document.querySelectorAll('#tab-vision .workflow-stat-value');
+      if (statValues[0]) statValues[0].textContent = '4,231';
+      if (statValues[1]) statValues[1].textContent = '96%';
+      if (statValues[2]) statValues[2].textContent = '$0.06';
+    }
+
+    if (step === 5) {
+      // Complete remaining report tasks (indices 7, 8)
+      [7, 8].forEach((idx, i) => {
+        if (scheduleItems[idx]) {
+          const status = scheduleItems[idx].querySelector('.schedule-item-status');
+          status.classList.remove('pending');
+          status.classList.add('completed');
+          status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+          scheduleItems[idx].querySelector('.schedule-item-time').textContent = i === 0 ? '06:14' : '06:15';
+        }
+      });
+
+      // Complete workflow
+      if (stages[2]) {
+        stages[2].classList.remove('active');
+        stages[2].classList.add('completed');
+      }
+
+      // Show success toast
+      showToast('Mesačný cyklus dokončený za 15 minút! Všetky úlohy spracované.', 'success', 5000);
+
+      clearInterval(interval);
+
+      // Reset button
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Resetovať
+      `;
+
+      // Change button to reset
+      btn.onclick = resetAutopilot;
+    }
+  }, 600);
+}
+
+function resetAutopilot() {
+  const stages = document.querySelectorAll('#tab-vision .workflow-stage');
+  const scheduleItems = document.querySelectorAll('#tab-vision .schedule-item');
+
+  // Reset workflow stages
+  stages.forEach((stage, i) => {
+    stage.classList.remove('completed', 'active');
+    if (i === 0) stage.classList.add('completed');
+    if (i === 1) stage.classList.add('active');
+  });
+
+  // Reset analysis items (indices 3, 4, 5)
+  const analysisDefaults = [
+    { time: 'prebieha', status: 'running', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>` },
+    { time: '06:08', status: 'pending', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>` },
+    { time: '06:10', status: 'pending', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>` }
+  ];
+
+  [3, 4, 5].forEach((idx, i) => {
+    if (scheduleItems[idx]) {
+      const status = scheduleItems[idx].querySelector('.schedule-item-status');
+      status.classList.remove('completed');
+      status.classList.add(analysisDefaults[i].status);
+      status.innerHTML = analysisDefaults[i].icon;
+      scheduleItems[idx].querySelector('.schedule-item-time').textContent = analysisDefaults[i].time;
+    }
+  });
+
+  // Reset report items (indices 6, 7, 8)
+  const reportDefaults = ['06:12', '06:14', '06:15'];
+  [6, 7, 8].forEach((idx, i) => {
+    if (scheduleItems[idx]) {
+      const status = scheduleItems[idx].querySelector('.schedule-item-status');
+      status.classList.remove('completed');
+      status.classList.add('pending');
+      status.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>`;
+      scheduleItems[idx].querySelector('.schedule-item-time').textContent = reportDefaults[i];
+    }
+  });
+
+  // Reset stats
+  const statValues = document.querySelectorAll('#tab-vision .workflow-stat-value');
+  if (statValues[0]) statValues[0].textContent = '2,847';
+  if (statValues[1]) statValues[1].textContent = '92%';
+  if (statValues[2]) statValues[2].textContent = '$0.04';
+
+  // Reset button
+  const btn = event.target.closest('.btn-simulate');
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+    Simulovať
+  `;
+  btn.onclick = simulateAutopilot;
+
+  showToast('Simulácia resetovaná', 'info', 2000);
+}
+</script>
+
+<footer style="
+  text-align: center;
+  padding: 24px 16px;
+  margin-top: 40px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+">
+  Inteligentný FTE Manažment v5.1
+</footer>
+</body>
+</html>

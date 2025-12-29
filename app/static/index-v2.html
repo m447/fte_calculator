@@ -255,6 +255,31 @@ body {
   animation: fadeInUp 0.4s ease-out 4.8s forwards;
 }
 
+.intro-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  animation: fadeInUp 0.4s ease 1s forwards;
+}
+
+.intro-skip:hover {
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  border-color: var(--border-light);
+}
+
 /* ============================================
    HEADER
    ============================================ */
@@ -297,6 +322,18 @@ h1 {
   font-size: 0.95rem;
   margin: 0;
   font-weight: 400;
+}
+
+.data-period-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: var(--accent-warm-light);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--accent-warm);
+  font-weight: 600;
 }
 
 /* ============================================
@@ -5819,6 +5856,12 @@ input:checked + .toggle-slider:before {
 <body>
 <!-- INTRO OVERLAY -->
 <div class="intro-overlay" id="intro-overlay">
+  <button class="intro-skip" onclick="dismissIntro()">
+    Preskočiť
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+      <path d="M5 12h14M12 5l7 7-7 7"/>
+    </svg>
+  </button>
   <div class="intro-content">
     <!-- PHASE 1: The Dramatic Question -->
     <div class="intro-question" id="intro-question">
@@ -5877,6 +5920,7 @@ input:checked + .toggle-slider:before {
   <div class="header animate-in">
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> Inteligentný FTE Manažment</h1>
     <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast</p>
+    <span class="data-period-badge">Dáta: 2019-2021 | Retrospektívna validácia</span>
     <button onclick="document.getElementById('about-modal').style.display='flex'" style="
       position: absolute;
       top: 12px;
@@ -7748,13 +7792,13 @@ function dismissIntro() {
     setTimeout(() => input.classList.remove('ready'), 2000);
   }, 500);
 
-  // Remember user has seen intro (session only)
-  sessionStorage.setItem('introSeen', 'true');
+  // Remember user has seen intro (persistent)
+  localStorage.setItem('introSeen', 'true');
 }
 
-// Check if user has already seen intro this session
+// Check if user has already seen intro
 window.addEventListener('load', () => {
-  if (sessionStorage.getItem('introSeen')) {
+  if (localStorage.getItem('introSeen')) {
     const intro = document.getElementById('intro-overlay');
     intro.style.display = 'none';
     // Focus on pharmacy ID input

@@ -5090,6 +5090,67 @@ input:checked + .toggle-slider:before {
   border-top: 5px solid var(--text-primary);
 }
 
+/* Bloomberg-style crosshair */
+.trend-crosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3, 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+
+.trend-crosshair.active {
+  opacity: 1;
+}
+
+.trend-crosshair-tooltip {
+  position: absolute;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  min-width: 120px;
+}
+
+.trend-crosshair-tooltip.active {
+  opacity: 1;
+}
+
+.trend-crosshair-tooltip .month-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.trend-crosshair-tooltip .year-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.trend-crosshair-tooltip .year-label {
+  color: var(--text-muted);
+}
+
+.trend-crosshair-tooltip .year-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-crosshair-tooltip .year-2019 { color: #94a3b8; }
+.trend-crosshair-tooltip .year-2020 { color: #fb923c; }
+.trend-crosshair-tooltip .year-2021 { color: var(--brand-green); }
+
 /* No data state */
 .trend-no-data {
   display: flex;
@@ -5101,111 +5162,8 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================
-   PRODUCTION VISION TAB - Future Showcase
+   FTE MANAGEMENT AUTOMATION TAB
    ============================================ */
-
-/* Tab button special styling */
-.tab-btn.vision-tab {
-  background: linear-gradient(135deg, rgba(120, 190, 32, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%);
-  position: relative;
-}
-
-.tab-btn.vision-tab::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  background: var(--accent-warm);
-  border-radius: 50%;
-  animation: visionPulse 2s ease-in-out infinite;
-}
-
-@keyframes visionPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-
-.tab-btn.vision-tab .tab-icon {
-  color: var(--accent-warm);
-  opacity: 0.9;
-}
-
-.tab-btn.vision-tab:hover {
-  background: linear-gradient(135deg, rgba(120, 190, 32, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
-}
-
-.tab-btn.vision-tab.active {
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--accent-warm) 100%);
-}
-
-.tab-btn.vision-tab.active::after {
-  display: none;
-}
-
-.tab-btn.vision-tab.active .tab-icon {
-  color: white;
-}
-
-/* Vision Tab Header */
-.vision-header {
-  text-align: center;
-  padding: 24px 20px 32px;
-  background: linear-gradient(135deg, rgba(120, 190, 32, 0.06) 0%, rgba(245, 158, 11, 0.06) 100%);
-  border-radius: 20px;
-  margin-bottom: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.vision-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(circle at 20% 80%, rgba(120, 190, 32, 0.1) 0%, transparent 40%),
-    radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 40%);
-  pointer-events: none;
-}
-
-.vision-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, var(--brand-green) 0%, var(--accent-warm) 100%);
-  color: white;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  border-radius: 20px;
-  margin-bottom: 12px;
-}
-
-.vision-badge svg {
-  width: 12px;
-  height: 12px;
-}
-
-.vision-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 8px;
-  letter-spacing: -0.02em;
-}
-
-.vision-subtitle {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
-}
 
 /* Autopilot Panel */
 .autopilot-card {
@@ -6014,10 +5972,10 @@ input:checked + .toggle-slider:before {
         <line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
     </button>
-    <button class="tab-btn vision-tab" data-tab="vision" title="Produkčná Vízia">
+    <button class="tab-btn" data-tab="vision" title="FTE Management Automation">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/>
-        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
   </div>
@@ -6345,6 +6303,7 @@ input:checked + .toggle-slider:before {
           <svg class="trend-chart-svg" id="trend-chart" viewBox="0 0 580 240" preserveAspectRatio="xMidYMid meet">
           </svg>
           <div class="trend-tooltip" id="trend-tooltip"></div>
+          <div class="trend-crosshair-tooltip" id="trend-crosshair-tooltip"></div>
         </div>
       </div>
 
@@ -6904,20 +6863,8 @@ input:checked + .toggle-slider:before {
   </div>
   <!-- END ROZVRH TAB -->
 
-  <!-- PRODUCTION VISION TAB -->
+  <!-- FTE MANAGEMENT AUTOMATION TAB -->
   <div id="tab-vision" class="tab-content">
-
-    <!-- Vision Header -->
-    <div class="vision-header">
-      <div class="vision-badge">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-        </svg>
-        Produkčná Vízia
-      </div>
-      <h2 class="vision-title">Inteligentný FTE Manažment</h2>
-      <p class="vision-subtitle">Takto by vyzeral plne automatizovaný systém<br>pre správu personálneho obsadenia</p>
-    </div>
 
     <!-- Autopilot Panel -->
     <div class="autopilot-card">
@@ -7270,20 +7217,6 @@ input:checked + .toggle-slider:before {
         </div>
       </div>
 
-      <div class="integrations-legend">
-        <div class="legend-item">
-          <span class="legend-dot ready"></span>
-          <span>Pripravené</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-dot planned"></span>
-          <span>Plánované</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-dot future"></span>
-          <span>Budúce</span>
-        </div>
-      </div>
     </div>
 
     <!-- CTA -->
@@ -9672,9 +9605,17 @@ function renderTrendChart(revenueData, currentMonth, forecastData = []) {
     />`;
   });
 
+  // Add crosshair line
+  svgContent += `<line class="trend-crosshair" id="trend-crosshair-line" x1="0" y1="${trendMargin.top}" x2="0" y2="${trendMargin.top + trendHeight}" />`;
+
   svg.innerHTML = svgContent;
 
-  // Add hover interactions
+  // Store data for crosshair access
+  svg._revenueData = revenueData;
+  svg._minValue = minValue;
+  svg._maxValue = maxValue;
+
+  // Add hover interactions for individual points
   const tooltip = document.getElementById('trend-tooltip');
   const hoverPoints = svg.querySelectorAll('.trend-hover-point');
 
@@ -9704,6 +9645,62 @@ function renderTrendChart(revenueData, currentMonth, forecastData = []) {
     point.addEventListener('mouseleave', () => {
       tooltip.style.opacity = '0';
     });
+  });
+
+  // Bloomberg-style crosshair interaction
+  const crosshairLine = document.getElementById('trend-crosshair-line');
+  const crosshairTooltip = document.getElementById('trend-crosshair-tooltip');
+
+  svg.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * 580;
+
+    // Only show crosshair within chart area
+    if (svgX < trendMargin.left || svgX > trendMargin.left + trendWidth) {
+      crosshairLine.classList.remove('active');
+      crosshairTooltip.classList.remove('active');
+      return;
+    }
+
+    // Calculate nearest month (1-12)
+    const monthFloat = ((svgX - trendMargin.left) / trendWidth) * 11 + 1;
+    const month = Math.round(monthFloat);
+    const snappedX = trendScaleX(month);
+
+    // Update crosshair line position
+    crosshairLine.setAttribute('x1', snappedX);
+    crosshairLine.setAttribute('x2', snappedX);
+    crosshairLine.classList.add('active');
+
+    // Build tooltip content
+    let tooltipHTML = `<div class="month-label">${trendMonthNames[month - 1]}</div>`;
+    const data = svg._revenueData;
+
+    [2021, 2020, 2019].forEach(year => {
+      if (data[year]) {
+        const monthData = data[year].find(d => d.month === month);
+        if (monthData) {
+          tooltipHTML += `<div class="year-row">
+            <span class="year-label year-${year}">${year}</span>
+            <span class="year-value year-${year}">${formatTrendCurrency(monthData.revenue)}</span>
+          </div>`;
+        }
+      }
+    });
+
+    crosshairTooltip.innerHTML = tooltipHTML;
+    crosshairTooltip.classList.add('active');
+
+    // Position tooltip
+    const tooltipX = (snappedX / 580) * rect.width;
+    crosshairTooltip.style.left = `${tooltipX}px`;
+    crosshairTooltip.style.top = '5px';
+    crosshairTooltip.style.transform = 'translateX(-50%)';
+  });
+
+  svg.addEventListener('mouseleave', () => {
+    crosshairLine.classList.remove('active');
+    crosshairTooltip.classList.remove('active');
   });
 }
 

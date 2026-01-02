@@ -53,8 +53,12 @@ GROSS_CONVERSION_DEFAULT = {'F': 1.21, 'L': 1.22, 'ZF': 1.20}
 # FTE gap thresholds - defines what counts as "notable" vs "significant" gaps
 FTE_GAP_NOTABLE = 0.05    # Threshold for counting as understaffed/overstaffed (~1.5 hrs/week)
 FTE_GAP_URGENT = 0.05     # Threshold for urgent priority (with productivity check)
-FTE_GAP_OPTIMIZE = 0.7    # Threshold for optimize priority (overstaffed)
+FTE_GAP_OPTIMIZE = 0.2    # Threshold for optimize priority (overstaffed)
 FTE_GAP_OUTLIER = 1.0     # Threshold for significant outliers
+
+# Small pharmacy threshold - pharmacies below this may have false positive revenue at risk
+# Small pharmacies (especially without laborants) can legitimately operate leaner
+SMALL_PHARMACY_FTE = 2.5  # NET FTE threshold for "small pharmacy" flag
 
 # ============================================================
 # MODEL & DATA LOADING
@@ -499,6 +503,10 @@ def prepare_fte_dataframe(df, include_revenue_at_risk=True):
             ),
             axis=1
         )
+
+    # 7. Small pharmacy flag - potential false positive for revenue at risk
+    # Small pharmacies without laborants can legitimately operate leaner
+    df_calc['is_small_pharmacy'] = (df_calc['fte'] <= SMALL_PHARMACY_FTE) & (df_calc['fte_L'] == 0)
 
     return df_calc
 

@@ -1,5 +1,7 @@
 # FTE Calculator & Prediction Model
 
+https://fte-calc-638044991573.europe-west1.run.app/
+
 Machine learning model to predict optimal Full-Time Equivalent (FTE) staffing for pharmacies based on operational characteristics.
 
 > **Author:** Marian Svatko ([marian.svatko@gmail.com](mailto:marian.svatko@gmail.com))

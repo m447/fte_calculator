@@ -2666,11 +2666,16 @@ input:checked + .toggle-slider:before {
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
-  animation: heroStatEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
   box-shadow:
     0 0 0 1px rgba(220, 38, 38, 0.1),
     0 8px 32px rgba(220, 38, 38, 0.12),
     inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.hero-stat.animate {
+  animation: heroStatEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes heroStatEntrance {
@@ -2724,6 +2729,9 @@ input:checked + .toggle-slider:before {
   justify-content: center;
   gap: 8px;
   opacity: 0;
+}
+
+.hero-stat.animate .hero-stat-label {
   animation: heroLabelReveal 0.4s ease-out 0.2s forwards;
 }
 
@@ -2753,8 +2761,11 @@ input:checked + .toggle-slider:before {
   line-height: 1;
   letter-spacing: -0.02em;
   opacity: 0;
-  animation: heroValueDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
   text-shadow: 0 2px 12px rgba(220, 38, 38, 0.2);
+}
+
+.hero-stat.animate .hero-stat-value {
+  animation: heroValueDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
 }
 
 @keyframes heroValueDrop {
@@ -2783,8 +2794,11 @@ input:checked + .toggle-slider:before {
   color: #b91c1c;
   margin-top: 10px;
   opacity: 0;
-  animation: heroDetailFade 0.4s ease-out 0.7s forwards;
   font-weight: 500;
+}
+
+.hero-stat.animate .hero-stat-detail {
+  animation: heroDetailFade 0.4s ease-out 0.7s forwards;
 }
 
 @keyframes heroDetailFade {
@@ -3286,6 +3300,21 @@ input:checked + .toggle-slider:before {
   width: 16px;
   height: 16px;
   background: #0ea5e9;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
+/* Small pharmacy badge - potential false positive for revenue at risk */
+.small-pharmacy-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: #f59e0b;
   color: white;
   font-size: 0.6rem;
   font-weight: 700;
@@ -5061,33 +5090,9 @@ input:checked + .toggle-slider:before {
   color: #dc2626;
 }
 
-/* Tooltip */
+/* Tooltip - hidden, using crosshair tooltip instead */
 .trend-tooltip {
-  position: absolute;
-  background: var(--text-primary);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-  white-space: nowrap;
-  z-index: 10;
-}
-
-.trend-tooltip::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid var(--text-primary);
+  display: none;
 }
 
 /* Bloomberg-style crosshair */
@@ -5106,50 +5111,23 @@ input:checked + .toggle-slider:before {
 
 .trend-crosshair-tooltip {
   position: absolute;
-  background: white;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border-light);
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 0.75rem;
-  box-shadow: var(--shadow-md);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s ease;
   z-index: 20;
-  min-width: 120px;
+  white-space: nowrap;
 }
 
 .trend-crosshair-tooltip.active {
   opacity: 1;
 }
-
-.trend-crosshair-tooltip .month-label {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.trend-crosshair-tooltip .year-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 4px;
-}
-
-.trend-crosshair-tooltip .year-label {
-  color: var(--text-muted);
-}
-
-.trend-crosshair-tooltip .year-value {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.trend-crosshair-tooltip .year-2019 { color: #94a3b8; }
-.trend-crosshair-tooltip .year-2020 { color: #fb923c; }
-.trend-crosshair-tooltip .year-2021 { color: var(--brand-green); }
 
 /* No data state */
 .trend-no-data {
@@ -5204,6 +5182,16 @@ input:checked + .toggle-slider:before {
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
+}
+
+.autopilot-frequency {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-left: 10px;
 }
 
 .autopilot-status {
@@ -5582,6 +5570,49 @@ input:checked + .toggle-slider:before {
   margin-top: 2px;
 }
 
+/* Automation Benefits - Hero Section */
+.automation-benefits {
+  background: linear-gradient(135deg, var(--brand-green-light) 0%, #e8f5e0 100%);
+  border: 1px solid var(--brand-green);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+
+.automation-benefits-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--brand-green-dark);
+  margin: 0 0 16px 0;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.automation-benefits-stats {
+  display: flex;
+  justify-content: space-around;
+}
+
+.benefit-stat {
+  text-align: center;
+  padding: 0 16px;
+}
+
+.benefit-stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--brand-green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.benefit-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .feedback-tip {
   margin-top: 14px;
   padding: 12px 14px;
@@ -5782,21 +5813,32 @@ input:checked + .toggle-slider:before {
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: transparent;
-  border: 1px solid var(--border-medium);
+  background: var(--brand-green-light);
+  border: 1px solid var(--brand-green);
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--brand-green-dark);
   cursor: pointer;
   transition: all 0.2s ease;
   margin-left: auto;
+  animation: pulse-invite 2s ease-in-out infinite;
+}
+
+@keyframes pulse-invite {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(120, 190, 32, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(120, 190, 32, 0);
+  }
 }
 
 .btn-simulate:hover {
-  background: var(--brand-green-light);
-  border-color: var(--brand-green);
-  color: var(--brand-green-dark);
+  background: var(--brand-green);
+  border-color: var(--brand-green-dark);
+  color: white;
+  animation: none;
 }
 
 .btn-simulate svg {
@@ -6866,6 +6908,25 @@ input:checked + .toggle-slider:before {
   <!-- FTE MANAGEMENT AUTOMATION TAB -->
   <div id="tab-vision" class="tab-content">
 
+    <!-- Benefits Summary -->
+    <div class="automation-benefits">
+      <h3 class="automation-benefits-title">Prínosy automatizácie</h3>
+      <div class="automation-benefits-stats">
+        <div class="benefit-stat">
+          <div class="benefit-stat-value">1-5%</div>
+          <div class="benefit-stat-label">Ohrozené tržby</div>
+        </div>
+        <div class="benefit-stat">
+          <div class="benefit-stat-value">min. 3.7M€</div>
+          <div class="benefit-stat-label">Ročne</div>
+        </div>
+        <div class="benefit-stat">
+          <div class="benefit-stat-value">90 dní</div>
+          <div class="benefit-stat-label">Vyhodnotenie</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Autopilot Panel -->
     <div class="autopilot-card">
       <div class="autopilot-header">
@@ -6875,7 +6936,7 @@ input:checked + .toggle-slider:before {
             <polyline points="12 6 12 12 16 14"/>
           </svg>
         </div>
-        <h3 class="autopilot-title">Autopilot Režim</h3>
+        <h3 class="autopilot-title">Mesačný Autopilot Režim</h3>
         <div class="autopilot-status">
           <span class="autopilot-status-dot"></span>
           Aktívny
@@ -7111,22 +7172,6 @@ input:checked + .toggle-slider:before {
             <div class="cycle-step-title">Spätná väzba</div>
             <div class="cycle-step-desc">Zlepšenie modelu → presnejšie predikcie</div>
           </div>
-        </div>
-      </div>
-
-      <!-- Summary Stats -->
-      <div class="feedback-cycle-stats">
-        <div class="feedback-stat">
-          <div class="feedback-stat-value">1-5%</div>
-          <div class="feedback-stat-label">Ohrozené tržby</div>
-        </div>
-        <div class="feedback-stat">
-          <div class="feedback-stat-value">min. 3.7M€</div>
-          <div class="feedback-stat-label">Ročne</div>
-        </div>
-        <div class="feedback-stat">
-          <div class="feedback-stat-value">90 dní</div>
-          <div class="feedback-stat-label">Vyhodnotenie</div>
         </div>
       </div>
 
@@ -8128,6 +8173,12 @@ async function loadNetworkData() {
     document.getElementById('network-loading').style.display = 'none';
     document.getElementById('network-content').style.display = 'block';
 
+    // Trigger hero animation
+    const heroStat = document.getElementById('hero-revenue');
+    if (heroStat) {
+      heroStat.classList.add('animate');
+    }
+
     networkDataLoaded = true;
 
   } catch (error) {
@@ -8165,6 +8216,7 @@ function renderPriorityList(type, items) {
     const pData = encodeURIComponent(JSON.stringify(p));
     const rank = index + 1;
     const hospitalBadge = p.hospital_supply ? '<span class="hospital-badge" title="Zásobuje nemocnicu">H</span>' : '';
+    const smallPharmacyBadge = p.is_small_pharmacy ? '<span class="small-pharmacy-badge" title="Malá lekáreň bez laborantov - overiť manuálne">M</span>' : '';
 
     let valueHtml = '';
     let subtitleHtml = '';
@@ -8176,7 +8228,8 @@ function renderPriorityList(type, items) {
         ? `${Math.round(revenueAtRisk / 1000)}K`
         : Math.round(revenueAtRisk).toString();
       valueHtml = `<span class="priority-item-value urgent">-${revenueText}</span>`;
-      subtitleHtml = `<span class="priority-item-subtitle">Chýba ${Math.abs(p.diff).toFixed(1)} FTE | Prod. +${p.prod_pct || 0}%</span>`;
+      const smallPharmacyNote = p.is_small_pharmacy ? ' | <span style="color:#f59e0b">Overiť</span>' : '';
+      subtitleHtml = `<span class="priority-item-subtitle">Chýba ${Math.abs(p.diff).toFixed(1)} FTE | Prod. +${p.prod_pct || 0}%${smallPharmacyNote}</span>`;
     } else if (type === 'optimize') {
       // Overstaffed - show excess FTE
       const excess = Math.abs(p.diff || 0);
@@ -8198,7 +8251,7 @@ function renderPriorityList(type, items) {
           <div class="priority-item-name">
             ${p.id} - ${p.mesto}
             <span class="priority-item-id">${shortType}</span>
-            ${hospitalBadge}
+            ${hospitalBadge}${smallPharmacyBadge}
           </div>
           ${subtitleHtml}
         </div>
@@ -8267,8 +8320,8 @@ function exportCSV(type) {
   const configs = {
     urgent: {
       filename: 'revenue_at_risk.csv',
-      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Gap FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Ohrozené tržby (EUR)', 'Trend %'],
-      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, p.diff?.toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, Math.round(p.revenue_at_risk || 0), p.bloky_trend]
+      headers: ['ID', 'Mesto', 'Typ', 'Skutočné FTE', 'Odporúčané FTE', 'Gap FTE', 'Bloky', 'Tržby (EUR)', 'Rx %', 'Ohrozené tržby (EUR)', 'Trend %', 'Malá lekáreň'],
+      row: (p) => [p.id, p.mesto, p.typ, p.actual_fte, p.predicted_fte, p.diff?.toFixed(1), p.bloky, Math.round(p.trzby || 0), p.podiel_rx, Math.round(p.revenue_at_risk || 0), p.bloky_trend, p.is_small_pharmacy ? 'Áno' : '']
     },
     monitor: {
       filename: 'growth_alert.csv',
@@ -9453,12 +9506,8 @@ function trendScaleY(value, minVal, maxVal) {
 }
 
 function formatTrendCurrency(value) {
-  return new Intl.NumberFormat('sk-SK', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value);
+  // Use K format for tooltip (e.g., 85K)
+  return Math.round(value / 1000) + 'K';
 }
 
 function createTrendPath(data, minVal, maxVal) {
@@ -9647,7 +9696,7 @@ function renderTrendChart(revenueData, currentMonth, forecastData = []) {
     });
   });
 
-  // Bloomberg-style crosshair interaction
+  // Crosshair interaction with tooltip
   const crosshairLine = document.getElementById('trend-crosshair-line');
   const crosshairTooltip = document.getElementById('trend-crosshair-tooltip');
 
@@ -9662,7 +9711,7 @@ function renderTrendChart(revenueData, currentMonth, forecastData = []) {
       return;
     }
 
-    // Calculate nearest month (1-12)
+    // Calculate nearest month (1-12) and snap to it
     const monthFloat = ((svgX - trendMargin.left) / trendWidth) * 11 + 1;
     const month = Math.round(monthFloat);
     const snappedX = trendScaleX(month);
@@ -9672,30 +9721,24 @@ function renderTrendChart(revenueData, currentMonth, forecastData = []) {
     crosshairLine.setAttribute('x2', snappedX);
     crosshairLine.classList.add('active');
 
-    // Build tooltip content
-    let tooltipHTML = `<div class="month-label">${trendMonthNames[month - 1]}</div>`;
+    // Build compact tooltip: "Jan: 85K / 92K / 98K"
     const data = svg._revenueData;
-
-    [2021, 2020, 2019].forEach(year => {
+    let values = [];
+    [2019, 2020, 2021].forEach(year => {
       if (data[year]) {
         const monthData = data[year].find(d => d.month === month);
         if (monthData) {
-          tooltipHTML += `<div class="year-row">
-            <span class="year-label year-${year}">${year}</span>
-            <span class="year-value year-${year}">${formatTrendCurrency(monthData.revenue)}</span>
-          </div>`;
+          values.push(formatTrendCurrency(monthData.revenue));
         }
       }
     });
 
-    crosshairTooltip.innerHTML = tooltipHTML;
+    crosshairTooltip.textContent = `${trendMonthNames[month - 1]}: ${values.join(' / ')}`;
     crosshairTooltip.classList.add('active');
 
-    // Position tooltip
-    const tooltipX = (snappedX / 580) * rect.width;
+    // Position tooltip to the RIGHT of crosshair (offset by 15px)
+    const tooltipX = (snappedX / 580) * rect.width + 15;
     crosshairTooltip.style.left = `${tooltipX}px`;
-    crosshairTooltip.style.top = '5px';
-    crosshairTooltip.style.transform = 'translateX(-50%)';
   });
 
   svg.addEventListener('mouseleave', () => {

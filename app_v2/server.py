@@ -214,7 +214,11 @@ except DataValidationError as e:
 @app.route('/')
 @requires_auth
 def index():
-    return send_from_directory(str(STATIC_DIR), 'index-v2.html')
+    response = send_from_directory(str(STATIC_DIR), 'index-v2.html')
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/v1')
@@ -535,6 +539,7 @@ def get_network():
             'podiel_rx': round(row['podiel_rx'] * 100, 0),
             'is_above_avg_productivity': row['is_above_avg'],
             'hospital_supply': bool(row.get('hospital_supply', False)),
+            'is_small_pharmacy': bool(row.get('is_small_pharmacy', False)),
             'zastup': round(row.get('zastup', 0), 2),
             'zastup_pct': round(row.get('zastup_pct', 0), 1)
         }
@@ -825,6 +830,7 @@ def get_pharmacy(pharmacy_id):
         'prod_pct': calculate_prod_pct(row),
         'bloky_trend': round(float(row.get('bloky_trend', 0)) * 100, 0),
         'hospital_supply': bool(row.get('hospital_supply', False)),
+        'is_small_pharmacy': bool(float(row.get('fte', 0)) <= 2.5 and float(row.get('fte_L', 0)) == 0),
         'zastup': round(float(row.get('zastup', 0)), 2),
         'zastup_pct': round(float(row.get('zastup_pct', 0)), 1)
     })

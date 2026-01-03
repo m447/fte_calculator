@@ -23,6 +23,7 @@ from app_v2.core import (
     calculate_prod_pct,
     get_rx_time_factor,
     get_model,
+    find_peers,
 )
 
 
@@ -143,6 +144,36 @@ CHAT_TOOLS = {
                 },
                 "required": []
             }
+        },
+        {
+            "name": "compare_to_peers",
+            "description": "Porovnaj lekáreň s podobnými prevádzkami v segmente podľa TRŽIEB. Kritériá: rovnaký segment, tržby ±15%, Rx ratio ±10pp. Vracia podobné lekárne, benchmarky a insights. Použi pre otázky typu 'porovnaj s podobnými', 'ako je na tom oproti peers', 'benchmark', 'podobné lekárne', 'kde nájdem zdroj na presun'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pharmacy_id": {
+                        "type": "integer",
+                        "description": "ID lekárne na porovnanie (required)"
+                    },
+                    "n_peers": {
+                        "type": "integer",
+                        "description": "Počet podobných lekární (default 10)"
+                    },
+                    "higher_fte_only": {
+                        "type": "boolean",
+                        "description": "Len lekárne s vyšším FTE - pre hľadanie zdrojov na presun personálu"
+                    },
+                    "trzby_tolerance": {
+                        "type": "number",
+                        "description": "Tolerancia pre tržby ako desatinné číslo (default 0.15 = ±15%)"
+                    },
+                    "rx_tolerance": {
+                        "type": "number",
+                        "description": "Tolerancia pre Rx ratio v percentuálnych bodoch (default 0.10 = ±10pp)"
+                    }
+                },
+                "required": ["pharmacy_id"]
+            }
         }
     ]
 }
@@ -164,6 +195,8 @@ def execute_tool(tool_name: str, args: dict, df: pd.DataFrame) -> dict:
         return execute_get_model_info()
     elif tool_name == "detect_growth_opportunities":
         return execute_detect_growth_opportunities(args, df)
+    elif tool_name == "compare_to_peers":
+        return execute_compare_to_peers(args, df)
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
@@ -402,6 +435,66 @@ def execute_detect_growth_opportunities(args: dict, df: pd.DataFrame) -> dict:
         'recommendation': 'Testujte vyššie obsadenie počas špičkových hodín na 2-4 týždne a sledujte zmenu tržieb.',
         'pharmacies': results
     }
+
+
+def execute_compare_to_peers(args: dict, df: pd.DataFrame) -> dict:
+    """Compare pharmacy to similar peers using revenue-based matching.
+
+    Matches by REVENUE (trzby), not bloky, because same bloky with different
+    basket sizes leads to incomparable pharmacies.
+    """
+    pharmacy_id = args.get('pharmacy_id')
+    if not pharmacy_id:
+        return {"error": "pharmacy_id is required"}
+
+    n_peers = args.get('n_peers', 10)
+    trzby_tolerance = args.get('trzby_tolerance', 0.15)
+    rx_tolerance = args.get('rx_tolerance', 0.10)
+    higher_fte_only = args.get('higher_fte_only', False)
+
+    # Prepare dataframe with calculations
+    df_calc = prepare_fte_dataframe(df, include_revenue_at_risk=True)
+
+    # Find peers using the core function
+    result = find_peers(
+        pharmacy_id=int(pharmacy_id),
+        df=df_calc,
+        trzby_tolerance=trzby_tolerance,
+        rx_tolerance=rx_tolerance,
+        max_peers=n_peers
+    )
+
+    if 'error' in result:
+        return result
+
+    # Filter for higher FTE only if requested
+    if higher_fte_only and result.get('peers'):
+        target_fte = result['pharmacy']['actual_fte']
+        result['peers'] = [p for p in result['peers'] if p['actual_fte'] > target_fte]
+        # Recalculate benchmarks
+        if result['peers']:
+            result['benchmarks'] = {
+                'avg_fte': round(sum(p['actual_fte'] for p in result['peers']) / len(result['peers']), 2),
+                'avg_trzby': int(sum(p['trzby'] for p in result['peers']) / len(result['peers'])),
+                'count': len(result['peers'])
+            }
+
+    # Add summary for AI
+    pharmacy = result.get('pharmacy', {})
+    peers = result.get('peers', [])
+    benchmarks = result.get('benchmarks', {})
+
+    if peers and benchmarks:
+        fte_diff = pharmacy.get('actual_fte', 0) - benchmarks.get('avg_fte', 0)
+        result['_summary'] = (
+            f"Lekáreň ID {pharmacy.get('id')} ({pharmacy.get('mesto')}) má {pharmacy.get('actual_fte')} FTE. "
+            f"Priemer {len(peers)} peers s podobnými tržbami: {benchmarks.get('avg_fte')} FTE. "
+            f"Rozdiel: {fte_diff:+.1f} FTE ({'menej' if fte_diff < 0 else 'viac'} ako peers)."
+        )
+    else:
+        result['_summary'] = f"Nenašli sa porovnateľné lekárne pre ID {pharmacy_id}."
+
+    return result
 
 
 # ============================================================

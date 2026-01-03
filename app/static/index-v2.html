@@ -3991,6 +3991,147 @@ input:checked + .toggle-slider:before {
   color: var(--text);
 }
 
+/* Peers Section */
+.peers-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.peers-benchmarks {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.benchmark-item {
+  flex: 1;
+  min-width: 80px;
+  background: var(--bg-subtle);
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.benchmark-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.benchmark-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.benchmark-value.highlight {
+  color: var(--brand-green);
+}
+
+.benchmark-value.warning {
+  color: #dc2626;
+}
+
+.peers-insights {
+  margin-bottom: 16px;
+}
+
+.peers-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.peers-insight-icon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.peers-table-wrap {
+  overflow-x: auto;
+  margin: 0 -4px;
+}
+
+.peers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.peers-table th,
+.peers-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.peers-table th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-subtle);
+}
+
+.peers-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.peers-table tbody tr:hover {
+  background: var(--brand-green-light);
+}
+
+.peers-table td:first-child {
+  font-weight: 600;
+  color: var(--brand-green);
+}
+
+.peers-score-col {
+  text-align: right !important;
+}
+
+.peers-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.peers-score-bar {
+  width: 40px;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.peers-score-fill {
+  height: 100%;
+  background: var(--brand-green);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.peers-empty {
+  text-align: center;
+  padding: 32px;
+}
+
 .btn-new-pharmacy {
   padding: 12px 16px;
   background: var(--bg-subtle);
@@ -5846,6 +5987,457 @@ input:checked + .toggle-slider:before {
   height: 14px;
 }
 
+/* ============================================
+   COMPARE TAB STYLES
+   ============================================ */
+
+.compare-inputs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.compare-input-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.compare-input-group label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* Left card - green theme */
+.compare-card-left {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid var(--brand-green);
+  border-radius: 12px 0 0 12px;
+  border-right: none;
+}
+
+.compare-card-left .compare-card-id {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--brand-green-dark);
+  line-height: 1;
+}
+
+.compare-card-left .compare-card-name {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right card - blue theme */
+.compare-card-right {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+  text-align: right;
+}
+
+.compare-card-right .compare-card-id {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #1d4ed8;
+  line-height: 1;
+}
+
+.compare-card-right .compare-card-name {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-card-right input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: white;
+}
+
+.compare-card-right input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.compare-card-right input::placeholder {
+  color: #93c5fd;
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+/* Pharmacy details when selected */
+.compare-card-details {
+  display: none;
+}
+
+.compare-card-details.visible {
+  display: block;
+}
+
+.compare-card-input.hidden {
+  display: none;
+}
+
+/* VS badge */
+.compare-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-width: 48px;
+  background: var(--bg-card);
+  border-top: 2px solid var(--border);
+  border-bottom: 2px solid var(--border);
+  z-index: 1;
+}
+
+.compare-vs-badge {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--brand-green) 0%, #3b82f6 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Compare button - centered below cards */
+.compare-btn-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+#compare-btn {
+  padding: 16px 64px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 14px;
+  background: white;
+  color: var(--brand-green);
+  border: 2px solid var(--brand-green);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+#compare-btn:hover {
+  background: var(--brand-green);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+#compare-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  background: white;
+}
+
+/* Peer suggestions */
+.compare-peers-section {
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.compare-peers-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.compare-peers-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.compare-peer-chip {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-body);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.compare-peer-chip:hover {
+  background: var(--brand-green-light);
+  border-color: var(--brand-green);
+}
+
+.compare-peer-chip .peer-id {
+  font-weight: 700;
+  color: var(--brand-green-dark);
+  font-size: 1rem;
+}
+
+.compare-peer-chip .peer-mesto {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-peer-chip .peer-fte {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.compare-peer-chip .peer-similarity {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  background: var(--brand-green);
+  color: white;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.compare-peers-loading {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Compare Results */
+.compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  gap: 16px;
+}
+
+.compare-pharmacy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.compare-pharmacy .compare-id {
+  font-size: 1.6rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.compare-p1 .compare-id {
+  color: var(--brand-green-dark);
+}
+
+.compare-p2 .compare-id {
+  color: #1565c0;
+}
+
+.compare-pharmacy .compare-name {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-p2 {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.compare-badges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.compare-badge {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compare-badge.match {
+  background: var(--brand-green-light);
+  color: var(--brand-green-dark);
+}
+
+.compare-badge.no-match {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+/* Compare Sections */
+.compare-section {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.compare-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Diverging Bars */
+.compare-bar-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 80px 1fr 70px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.compare-bar-row:last-child {
+  margin-bottom: 0;
+}
+
+.compare-value {
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-value-left {
+  text-align: right;
+  color: var(--brand-green-dark);
+}
+
+.compare-value-right {
+  text-align: left;
+  color: #1565c0;
+}
+
+.compare-bar-container {
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.compare-bar-left {
+  justify-content: flex-end;
+}
+
+.compare-bar-right {
+  justify-content: flex-start;
+}
+
+.compare-bar {
+  height: 20px;
+  border-radius: 4px;
+  min-width: 4px;
+  transition: width 0.5s ease;
+}
+
+.compare-bar.bar-left {
+  background: var(--brand-green);
+}
+
+.compare-bar.bar-right {
+  background: #42a5f5;
+}
+
+.compare-bar.bar-winner {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.compare-bar-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Insight box */
+.compare-insight {
+  background: var(--bg-subtle);
+  border-radius: 8px;
+  padding: 18px;
+  margin-top: 16px;
+  border-left: 4px solid var(--brand-green);
+}
+
+.compare-insight::before {
+  content: "💡 ";
+}
+
+/* Compare button spinner */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+#compare-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 </style>
 </head>
 <body>
@@ -5986,11 +6578,19 @@ input:checked + .toggle-slider:before {
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     </button>
-    <button class="tab-btn" data-tab="analyza" title="Porovnanie">
+    <button class="tab-btn" data-tab="analyza" title="Analýza">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="18" y1="20" x2="18" y2="10"/>
         <line x1="12" y1="20" x2="12" y2="4"/>
         <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+    </button>
+    <button class="tab-btn" data-tab="compare" title="Porovnanie">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M16 3h5v5"/>
+        <path d="M8 21H3v-5"/>
+        <path d="M21 3l-9 9"/>
+        <path d="M3 21l9-9"/>
       </svg>
     </button>
     <button class="tab-btn" data-tab="network" title="Prehľad">
@@ -6316,6 +6916,98 @@ input:checked + .toggle-slider:before {
   </div>
   <!-- END NETWORK TAB -->
 
+  <!-- COMPARE TAB -->
+  <div id="tab-compare" class="tab-content">
+    <!-- Empty state when no pharmacy selected -->
+    <div id="compare-empty" class="card" style="text-align:center;padding:40px;">
+      <div style="font-size:2rem;margin-bottom:12px;opacity:0.5;">⚖️</div>
+      <div style="color:var(--text-muted);">Najprv vyberte lekáreň v záložke Kalkulačka</div>
+    </div>
+
+    <!-- Main compare UI -->
+    <div id="compare-main" style="display:none;">
+      <div class="card">
+        <div class="card-title">Porovnanie lekární</div>
+
+        <div class="compare-inputs">
+          <!-- Left pharmacy - green card -->
+          <div class="compare-input-group compare-card-left">
+            <label>Vybraná lekáreň</label>
+            <div class="compare-card-id" id="compare-selected-id"></div>
+            <div class="compare-card-name" id="compare-selected-name"></div>
+          </div>
+
+          <!-- VS badge -->
+          <div class="compare-vs">
+            <div class="compare-vs-badge">vs</div>
+          </div>
+
+          <!-- Right pharmacy - blue card -->
+          <div class="compare-input-group compare-card-right">
+            <label>Porovnať s</label>
+            <div class="compare-card-input">
+              <input type="number" id="compare-id2" placeholder="ID alebo vyber nižšie" min="1">
+            </div>
+            <div class="compare-card-details" id="compare-p2-details">
+              <div class="compare-card-id" id="compare-p2-id"></div>
+              <div class="compare-card-name" id="compare-p2-name"></div>
+            </div>
+          </div>
+
+          <!-- Compare button -->
+          <div class="compare-btn-wrapper">
+            <button type="button" id="compare-btn">Porovnaj</button>
+          </div>
+        </div>
+
+        <!-- Peer suggestions -->
+        <div class="compare-peers-section" id="compare-peers-section">
+          <div class="compare-peers-title">Podobné lekárne (peers)</div>
+          <div class="compare-peers-list" id="compare-peers-list">
+            <div class="compare-peers-loading">Načítavam...</div>
+          </div>
+        </div>
+      </div>
+
+    <div id="compare-results" style="display:none;">
+      <!-- Header with names and compatibility badges -->
+      <div class="compare-header">
+        <div class="compare-pharmacy compare-p1">
+          <span class="compare-id" id="cmp-id1"></span>
+          <span class="compare-name" id="cmp-name1"></span>
+        </div>
+        <div class="compare-badges" id="compare-badges"></div>
+        <div class="compare-pharmacy compare-p2">
+          <span class="compare-name" id="cmp-name2"></span>
+          <span class="compare-id" id="cmp-id2"></span>
+        </div>
+      </div>
+
+      <!-- PERSONÁL Section -->
+      <div class="compare-section">
+        <div class="compare-section-title">PERSONÁL</div>
+        <div class="compare-bars" id="compare-personal"></div>
+      </div>
+
+      <!-- EFEKTIVITA Section -->
+      <div class="compare-section">
+        <div class="compare-section-title">EFEKTIVITA</div>
+        <div class="compare-bars" id="compare-efektivita"></div>
+      </div>
+
+      <!-- OBJEM Section -->
+      <div class="compare-section">
+        <div class="compare-section-title">OBJEM</div>
+        <div class="compare-bars" id="compare-objem"></div>
+      </div>
+
+      <!-- Insight -->
+      <div class="compare-insight" id="compare-insight"></div>
+    </div>
+    </div>
+  </div>
+  <!-- END COMPARE TAB -->
+
   <!-- ANALYZA TAB -->
   <div id="tab-analyza" class="tab-content">
     <div id="analyza-empty" class="card" style="text-align:center;padding:40px;">
@@ -6597,6 +7289,52 @@ input:checked + .toggle-slider:before {
             </div>
             <div class="sim-summary-value" id="sens-total-fte">0.0 FTE</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Peers Comparison -->
+      <div class="card" id="peers-card" style="display:none;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          Podobné lekárne
+          <span class="peers-count" id="peers-count"></span>
+        </div>
+        <p class="peers-subtitle" id="peers-subtitle" style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;"></p>
+
+        <div class="peers-benchmarks" id="peers-benchmarks">
+          <div class="benchmark-item">
+            <div class="benchmark-label">Priemer FTE</div>
+            <div class="benchmark-value" id="bench-fte">-</div>
+          </div>
+          <div class="benchmark-item">
+            <div class="benchmark-label">Produktivita</div>
+            <div class="benchmark-value" id="bench-prod">-</div>
+          </div>
+          <div class="benchmark-item">
+            <div class="benchmark-label">Tržby</div>
+            <div class="benchmark-value" id="bench-trzby">-</div>
+          </div>
+        </div>
+
+        <div class="peers-insights" id="peers-insights"></div>
+
+        <div class="peers-table-wrap">
+          <table class="peers-table" id="peers-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Mesto</th>
+                <th>FTE</th>
+                <th>Tržby</th>
+                <th class="peers-score-col">Zhoda</th>
+              </tr>
+            </thead>
+            <tbody id="peers-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="peers-empty" id="peers-empty" style="display:none;">
+          <div style="font-size:1.5rem;margin-bottom:8px;opacity:0.5;">🔍</div>
+          <div style="color:var(--text-muted);">Nenašli sa podobné lekárne</div>
         </div>
       </div>
 
@@ -7497,6 +8235,7 @@ async function loadPharmacyById(pharmacyId) {
 
     // Store pharmacy data including pre-calculated prediction (same as network)
     selectedPharmacyId = pharmacyId;
+    window.selectedPharmacyId = pharmacyId;  // Also store on window for compare tab
     window.selectedPharmacyActualFte = data.actual_fte;
     window.selectedPharmacyPredictedFte = data.predicted_fte;  // Store DB prediction for consistent loss calc (matches Sieť tab)
     window.selectedPharmacyIsAboveAvgProd = data.is_above_avg_productivity;  // Store separately (not nulled on calc)
@@ -7543,8 +8282,9 @@ async function loadPharmacyById(pharmacyId) {
     hint.innerHTML = `${data.mesto}${hospitalBadge}`;
     hint.classList.add('loaded');
 
-    // Load trend chart
+    // Load trend chart and peers
     loadTrendChart(pharmacyId);
+    loadPeers(pharmacyId);
 
     // Auto-calculate
     calcBtn.click();
@@ -7555,6 +8295,7 @@ async function loadPharmacyById(pharmacyId) {
     hint.classList.add('error');
     showToast(`Lekáreň ID ${pharmacyId} nebola nájdená`);
     selectedPharmacyId = null;
+    window.selectedPharmacyId = null;
     window.selectedPharmacyActualFte = null;
     window.selectedPharmacyPredictedFte = null;
     window.selectedPharmacyIsAboveAvgProd = null;
@@ -7598,9 +8339,11 @@ document.getElementById('btn-new-pharmacy').addEventListener('click', function()
   // Reset Analýza tab
   document.getElementById('analyza-empty').style.display = 'flex';
   document.getElementById('analyza-content').style.display = 'none';
+  document.getElementById('peers-card').style.display = 'none';
 
   // Clear stored data
   selectedPharmacyId = null;
+  window.selectedPharmacyId = null;
   window.selectedPharmacyActualFte = null;
   window.selectedPharmacyPredictedFte = null;
   window.selectedPharmacyIsAboveAvgProd = null;
@@ -7732,12 +8475,12 @@ function updateDefaults() {
 }
 
 // Listen for store type changes (also clear pharmacy data)
-typSelect.onchange = () => { window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; updateDefaults(); };
+typSelect.onchange = () => { window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; window.selectedPharmacyId = null; updateDefaults(); };
 
 // Mark result stale when inputs change
 // Also clear pharmacy data so manual input uses type-based factors
-bloky.oninput = () => { markResultStale(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; };
-trzby.oninput = () => { markResultStale(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; };
+bloky.oninput = () => { markResultStale(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; window.selectedPharmacyId = null; };
+trzby.oninput = () => { markResultStale(); window.selectedPharmacyExact = null; window.selectedPharmacyData = null; selectedPharmacyId = null; window.selectedPharmacyId = null; };
 rxInput.oninput = () => {
   // Clamp value between 20-90
   const val = Math.max(20, Math.min(90, rxInput.value));
@@ -7746,6 +8489,7 @@ rxInput.oninput = () => {
   window.selectedPharmacyExact = null;
   window.selectedPharmacyData = null;
   selectedPharmacyId = null;
+  window.selectedPharmacyId = null;
 };
 
 // Initialize with type-specific defaults
@@ -8055,6 +8799,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         // Remove ready class after animation
         setTimeout(() => input.classList.remove('ready'), 2000);
       }, 150);
+    }
+
+    // Initialize compare tab
+    if (tabId === 'compare') {
+      initCompareTab();
     }
   };
 });
@@ -9797,6 +10546,131 @@ async function loadTrendChart(pharmacyId) {
 }
 
 // ============================================
+// PEERS COMPARISON
+// ============================================
+async function loadPeers(pharmacyId) {
+  const card = document.getElementById('peers-card');
+  const tableBody = document.getElementById('peers-tbody');
+  const emptyEl = document.getElementById('peers-empty');
+  const tableWrap = document.querySelector('.peers-table-wrap');
+
+  try {
+    const response = await fetch(`/api/pharmacy/${pharmacyId}/peers?max_peers=5&trzby_tolerance=0.10`);
+    if (!response.ok) {
+      card.style.display = 'none';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!data.peers || data.peers.length === 0) {
+      // Show empty state
+      card.style.display = 'block';
+      tableWrap.style.display = 'none';
+      emptyEl.style.display = 'block';
+      document.getElementById('peers-benchmarks').style.display = 'none';
+      document.getElementById('peers-insights').innerHTML = '';
+      document.getElementById('peers-count').textContent = '';
+      document.getElementById('peers-subtitle').textContent = data.filters?.segment || '';
+      return;
+    }
+
+    // Show card
+    card.style.display = 'block';
+    tableWrap.style.display = 'block';
+    emptyEl.style.display = 'none';
+    document.getElementById('peers-benchmarks').style.display = 'flex';
+
+    // Update count and subtitle
+    document.getElementById('peers-count').textContent = `${data.peers.length} lekární`;
+    document.getElementById('peers-subtitle').textContent =
+      `Segment ${data.pharmacy?.typ || data.filters?.segment} | Tržby ${data.filters?.trzby_tolerance || '±15%'} | Rx ${data.filters?.rx_tolerance || '±10pp'}`;
+
+    // Update benchmarks
+    const benchmarks = data.benchmarks || {};
+    document.getElementById('bench-fte').textContent =
+      benchmarks.avg_fte ? `${benchmarks.avg_fte.toFixed(1)} FTE` : '-';
+    document.getElementById('bench-prod').textContent =
+      benchmarks.avg_productivity ? `${Math.round(benchmarks.avg_productivity)}` : '-';
+    document.getElementById('bench-trzby').textContent =
+      benchmarks.avg_trzby ? `${(benchmarks.avg_trzby / 1000000).toFixed(1)}M€` : '-';
+
+    // Highlight benchmarks based on comparison with target pharmacy
+    const pharmacy = data.pharmacy || {};
+    const benchFte = document.getElementById('bench-fte');
+    const benchProd = document.getElementById('bench-prod');
+
+    benchFte.classList.remove('highlight', 'warning');
+    benchProd.classList.remove('highlight', 'warning');
+
+    if (pharmacy.actual_fte && benchmarks.avg_fte) {
+      const fteDiff = pharmacy.actual_fte - benchmarks.avg_fte;
+      if (fteDiff < -0.5) {
+        benchFte.classList.add('warning'); // You have less FTE than peers
+      }
+    }
+    if (pharmacy.produktivita_gross && benchmarks.avg_productivity) {
+      if (pharmacy.produktivita_gross > benchmarks.avg_productivity) {
+        benchProd.classList.add('highlight'); // Higher productivity
+      }
+    }
+
+    // Update insights
+    const insightsEl = document.getElementById('peers-insights');
+    if (data.insights && data.insights.length > 0) {
+      insightsEl.innerHTML = data.insights.map(insight => {
+        let icon = '💡';
+        // Handle both English and Slovak patterns
+        if (insight.includes('fewer') || insight.includes('MENEJ') || insight.includes('below')) icon = '⚠️';
+        else if (insight.includes('more') || insight.includes('VYŠŠIE') || insight.includes('above')) icon = '📈';
+        else if (insight.includes('NIŽŠIE') || insight.includes('Best-in-class')) icon = '🎯';
+        return `<div class="peers-insight"><span class="peers-insight-icon">${icon}</span>${insight}</div>`;
+      }).join('');
+    } else {
+      insightsEl.innerHTML = '';
+    }
+
+    // Render table
+    tableBody.innerHTML = data.peers.map(peer => {
+      const score = peer.similarity || 0;
+      const scoreWidth = Math.min(100, Math.max(0, score));
+      const fte = peer.actual_fte ?? peer.fte_actual;
+      return `
+        <tr data-id="${peer.id}">
+          <td>${peer.id}</td>
+          <td>${peer.mesto || '-'}</td>
+          <td>${fte?.toFixed(1) || '-'}</td>
+          <td>${peer.trzby ? (peer.trzby / 1000000).toFixed(1) + 'M€' : '-'}</td>
+          <td class="peers-score-col">
+            <span class="peers-score">
+              <span class="peers-score-bar">
+                <span class="peers-score-fill" style="width: ${scoreWidth}%"></span>
+              </span>
+              ${Math.round(score)}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Add click handlers to load peer pharmacy
+    tableBody.querySelectorAll('tr').forEach(row => {
+      row.addEventListener('click', () => {
+        const peerId = row.dataset.id;
+        if (peerId) {
+          document.getElementById('pharmacy-id-input').value = peerId;
+          document.getElementById('pharmacy-load-btn').click();
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Error loading peers:', error);
+    card.style.display = 'none';
+  }
+}
+
+// ============================================
 // ROZVRH TAB - Schedule with Kahneman Principles
 // ============================================
 let rozvrhDataLoaded = false;
@@ -10100,6 +10974,271 @@ function resetAutopilot() {
   btn.onclick = simulateAutopilot;
 
   showToast('Simulácia resetovaná', 'info', 2000);
+}
+
+// ============================================
+// COMPARE TAB FUNCTIONALITY
+// ============================================
+
+function initCompareTab() {
+  const emptyEl = document.getElementById('compare-empty');
+  const mainEl = document.getElementById('compare-main');
+  const resultsEl = document.getElementById('compare-results');
+
+  // Check if a pharmacy is selected
+  if (!window.selectedPharmacyId) {
+    emptyEl.style.display = 'block';
+    mainEl.style.display = 'none';
+    return;
+  }
+
+  // Show main UI
+  emptyEl.style.display = 'none';
+  mainEl.style.display = 'block';
+
+  // Populate selected pharmacy info (left card)
+  const data = window.selectedPharmacyData || {};
+  document.getElementById('compare-selected-id').textContent = window.selectedPharmacyId;
+  const nameParts = [data.mesto, data.typ].filter(Boolean);
+  document.getElementById('compare-selected-name').textContent = nameParts.join(', ') || 'Neznáma';
+
+  // Only reset if pharmacy changed
+  if (window.lastComparePharmacyId !== window.selectedPharmacyId) {
+    document.getElementById('compare-id2').value = '';
+    document.querySelector('.compare-card-input').classList.remove('hidden');
+    document.getElementById('compare-p2-details').classList.remove('visible');
+    resultsEl.style.display = 'none';
+    window.lastComparePharmacyId = window.selectedPharmacyId;
+
+    // Load peers for suggestions
+    loadComparePeers(window.selectedPharmacyId);
+  }
+  // Keep results visible if they were shown before (same pharmacy)
+}
+
+async function loadComparePeers(pharmacyId) {
+  const listEl = document.getElementById('compare-peers-list');
+  listEl.innerHTML = '<div class="compare-peers-loading">Načítavam podobné lekárne...</div>';
+
+  try {
+    const response = await fetch(`/api/pharmacy/${pharmacyId}/peers?max_peers=8&trzby_tolerance=0.10`);
+    const data = await response.json();
+
+    if (data.error || !data.peers || data.peers.length === 0) {
+      listEl.innerHTML = '<div class="compare-peers-loading">Žiadne podobné lekárne</div>';
+      return;
+    }
+
+    // Store peers globally for lookup
+    window.comparePeers = data.peers;
+
+    listEl.innerHTML = data.peers.map(peer => `
+      <div class="compare-peer-chip" onclick="selectPeerForCompare(${peer.id})">
+        <span class="peer-id">${peer.id}</span>
+        <span class="peer-mesto">${peer.mesto}</span>
+        <span class="peer-fte">${peer.actual_fte.toFixed(1)} FTE</span>
+        <span class="peer-similarity">${peer.similarity}%</span>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading peers:', error);
+    listEl.innerHTML = '<div class="compare-peers-loading">Chyba pri načítaní</div>';
+  }
+}
+
+function selectPeerForCompare(peerId) {
+  const input = document.getElementById('compare-id2');
+  const inputWrapper = document.querySelector('.compare-card-input');
+  const detailsEl = document.getElementById('compare-p2-details');
+  const idEl = document.getElementById('compare-p2-id');
+  const nameEl = document.getElementById('compare-p2-name');
+
+  input.value = peerId;
+
+  // Find peer details
+  const peer = window.comparePeers?.find(p => p.id === peerId);
+  if (peer) {
+    idEl.textContent = peer.id;
+    const peerNameParts = [peer.mesto, peer.typ].filter(Boolean);
+    nameEl.textContent = peerNameParts.join(', ') || 'Neznáma';
+    inputWrapper.classList.add('hidden');
+    detailsEl.classList.add('visible');
+  }
+
+  // Auto-trigger comparison
+  runComparison();
+}
+
+// Allow manual input to clear the details view
+document.getElementById('compare-id2').addEventListener('input', function() {
+  const inputWrapper = document.querySelector('.compare-card-input');
+  const detailsEl = document.getElementById('compare-p2-details');
+  inputWrapper.classList.remove('hidden');
+  detailsEl.classList.remove('visible');
+});
+
+// Button click handler
+document.getElementById('compare-btn').onclick = runComparison;
+
+async function runComparison() {
+  const id1 = window.selectedPharmacyId;
+  const id2 = document.getElementById('compare-id2').value;
+  const btn = document.getElementById('compare-btn');
+
+  if (!id1 || !id2) {
+    showToast('Zadajte ID druhej lekárne', 'error');
+    return;
+  }
+
+  if (id1 == id2) {
+    showToast('Nemožno porovnať lekáreň samu so sebou', 'error');
+    return;
+  }
+
+  // Show loading state
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-spinner"></span> Načítavam...';
+
+  try {
+    const response = await fetch(`/api/compare?id1=${id1}&id2=${id2}`);
+    const data = await response.json();
+
+    if (data.error) {
+      showToast(data.error, 'error');
+      return;
+    }
+
+    renderComparison(data);
+  } catch (error) {
+    console.error('Comparison error:', error);
+    showToast('Chyba pri porovnaní', 'error');
+  } finally {
+    // Reset button
+    btn.disabled = false;
+    btn.innerHTML = 'Porovnaj';
+  }
+}
+
+function renderComparison(data) {
+  const resultsEl = document.getElementById('compare-results');
+  resultsEl.style.display = 'block';
+
+  const p1 = data.pharmacy1;
+  const p2 = data.pharmacy2;
+  const cmp = data.comparison;
+
+  // Header
+  document.getElementById('cmp-id1').textContent = p1.id;
+  document.getElementById('cmp-name1').textContent = `${p1.mesto}, ${p1.typ.split(' ')[0]}`;
+  document.getElementById('cmp-id2').textContent = p2.id;
+  document.getElementById('cmp-name2').textContent = `${p2.mesto}, ${p2.typ.split(' ')[0]}`;
+
+  // Badges
+  const badgesEl = document.getElementById('compare-badges');
+  badgesEl.innerHTML = `
+    <span class="compare-badge ${cmp.same_segment ? 'match' : 'no-match'}">
+      ${cmp.same_segment ? '✓' : '✗'} Segment
+    </span>
+    <span class="compare-badge ${cmp.similar_trzby ? 'match' : 'no-match'}">
+      ${cmp.similar_trzby ? '✓' : '✗'} Tržby
+    </span>
+    <span class="compare-badge ${cmp.similar_rx ? 'match' : 'no-match'}">
+      ${cmp.similar_rx ? '✓' : '✗'} Rx
+    </span>
+  `;
+
+  // PERSONÁL section
+  renderCompareSection('compare-personal', [
+    { label: 'FTE', v1: p1.actual_fte, v2: p2.actual_fte, format: 'decimal' },
+    { label: 'Zástup', v1: p1.zastup, v2: p2.zastup, format: 'decimal' },
+    { label: 'Gap', v1: p1.fte_gap, v2: p2.fte_gap, format: 'gap', noBar: true },
+    { label: 'RAR €', v1: p1.revenue_at_risk, v2: p2.revenue_at_risk, format: 'money' }
+  ]);
+
+  // EFEKTIVITA section
+  renderCompareSection('compare-efektivita', [
+    { label: 'Produktivita', v1: p1.prod_pct, v2: p2.prod_pct, format: 'percent' },
+    { label: 'Bloky/h', v1: p1.bloky_per_hour, v2: p2.bloky_per_hour, format: 'decimal' },
+    { label: 'Košík', v1: p1.kosik, v2: p2.kosik, format: 'euro' }
+  ]);
+
+  // OBJEM section
+  renderCompareSection('compare-objem', [
+    { label: 'Tržby €', v1: p1.trzby, v2: p2.trzby, format: 'money' },
+    { label: 'Bloky', v1: p1.bloky, v2: p2.bloky, format: 'number' },
+    { label: 'Rx %', v1: p1.podiel_rx, v2: p2.podiel_rx, format: 'percent' },
+    { label: 'Trend', v1: p1.bloky_trend, v2: p2.bloky_trend, format: 'trend' }
+  ]);
+
+  // Insight
+  document.getElementById('compare-insight').textContent = data.insight;
+
+  // Scroll to results
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderCompareSection(containerId, metrics) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = metrics.map(m => {
+    const maxVal = Math.max(Math.abs(m.v1), Math.abs(m.v2)) || 1;
+    const pct1 = (Math.abs(m.v1) / maxVal) * 100;
+    const pct2 = (Math.abs(m.v2) / maxVal) * 100;
+
+    // Determine winner (longer bar gets highlight)
+    const winner1 = pct1 > pct2 + 5 ? 'bar-winner' : '';
+    const winner2 = pct2 > pct1 + 5 ? 'bar-winner' : '';
+
+    // For noBar metrics, show values only without bars
+    if (m.noBar) {
+      return `
+        <div class="compare-bar-row compare-no-bar">
+          <div class="compare-value compare-value-left">${formatCompareValue(m.v1, m.format)}</div>
+          <div class="compare-bar-container compare-bar-left"></div>
+          <div class="compare-bar-label">${m.label}</div>
+          <div class="compare-bar-container compare-bar-right"></div>
+          <div class="compare-value compare-value-right">${formatCompareValue(m.v2, m.format)}</div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="compare-bar-row">
+        <div class="compare-value compare-value-left">${formatCompareValue(m.v1, m.format)}</div>
+        <div class="compare-bar-container compare-bar-left">
+          <div class="compare-bar bar-left ${winner1}" style="width: ${pct1}%"></div>
+        </div>
+        <div class="compare-bar-label">${m.label}</div>
+        <div class="compare-bar-container compare-bar-right">
+          <div class="compare-bar bar-right ${winner2}" style="width: ${pct2}%"></div>
+        </div>
+        <div class="compare-value compare-value-right">${formatCompareValue(m.v2, m.format)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatCompareValue(value, format) {
+  switch (format) {
+    case 'decimal':
+      return value.toFixed(1);
+    case 'gap':
+      return (value >= 0 ? '+' : '') + value.toFixed(1);
+    case 'percent':
+      return value + '%';
+    case 'trend':
+      return (value >= 0 ? '+' : '') + value + '%';
+    case 'euro':
+      return value + '€';
+    case 'money':
+      if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+      if (value >= 1000) return Math.round(value / 1000) + 'K';
+      return value;
+    case 'number':
+      if (value >= 1000) return Math.round(value / 1000) + 'K';
+      return value;
+    default:
+      return value;
+  }
 }
 </script>
 

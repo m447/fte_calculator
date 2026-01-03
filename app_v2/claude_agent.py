@@ -547,10 +547,14 @@ DOSTUPNÉ NÁSTROJE A PARAMETRE:
 
 4. compare_to_peers ⚠️ PRE POROVNANIE S PODOBNÝMI LEKÁRŇAMI
    - pharmacy_id: ID lekárne (required)
-   - n_peers: Počet podobných lekární (default 5)
+   - n_peers: Počet podobných lekární (default 10)
    - higher_fte_only: Len lekárne s VYŠŠÍM FTE (bool) ⚠️ POUŽIŤ pre hľadanie zdrojov na presun
-   - Nájde lekárne s podobnými bloky A tržbami (±20%) v rovnakom segmente
-   - Vráti štatistiky peers (avg FTE, produktivita) a porovnanie s cieľovou lekárňou
+   - trzby_tolerance: Tolerancia pre tržby (default 0.15 = ±15%)
+   - rx_tolerance: Tolerancia pre Rx ratio (default 0.10 = ±10pp)
+   - Kritériá: rovnaký segment, TRŽBY ±15%, Rx ratio ±10pp
+   - ⚠️ Matching by REVENUE (nie bloky) - presnejšie porovnanie
+   - Similarity score formula: 100 - (40×|trzby_diff_%| + 30×|rx_diff| + 10×|bloky_diff_%|)
+   - Vráti: peers so similarity_score, benchmarks (avg FTE, produktivita), insights
 
 5. get_understaffed
    - mesto: Mesto/lokalita (partial match) ⚠️ PRE OTÁZKY O KONKRÉTNOM MESTE
@@ -1220,12 +1224,28 @@ class DrMaxAgent:
         return response
 
     def tool_compare_to_peers(
-        self, pharmacy_id: int, n_peers: int = 5, higher_fte_only: bool = False
+        self, pharmacy_id: int, n_peers: int = 10, higher_fte_only: bool = False,
+        trzby_tolerance: float = 0.15, rx_tolerance: float = 0.10
     ) -> dict:
-        """Compare pharmacy to similar peers in the same segment."""
+        """Compare pharmacy to similar peers using revenue-based matching.
+
+        Matching criteria:
+        - Same segment (typ)
+        - Similar revenue (trzby) within ±15% (configurable)
+        - Rx ratio (podiel_rx) within ±10pp (configurable)
+
+        NOTE: Matches by REVENUE not bloky, because same bloky with different
+        basket sizes leads to incomparable pharmacies.
+
+        Similarity score formula:
+        100 - (40 × |trzby_diff_%| + 30 × |rx_diff| + 10 × |bloky_diff_%|)
+        Higher score = more similar peer
+        """
         # Ensure types (AI might pass strings)
         pharmacy_id = int(pharmacy_id)
         n_peers = int(n_peers)
+        trzby_tolerance = float(trzby_tolerance)
+        rx_tolerance = float(rx_tolerance)
         df = self.sanitized_data
 
         # Get target pharmacy
@@ -1236,28 +1256,46 @@ class DrMaxAgent:
         target = target.iloc[0]
         target_bloky = target["bloky"]
         target_trzby = target["trzby"]
+        target_rx = target.get("podiel_rx", 0.5)  # Default to 50% if not available
 
-        # Find peers in same segment with similar bloky AND trzby (±20%)
+        # Find peers in same segment with similar REVENUE (trzby)
         same_segment = df[df["typ"] == target["typ"]]
-        bloky_range = target_bloky * 0.2
-        trzby_range = target_trzby * 0.2
+        trzby_min = target_trzby * (1 - trzby_tolerance)
+        trzby_max = target_trzby * (1 + trzby_tolerance)
 
+        # Filter by trzby (revenue) range - KEY: match by revenue, not bloky
         peers = same_segment[
-            (same_segment["bloky"] >= target_bloky - bloky_range)
-            & (same_segment["bloky"] <= target_bloky + bloky_range)
-            & (same_segment["trzby"] >= target_trzby - trzby_range)
-            & (same_segment["trzby"] <= target_trzby + trzby_range)
+            (same_segment["trzby"] >= trzby_min)
+            & (same_segment["trzby"] <= trzby_max)
             & (same_segment["id"] != pharmacy_id)
         ].copy()
+
+        # Filter by Rx ratio if available
+        if "podiel_rx" in peers.columns:
+            peers = peers[
+                (peers["podiel_rx"] >= target_rx - rx_tolerance)
+                & (peers["podiel_rx"] <= target_rx + rx_tolerance)
+            ]
 
         if higher_fte_only:
             peers = peers[peers["fte_actual"] > target["fte_actual"]]
 
-        # Sort by combined similarity (bloky + trzby difference)
-        peers["bloky_diff"] = abs(peers["bloky"] - target_bloky) / target_bloky
-        peers["trzby_diff"] = abs(peers["trzby"] - target_trzby) / target_trzby
-        peers["similarity_score"] = peers["bloky_diff"] + peers["trzby_diff"]
-        peers = peers.sort_values("similarity_score").head(n_peers)
+        # Calculate weighted similarity score (revenue-weighted)
+        # Formula: 100 - (40 × |trzby_diff_%| + 30 × |rx_diff| + 10 × |bloky_diff_%|)
+        peers["trzby_diff_pct"] = abs(peers["trzby"] - target_trzby) / target_trzby if target_trzby > 0 else 0
+        peers["rx_diff"] = abs(peers.get("podiel_rx", 0.5) - target_rx) if "podiel_rx" in peers.columns else 0
+        peers["bloky_diff_pct"] = abs(peers["bloky"] - target_bloky) / target_bloky if target_bloky > 0 else 0
+
+        peers["similarity_score"] = (
+            100
+            - (40 * peers["trzby_diff_pct"])
+            - (30 * peers["rx_diff"])
+            - (10 * peers["bloky_diff_pct"])
+        )
+        peers["similarity_score"] = peers["similarity_score"].clip(lower=0)
+
+        # Sort by similarity (highest first) and limit
+        peers = peers.sort_values("similarity_score", ascending=False).head(n_peers)
 
         # Calculate peer statistics
         peer_count = len(peers)
@@ -1266,36 +1304,55 @@ class DrMaxAgent:
             avg_fte_recommended = round(peers["fte_recommended"].mean(), 1)
             avg_productivity = int(peers["productivity_index"].mean())
             avg_gap = round(peers["fte_gap"].mean(), 1)
+            avg_trzby = int(peers["trzby"].mean())
+            avg_bloky = int(peers["bloky"].mean())
 
             # Comparison with target
             fte_vs_peers = round(target["fte_actual"] - avg_fte, 1)
             productivity_vs_peers = int(target["productivity_index"] - avg_productivity)
             gap_vs_peers = round(target["fte_gap"] - avg_gap, 1)
+            revenue_vs_peers = int(target_trzby - avg_trzby)
         else:
             avg_fte = avg_fte_recommended = avg_productivity = avg_gap = 0
-            fte_vs_peers = productivity_vs_peers = gap_vs_peers = 0
+            avg_trzby = avg_bloky = 0
+            fte_vs_peers = productivity_vs_peers = gap_vs_peers = revenue_vs_peers = 0
 
-        # Format peers for output (remove temp columns)
-        peers_output = peers.drop(
-            columns=["bloky_diff", "trzby_diff", "similarity_score"]
-        ).to_dict("records")
-
-        # Format each peer with key metrics
+        # Format peers for output
         formatted_peers = []
-        for p in peers_output:
+        for _, p in peers.iterrows():
             formatted_peers.append(
                 {
                     "id": int(p["id"]),
                     "mesto": p["mesto"],
                     "bloky": int(p["bloky"]),
                     "trzby": int(p["trzby"]),
+                    "podiel_rx": round(p.get("podiel_rx", 0.5), 2),
                     "fte_actual": round(p["fte_actual"], 1),
                     "fte_recommended": round(p["fte_recommended"], 1),
                     "fte_gap": round(p["fte_gap"], 1),
                     "productivity_index": int(p["productivity_index"]),
                     "revenue_at_risk_eur": int(p["revenue_at_risk_eur"]),
+                    "similarity_score": round(p["similarity_score"], 1),
                 }
             )
+
+        # Generate insights
+        insights = []
+        if peer_count == 0:
+            insights.append("Nenašli sa žiadne porovnateľné lekárne. Skúste zvýšiť tolerancie.")
+        elif peer_count < 3:
+            insights.append(f"Málo porovnateľných lekární ({peer_count}). Výsledky môžu byť menej spoľahlivé.")
+
+        if peer_count > 0:
+            if fte_vs_peers < -0.5:
+                insights.append(f"Lekáreň má o {abs(fte_vs_peers)} FTE MENEJ ako priemer peers ({avg_fte} FTE).")
+            elif fte_vs_peers > 0.5:
+                insights.append(f"Lekáreň má o {fte_vs_peers} FTE VIAC ako priemer peers ({avg_fte} FTE).")
+
+            if revenue_vs_peers > 50000:
+                insights.append(f"Lekáreň dosahuje VYŠŠIE tržby ({int(target_trzby/1000)}k€) ako priemer peers ({int(avg_trzby/1000)}k€).")
+            elif revenue_vs_peers < -50000:
+                insights.append(f"Lekáreň dosahuje NIŽŠIE tržby ({int(target_trzby/1000)}k€) ako priemer peers ({int(avg_trzby/1000)}k€).")
 
         return {
             "target": {
@@ -1303,6 +1360,7 @@ class DrMaxAgent:
                 "mesto": target["mesto"],
                 "bloky": int(target_bloky),
                 "trzby": int(target_trzby),
+                "podiel_rx": round(target_rx, 2),
                 "fte_actual": round(target["fte_actual"], 1),
                 "fte_recommended": round(target["fte_recommended"], 1),
                 "fte_gap": round(target["fte_gap"], 1),
@@ -1310,18 +1368,26 @@ class DrMaxAgent:
                 "revenue_at_risk_eur": int(target["revenue_at_risk_eur"]),
             },
             "segment": target["typ"],
+            "filters": {
+                "trzby_tolerance": f"±{int(trzby_tolerance*100)}%",
+                "rx_tolerance": f"±{int(rx_tolerance*100)}pp",
+                "higher_fte_only": higher_fte_only,
+            },
             "peer_count": peer_count,
             "peers": formatted_peers,
-            "peer_statistics": {
-                "avg_fte": avg_fte,
+            "benchmarks": {
+                "avg_fte_actual": avg_fte,
                 "avg_fte_recommended": avg_fte_recommended,
                 "avg_productivity_index": avg_productivity,
                 "avg_fte_gap": avg_gap,
+                "avg_trzby": avg_trzby,
+                "avg_bloky": avg_bloky,
             },
             "comparison": {
                 "fte_vs_peers": fte_vs_peers,
                 "productivity_vs_peers": productivity_vs_peers,
                 "gap_vs_peers": gap_vs_peers,
+                "revenue_vs_peers": revenue_vs_peers,
                 "fte_assessment": "vyššie"
                 if fte_vs_peers > 0.5
                 else ("nižšie" if fte_vs_peers < -0.5 else "porovnateľné"),
@@ -1329,7 +1395,8 @@ class DrMaxAgent:
                 if productivity_vs_peers > 5
                 else ("nižšia" if productivity_vs_peers < -5 else "porovnateľná"),
             },
-            "comparison_note": f"Porovnanie s {peer_count} lekárňami segmentu {target['typ']} s podobným objemom ({int(target_bloky / 1000)}k blokov, {int(target_trzby / 1000000)}M€ tržieb ± 20%)",
+            "insights": insights,
+            "_summary": f"Porovnanie s {peer_count} podobnými lekárňami v segmente {target['typ']} (tržby ±{int(trzby_tolerance*100)}%, Rx ±{int(rx_tolerance*100)}pp)",
         }
 
     def tool_get_understaffed(
@@ -2257,7 +2324,7 @@ class DrMaxAgent:
             },
             {
                 "name": "compare_to_peers",
-                "description": "Porovnaj lekáreň s podobnými prevádzkami v segmente (podobný objem blokov A tržieb ±20%). Vráti štatistiky peers a porovnanie s priemerom.",
+                "description": "Porovnaj lekáreň s podobnými prevádzkami v segmente pomocou porovnania TRŽIEB. Kritériá: rovnaký segment, tržby ±15%, Rx ratio ±10pp. Vracia similarity_score, benchmarky a insights. Matching by revenue je presnejší než bloky.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -2267,11 +2334,19 @@ class DrMaxAgent:
                         },
                         "n_peers": {
                             "type": "integer",
-                            "description": "Počet podobných lekární (default 5)",
+                            "description": "Počet podobných lekární (default 10)",
                         },
                         "higher_fte_only": {
                             "type": "boolean",
                             "description": "Len lekárne s vyšším FTE - pre hľadanie zdrojov na presun personálu",
+                        },
+                        "trzby_tolerance": {
+                            "type": "number",
+                            "description": "Tolerancia pre tržby ako desatinné číslo (default 0.15 = ±15%)",
+                        },
+                        "rx_tolerance": {
+                            "type": "number",
+                            "description": "Tolerancia pre Rx ratio v percentuálnych bodoch (default 0.10 = ±10pp)",
                         },
                     },
                     "required": ["pharmacy_id"],

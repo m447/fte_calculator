@@ -991,8 +991,11 @@ def get_pharmacy_peers(pharmacy_id):
     """
     Find comparable peer pharmacies for benchmarking.
 
+    Matches by REVENUE (trzby), not bloky, because same bloky with different
+    basket sizes leads to incomparable pharmacies.
+
     Query params:
-        bloky_tolerance: Max % difference in bloky (default 0.20 = 20%)
+        trzby_tolerance: Max % difference in revenue (default 0.15 = 15%)
         rx_tolerance: Max absolute difference in Rx ratio (default 0.10 = 10pp)
         max_peers: Maximum peers to return (default 10)
 
@@ -1005,18 +1008,18 @@ def get_pharmacy_peers(pharmacy_id):
         }
     """
     # Get query parameters
-    bloky_tolerance = request.args.get('bloky_tolerance', 0.20, type=float)
+    trzby_tolerance = request.args.get('trzby_tolerance', 0.10, type=float)
     rx_tolerance = request.args.get('rx_tolerance', 0.10, type=float)
     max_peers = request.args.get('max_peers', 10, type=int)
 
     # Prepare dataframe with calculations
     df_calc = prepare_fte_dataframe(df, include_revenue_at_risk=True)
 
-    # Find peers
+    # Find peers (matches by revenue for accurate comparison)
     result = find_peers(
         pharmacy_id=pharmacy_id,
         df=df_calc,
-        bloky_tolerance=bloky_tolerance,
+        trzby_tolerance=trzby_tolerance,
         rx_tolerance=rx_tolerance,
         max_peers=max_peers
     )
@@ -1025,6 +1028,111 @@ def get_pharmacy_peers(pharmacy_id):
         return jsonify(result), 404
 
     return jsonify(result)
+
+
+@app.route('/api/compare', methods=['GET'])
+@requires_api_auth
+def compare_pharmacies():
+    """Compare two pharmacies side by side.
+
+    Query params:
+        id1: First pharmacy ID
+        id2: Second pharmacy ID
+
+    Returns comprehensive comparison data for diverging bar visualization.
+    """
+    id1 = request.args.get('id1', type=int)
+    id2 = request.args.get('id2', type=int)
+
+    if not id1 or not id2:
+        return jsonify({'error': 'Both id1 and id2 are required'}), 400
+
+    if id1 == id2:
+        return jsonify({'error': 'Cannot compare pharmacy with itself'}), 400
+
+    # Prepare dataframe with all calculations
+    df_calc = prepare_fte_dataframe(df, include_revenue_at_risk=True)
+
+    # Get both pharmacies
+    p1 = df_calc[df_calc['id'] == id1]
+    p2 = df_calc[df_calc['id'] == id2]
+
+    if len(p1) == 0:
+        return jsonify({'error': f'Pharmacy {id1} not found'}), 404
+    if len(p2) == 0:
+        return jsonify({'error': f'Pharmacy {id2} not found'}), 404
+
+    p1 = p1.iloc[0]
+    p2 = p2.iloc[0]
+
+    # Calculate efficiency metrics
+    # Assuming 2080 working hours/year per FTE (40h * 52 weeks)
+    hours_per_fte = 2080
+
+    def calc_metrics(row):
+        fte = row['actual_fte']
+        total_hours = fte * hours_per_fte
+        bloky_per_hour = row['bloky'] / total_hours if total_hours > 0 else 0
+        trzby_per_hour = row['trzby'] / total_hours if total_hours > 0 else 0
+        kosik = row['trzby'] / row['bloky'] if row['bloky'] > 0 else 0
+        return {
+            'id': int(row['id']),
+            'mesto': row['mesto'],
+            'typ': row['typ'],
+            'actual_fte': round(row['actual_fte'], 2),
+            'predicted_fte': round(row['predicted_fte'], 2),
+            'fte_gap': round(row['fte_gap'], 2),
+            'trzby': int(row['trzby']),
+            'bloky': int(row['bloky']),
+            'podiel_rx': round(row['podiel_rx'] * 100, 1),
+            'prod_pct': int(row['prod_pct']),
+            'revenue_at_risk': int(row['revenue_at_risk']),
+            'bloky_trend': round(row.get('bloky_trend', 0) * 100, 1),
+            'bloky_per_hour': round(bloky_per_hour, 1),
+            'trzby_per_hour': round(trzby_per_hour, 0),
+            'kosik': round(kosik, 1),
+            'zastup': round(float(row.get('zastup', 0)), 2)
+        }
+
+    pharmacy1 = calc_metrics(p1)
+    pharmacy2 = calc_metrics(p2)
+
+    # Comparison checks (convert to Python bool for JSON serialization)
+    same_segment = bool(p1['typ'] == p2['typ'])
+    trzby_diff_pct = float(abs(p1['trzby'] - p2['trzby']) / max(p1['trzby'], p2['trzby']) * 100)
+    rx_diff_pp = float(abs(p1['podiel_rx'] - p2['podiel_rx']) * 100)
+
+    similar_trzby = bool(trzby_diff_pct <= 15)
+    similar_rx = bool(rx_diff_pp <= 10)
+
+    # Generate insight
+    insights = []
+    if pharmacy1['actual_fte'] < pharmacy2['actual_fte'] and pharmacy1['trzby'] >= pharmacy2['trzby']:
+        insights.append(f"{pharmacy1['mesto']}: vyššie tržby s menej FTE → vyššia efektivita")
+    elif pharmacy2['actual_fte'] < pharmacy1['actual_fte'] and pharmacy2['trzby'] >= pharmacy1['trzby']:
+        insights.append(f"{pharmacy2['mesto']}: vyššie tržby s menej FTE → vyššia efektivita")
+
+    if pharmacy1['revenue_at_risk'] > pharmacy2['revenue_at_risk'] * 1.5:
+        insights.append(f"{pharmacy1['mesto']}: výrazne vyššie RAR ({pharmacy1['revenue_at_risk']//1000}K vs {pharmacy2['revenue_at_risk']//1000}K)")
+    elif pharmacy2['revenue_at_risk'] > pharmacy1['revenue_at_risk'] * 1.5:
+        insights.append(f"{pharmacy2['mesto']}: výrazne vyššie RAR ({pharmacy2['revenue_at_risk']//1000}K vs {pharmacy1['revenue_at_risk']//1000}K)")
+
+    if abs(pharmacy1['prod_pct'] - pharmacy2['prod_pct']) > 20:
+        higher = pharmacy1 if pharmacy1['prod_pct'] > pharmacy2['prod_pct'] else pharmacy2
+        insights.append(f"{higher['mesto']}: výrazne vyššia produktivita ({higher['prod_pct']}%)")
+
+    return jsonify({
+        'pharmacy1': pharmacy1,
+        'pharmacy2': pharmacy2,
+        'comparison': {
+            'same_segment': same_segment,
+            'similar_trzby': similar_trzby,
+            'similar_rx': similar_rx,
+            'trzby_diff_pct': round(trzby_diff_pct, 1),
+            'rx_diff_pp': round(rx_diff_pp, 1)
+        },
+        'insight': ' | '.join(insights) if insights else 'Porovnateľné prevádzky bez výrazných rozdielov.'
+    })
 
 
 # ============================================================

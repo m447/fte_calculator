@@ -923,7 +923,7 @@ def calculate_sensitivity(
 def find_peers(
     pharmacy_id: int,
     df: pd.DataFrame,
-    bloky_tolerance: float = 0.20,
+    trzby_tolerance: float = 0.10,
     rx_tolerance: float = 0.10,
     max_peers: int = 10,
     require_same_segment: bool = True
@@ -933,16 +933,20 @@ def find_peers(
 
     Matching criteria (in priority order):
     1. Same segment (required by default)
-    2. Similar transaction volume (bloky) - within ±tolerance
+    2. Similar revenue (trzby) - within ±tolerance (default 15%)
     3. Similar Rx ratio - within ±tolerance
 
+    NOTE: Matches by REVENUE not bloky, because same bloky with different
+    basket sizes leads to incomparable pharmacies. Revenue represents
+    actual business potential.
+
     Similarity score formula:
-        score = 100 - (30 × |bloky_diff_%| + 20 × |rx_diff| + 10 × |revenue_diff_%|)
+        score = 100 - (40 × |trzby_diff_%| + 30 × |rx_diff| + 10 × |bloky_diff_%|)
 
     Args:
         pharmacy_id: Target pharmacy ID
         df: DataFrame with pharmacy data (from prepare_fte_dataframe)
-        bloky_tolerance: Max % difference in bloky (default 20%)
+        trzby_tolerance: Max % difference in revenue (default 15%)
         rx_tolerance: Max absolute difference in Rx ratio (default 0.10 = 10pp)
         max_peers: Maximum number of peers to return
         require_same_segment: If True, only match within same segment
@@ -952,7 +956,8 @@ def find_peers(
             'pharmacy': target pharmacy data,
             'peers': list of peer dicts with similarity scores,
             'benchmarks': aggregate stats from peers,
-            'insights': key findings
+            'insights': key findings,
+            'filters': applied filter settings
         }
     """
     # Find target pharmacy
@@ -968,9 +973,9 @@ def find_peers(
     target_segment = target['typ']
     target_fte = target['actual_fte']
 
-    # Calculate bloky range
-    bloky_min = target_bloky * (1 - bloky_tolerance)
-    bloky_max = target_bloky * (1 + bloky_tolerance)
+    # Calculate trzby (revenue) range
+    trzby_min = target_trzby * (1 - trzby_tolerance)
+    trzby_max = target_trzby * (1 + trzby_tolerance)
 
     # Filter potential peers
     peers = df[df['id'] != pharmacy_id].copy()
@@ -978,8 +983,8 @@ def find_peers(
     if require_same_segment:
         peers = peers[peers['typ'] == target_segment]
 
-    # Filter by bloky range
-    peers = peers[(peers['bloky'] >= bloky_min) & (peers['bloky'] <= bloky_max)]
+    # Filter by trzby (revenue) range - KEY CHANGE from bloky
+    peers = peers[(peers['trzby'] >= trzby_min) & (peers['trzby'] <= trzby_max)]
 
     # Filter by Rx ratio if column exists
     if 'podiel_rx' in peers.columns:
@@ -993,16 +998,23 @@ def find_peers(
             'pharmacy': _pharmacy_to_dict(target),
             'peers': [],
             'benchmarks': None,
-            'insights': ['No comparable peers found. Try relaxing filters.']
+            'insights': ['No comparable peers found. Try relaxing filters.'],
+            'filters': {
+                'segment': target_segment,
+                'trzby_range': [int(trzby_min), int(trzby_max)],
+                'rx_range': [round(target_rx - rx_tolerance, 2), round(target_rx + rx_tolerance, 2)]
+            }
         }
 
-    # Calculate similarity scores
+    # Calculate similarity scores (revenue-weighted formula)
+    # Higher weight on revenue since we match by revenue
     def calc_similarity(row):
-        bloky_diff_pct = abs(row['bloky'] - target_bloky) / target_bloky
+        trzby_diff_pct = abs(row['trzby'] - target_trzby) / target_trzby if target_trzby > 0 else 0
         rx_diff = abs(row.get('podiel_rx', 0.5) - target_rx)
-        revenue_diff_pct = abs(row['trzby'] - target_trzby) / target_trzby if target_trzby > 0 else 0
+        bloky_diff_pct = abs(row['bloky'] - target_bloky) / target_bloky if target_bloky > 0 else 0
 
-        score = 100 - (30 * bloky_diff_pct + 20 * rx_diff + 10 * revenue_diff_pct)
+        # Formula: 100 - (40×|trzby_diff_%| + 30×|rx_diff×100| + 10×|bloky_diff_%|)
+        score = 100 - (40 * trzby_diff_pct + 30 * rx_diff + 10 * bloky_diff_pct)
         return max(0, min(100, score))
 
     peers['similarity'] = peers.apply(calc_similarity, axis=1)
@@ -1078,7 +1090,9 @@ def find_peers(
         'insights': insights,
         'filters': {
             'segment': target_segment,
-            'bloky_range': [int(bloky_min), int(bloky_max)],
+            'trzby_tolerance': f'±{int(trzby_tolerance*100)}%',
+            'trzby_range': [int(trzby_min), int(trzby_max)],
+            'rx_tolerance': f'±{int(rx_tolerance*100)}pp',
             'rx_range': [round(target_rx - rx_tolerance, 2), round(target_rx + rx_tolerance, 2)]
         }
     }

@@ -84,12 +84,13 @@ This project analyzes pharmacy operational data to predict the optimal number of
 
 ## Live Application
 
-**Production URL:** https://fte-calc-gqsssy2mjq-ew.a.run.app
+**Production URL:** https://fte-calc-638044991573.europe-west1.run.app
 
 **GCP Project:** `gen-lang-client-0415148507`
 
 **Credentials:**
-- Heslo: `FteCalc2024Rx`
+- Username: `drmax`
+- Password: `FteCalc2024Rx`
 
 **Usage Analytics (BigQuery):**
 - Dataset: `gen-lang-client-0415148507.fte_analytics`

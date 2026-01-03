@@ -51,6 +51,7 @@ from app_v2.core import (
     validate_pharmacy_dataframe,
     DataValidationError,
     SEGMENT_PROD_MEANS,
+    find_peers,
 )
 
 # Import configuration and logger
@@ -982,6 +983,48 @@ def get_benchmarks():
             'count': len(type_data)
         })
     return jsonify(benchmarks)
+
+
+@app.route('/api/pharmacy/<int:pharmacy_id>/peers', methods=['GET'])
+@requires_api_auth
+def get_pharmacy_peers(pharmacy_id):
+    """
+    Find comparable peer pharmacies for benchmarking.
+
+    Query params:
+        bloky_tolerance: Max % difference in bloky (default 0.20 = 20%)
+        rx_tolerance: Max absolute difference in Rx ratio (default 0.10 = 10pp)
+        max_peers: Maximum peers to return (default 10)
+
+    Returns:
+        {
+            pharmacy: target pharmacy data,
+            peers: list with similarity scores and deltas,
+            benchmarks: aggregate stats from peers,
+            insights: key findings
+        }
+    """
+    # Get query parameters
+    bloky_tolerance = request.args.get('bloky_tolerance', 0.20, type=float)
+    rx_tolerance = request.args.get('rx_tolerance', 0.10, type=float)
+    max_peers = request.args.get('max_peers', 10, type=int)
+
+    # Prepare dataframe with calculations
+    df_calc = prepare_fte_dataframe(df, include_revenue_at_risk=True)
+
+    # Find peers
+    result = find_peers(
+        pharmacy_id=pharmacy_id,
+        df=df_calc,
+        bloky_tolerance=bloky_tolerance,
+        rx_tolerance=rx_tolerance,
+        max_peers=max_peers
+    )
+
+    if 'error' in result:
+        return jsonify(result), 404
+
+    return jsonify(result)
 
 
 # ============================================================

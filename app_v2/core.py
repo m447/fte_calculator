@@ -914,3 +914,189 @@ def calculate_sensitivity(
         'trzby_10pct': round(trzby_plus10 - base_fte, 2),
         'rx_10pp': round(rx_plus10pp - base_fte, 2)
     }
+
+
+# ============================================================
+# PEER MATCHING
+# ============================================================
+
+def find_peers(
+    pharmacy_id: int,
+    df: pd.DataFrame,
+    bloky_tolerance: float = 0.20,
+    rx_tolerance: float = 0.10,
+    max_peers: int = 10,
+    require_same_segment: bool = True
+) -> dict:
+    """
+    Find comparable peer pharmacies for benchmarking.
+
+    Matching criteria (in priority order):
+    1. Same segment (required by default)
+    2. Similar transaction volume (bloky) - within ±tolerance
+    3. Similar Rx ratio - within ±tolerance
+
+    Similarity score formula:
+        score = 100 - (30 × |bloky_diff_%| + 20 × |rx_diff| + 10 × |revenue_diff_%|)
+
+    Args:
+        pharmacy_id: Target pharmacy ID
+        df: DataFrame with pharmacy data (from prepare_fte_dataframe)
+        bloky_tolerance: Max % difference in bloky (default 20%)
+        rx_tolerance: Max absolute difference in Rx ratio (default 0.10 = 10pp)
+        max_peers: Maximum number of peers to return
+        require_same_segment: If True, only match within same segment
+
+    Returns:
+        dict: {
+            'pharmacy': target pharmacy data,
+            'peers': list of peer dicts with similarity scores,
+            'benchmarks': aggregate stats from peers,
+            'insights': key findings
+        }
+    """
+    # Find target pharmacy
+    target = df[df['id'] == pharmacy_id]
+    if len(target) == 0:
+        return {'error': f'Pharmacy {pharmacy_id} not found'}
+    target = target.iloc[0]
+
+    # Extract target values
+    target_bloky = target['bloky']
+    target_rx = target.get('podiel_rx', 0.5)
+    target_trzby = target['trzby']
+    target_segment = target['typ']
+    target_fte = target['actual_fte']
+
+    # Calculate bloky range
+    bloky_min = target_bloky * (1 - bloky_tolerance)
+    bloky_max = target_bloky * (1 + bloky_tolerance)
+
+    # Filter potential peers
+    peers = df[df['id'] != pharmacy_id].copy()
+
+    if require_same_segment:
+        peers = peers[peers['typ'] == target_segment]
+
+    # Filter by bloky range
+    peers = peers[(peers['bloky'] >= bloky_min) & (peers['bloky'] <= bloky_max)]
+
+    # Filter by Rx ratio if column exists
+    if 'podiel_rx' in peers.columns:
+        peers = peers[
+            (peers['podiel_rx'] >= target_rx - rx_tolerance) &
+            (peers['podiel_rx'] <= target_rx + rx_tolerance)
+        ]
+
+    if len(peers) == 0:
+        return {
+            'pharmacy': _pharmacy_to_dict(target),
+            'peers': [],
+            'benchmarks': None,
+            'insights': ['No comparable peers found. Try relaxing filters.']
+        }
+
+    # Calculate similarity scores
+    def calc_similarity(row):
+        bloky_diff_pct = abs(row['bloky'] - target_bloky) / target_bloky
+        rx_diff = abs(row.get('podiel_rx', 0.5) - target_rx)
+        revenue_diff_pct = abs(row['trzby'] - target_trzby) / target_trzby if target_trzby > 0 else 0
+
+        score = 100 - (30 * bloky_diff_pct + 20 * rx_diff + 10 * revenue_diff_pct)
+        return max(0, min(100, score))
+
+    peers['similarity'] = peers.apply(calc_similarity, axis=1)
+    peers = peers.sort_values('similarity', ascending=False).head(max_peers)
+
+    # Build peer list with comparison metrics
+    peer_list = []
+    for _, row in peers.iterrows():
+        peer_data = _pharmacy_to_dict(row)
+        peer_data['similarity'] = round(row['similarity'], 1)
+        peer_data['delta_trzby'] = int(row['trzby'] - target_trzby)
+        peer_data['delta_fte'] = round(row['actual_fte'] - target_fte, 2)
+        peer_data['delta_bloky'] = int(row['bloky'] - target_bloky)
+        peer_data['basket'] = round(row['trzby'] / row['bloky'], 2) if row['bloky'] > 0 else 0
+        peer_list.append(peer_data)
+
+    # Calculate benchmarks from peers
+    benchmarks = {
+        'avg_fte': round(peers['actual_fte'].mean(), 2),
+        'avg_trzby': int(peers['trzby'].mean()),
+        'avg_bloky': int(peers['bloky'].mean()),
+        'avg_productivity': round(peers['produktivita_gross'].mean(), 2) if 'produktivita_gross' in peers.columns else None,
+        'avg_basket': round((peers['trzby'] / peers['bloky']).mean(), 2),
+        'min_fte': round(peers['actual_fte'].min(), 2),
+        'max_fte': round(peers['actual_fte'].max(), 2),
+        'count': len(peers)
+    }
+
+    # Generate insights
+    insights = []
+    target_basket = target_trzby / target_bloky if target_bloky > 0 else 0
+
+    # FTE comparison
+    if target_fte < benchmarks['avg_fte']:
+        diff = benchmarks['avg_fte'] - target_fte
+        insights.append(f"Pharmacy has {diff:.1f} fewer FTE than peer average ({target_fte:.1f} vs {benchmarks['avg_fte']:.1f})")
+    elif target_fte > benchmarks['avg_fte']:
+        diff = target_fte - benchmarks['avg_fte']
+        insights.append(f"Pharmacy has {diff:.1f} more FTE than peer average ({target_fte:.1f} vs {benchmarks['avg_fte']:.1f})")
+
+    # Revenue comparison
+    if target_trzby > benchmarks['avg_trzby']:
+        pct = ((target_trzby / benchmarks['avg_trzby']) - 1) * 100
+        insights.append(f"Revenue is {pct:.0f}% above peer average (€{int(target_trzby):,} vs €{int(benchmarks['avg_trzby']):,})")
+    elif target_trzby < benchmarks['avg_trzby']:
+        pct = (1 - (target_trzby / benchmarks['avg_trzby'])) * 100
+        insights.append(f"Revenue is {pct:.0f}% below peer average (€{int(target_trzby):,} vs €{int(benchmarks['avg_trzby']):,})")
+
+    # Basket comparison
+    if target_basket < benchmarks['avg_basket']:
+        diff = benchmarks['avg_basket'] - target_basket
+        potential = diff * target_bloky
+        insights.append(f"Basket €{target_basket:.2f} is below peer avg €{benchmarks['avg_basket']:.2f}. Potential uplift: €{int(potential):,}")
+
+    # Find best-in-class peer
+    if len(peer_list) > 0:
+        # Best revenue efficiency (highest revenue per FTE)
+        peers['revenue_per_fte'] = peers['trzby'] / peers['actual_fte']
+        best_efficiency_idx = peers['revenue_per_fte'].idxmax()
+        best_efficiency = peers.loc[best_efficiency_idx]
+        target_efficiency = target_trzby / target_fte if target_fte > 0 else 0
+
+        if best_efficiency['revenue_per_fte'] > target_efficiency:
+            insights.append(
+                f"Best-in-class: ID {int(best_efficiency['id'])} ({best_efficiency['mesto'][:20]}) "
+                f"has €{int(best_efficiency['revenue_per_fte']):,}/FTE vs your €{int(target_efficiency):,}/FTE"
+            )
+
+    return {
+        'pharmacy': _pharmacy_to_dict(target),
+        'peers': peer_list,
+        'benchmarks': benchmarks,
+        'insights': insights,
+        'filters': {
+            'segment': target_segment,
+            'bloky_range': [int(bloky_min), int(bloky_max)],
+            'rx_range': [round(target_rx - rx_tolerance, 2), round(target_rx + rx_tolerance, 2)]
+        }
+    }
+
+
+def _pharmacy_to_dict(row) -> dict:
+    """Convert DataFrame row to dict with key fields."""
+    return {
+        'id': int(row['id']),
+        'mesto': row.get('mesto', ''),
+        'typ': row.get('typ', ''),
+        'bloky': int(row.get('bloky', 0)),
+        'trzby': int(row.get('trzby', 0)),
+        'actual_fte': round(float(row.get('actual_fte', 0)), 2),
+        'predicted_fte': round(float(row.get('predicted_fte', 0)), 2),
+        'fte_gap': round(float(row.get('fte_gap', 0)), 2),
+        'produktivita_gross': round(float(row.get('produktivita_gross', 0)), 2),
+        'is_above_avg': bool(row.get('is_above_avg', False)),
+        'revenue_at_risk': int(row.get('revenue_at_risk', 0)),
+        'podiel_rx': round(float(row.get('podiel_rx', 0)), 3)
+    }

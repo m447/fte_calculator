@@ -299,7 +299,7 @@ KEDY REALOKOVAŤ:
 
 PRIORITY FRAMEWORK:
 1. Top 10 s najvyšším Revenue at Risk (0-30 dní)
-2. Ďalších 20 s vysokou produktivitou (30-90 dní)
+2. Ďalších 20 s konkrétnym FTE odporúčaním (30-90 dní)
 3. OPTIMIZE lekárne po zlepšení (90-180 dní)
 
 NÁKLADY NA 1 FTE: ~30,000 EUR/rok
@@ -392,7 +392,7 @@ DOSTUPNÉ NÁSTROJE:
 4. get_segment_position - Pozícia lekárne v segmente (min/max/avg pre každý KPI)
 5. simulate_fte - Simulácia "čo ak?" (zmena blokov/tržieb → nové FTE)
 6. compare_to_peers - Porovnaj lekáreň s podobnými prevádzkami
-7. get_understaffed - Zoznam poddimenzovaných lekární
+7. get_understaffed - Lekárne s konkrétnym FTE odporúčaním a ohrozenými tržbami
 8. get_regional_summary - Súhrn za región
 9. get_all_regions_summary - Porovnaj všetky regióny
 10. generate_report - Vytvor report vo formáte Markdown
@@ -2279,7 +2279,7 @@ class DrMaxAgent:
             },
             {
                 "name": "get_understaffed",
-                "description": "Získaj zoznam poddimenzovaných lekární s ohrozenými tržbami. Podporuje filtre pre mesto, región, vysoké riziko a produktivitu.",
+                "description": "Získaj lekárne s konkrétnym FTE odporúčaním a ohrozenými tržbami v EUR. Vracia presný počet FTE na pridanie a finančný dopad.",
                 "input_schema": {
                     "type": "object",
                     "properties": {

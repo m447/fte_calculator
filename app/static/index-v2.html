@@ -6211,7 +6211,7 @@ input:checked + .toggle-slider:before {
                 <span class="priority-count" id="priority-urgent-count">0</span>
                 <button class="btn-export-csv" onclick="event.stopPropagation(); exportCSV('urgent')">CSV</button>
               </h4>
-              <span class="priority-subtitle">Nedostatok personálu pri vysokej produktivite</span>
+              <span class="priority-subtitle">Konkrétne FTE odporúčanie + ohrozené tržby</span>
             </div>
             <span class="priority-total urgent" id="priority-urgent-total">-</span>
             <span class="priority-arrow" id="urgent-arrow">▼</span>
@@ -8100,7 +8100,7 @@ async function loadNetworkData() {
 
     // Hero detail
     document.getElementById('hero-revenue-detail').textContent =
-      `${urgentCount} lekární s vysokou produktivitou a nedostatkom personálu`;
+      `${urgentCount} lekární s odporúčaním navýšenia FTE`;
 
     // Quick stats row
     document.getElementById('net-urgent-count').textContent = urgentCount;

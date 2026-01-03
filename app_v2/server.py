@@ -50,6 +50,7 @@ from app_v2.core import (
     get_feature_cols,
     validate_pharmacy_dataframe,
     DataValidationError,
+    SEGMENT_PROD_MEANS,
 )
 
 # Import configuration and logger
@@ -135,7 +136,7 @@ def check_api_key():
 def is_browser_request():
     """Check if request is from browser (has Referer from our app)."""
     referer = request.headers.get('Referer', '')
-    return 'fte-calc' in referer or 'localhost' in referer
+    return 'fte-calc' in referer or 'localhost' in referer or '127.0.0.1' in referer
 
 
 def authenticate():
@@ -202,6 +203,15 @@ try:
     df = validate_pharmacy_dataframe(df)
     defaults = df.median(numeric_only=True).to_dict()
     logger.info(f"Loaded and validated {len(df)} pharmacies from {DATA_PATH}")
+
+    # Calculate actual segment means from loaded data for RAR calculation
+    # This overrides model-stored means which may be outdated
+    if 'produktivita_gross' in df.columns:
+        ACTUAL_SEGMENT_MEANS = df.groupby('typ')['produktivita_gross'].mean().to_dict()
+        logger.info(f"Calculated segment means from data: {ACTUAL_SEGMENT_MEANS}")
+    else:
+        ACTUAL_SEGMENT_MEANS = SEGMENT_PROD_MEANS.copy()
+        logger.warning("Using model segment means (produktivita_gross not in data)")
 except DataValidationError as e:
     logger.error(f"Data validation failed: {e}")
     raise SystemExit(f"Cannot start server: {e}")
@@ -383,9 +393,21 @@ def predict():
         except ValueError:
             pass  # Invalid pharmacy_id format
 
-    # Revenue at risk - use shared function
-    is_above_avg_productivity_val = productivity_z > 0
-    revenue_at_risk = calculate_revenue_at_risk(fte_pred, actual_fte, trzby, is_above_avg_productivity_val)
+    # Revenue at risk - use v2 research-backed calculation
+    # For manual predictions, derive pharmacy productivity from productivity_z input
+    segment_mean = SEGMENT_PROD_MEANS.get(typ, 7.0)
+    prod_residual = max(0, productivity_z * 1.5)  # Same derivation as model
+    pharmacy_productivity_estimate = segment_mean + prod_residual
+
+    revenue_at_risk = calculate_revenue_at_risk(
+        predicted_fte=fte_pred,
+        actual_fte=actual_fte,
+        trzby=trzby,
+        rx_ratio=podiel_rx,
+        pharmacy_productivity=pharmacy_productivity_estimate,
+        segment_mean=segment_mean,
+        segment_type=typ
+    )
 
     return jsonify({
         'meta': {
@@ -550,7 +572,8 @@ def get_network():
                 'is_above_avg_productivity': row['is_above_avg'],
                 'prod_pct': row['prod_pct'],
                 'bloky_trend': bloky_trend,
-                'revenue_at_risk': int(row['revenue_at_risk'])
+                'revenue_at_risk': int(row['revenue_at_risk']),
+                'revenue_at_risk_v1': int(row.get('revenue_at_risk_v1', 0))  # For comparison
             })
         return result
 
@@ -803,8 +826,23 @@ def get_pharmacy(pharmacy_id):
 
     # Use shared helper functions - single source of truth
     is_above_avg = is_above_avg_productivity(row)
+
+    # Get pharmacy productivity (prefer GROSS, fallback to NET-derived)
+    # Use ACTUAL_SEGMENT_MEANS calculated from CSV data (not model-stored means)
+    segment_mean = ACTUAL_SEGMENT_MEANS.get(row['typ'], 7.0)
+    if 'produktivita_gross' in row and pd.notna(row.get('produktivita_gross')):
+        pharmacy_productivity = float(row['produktivita_gross'])
+    else:
+        pharmacy_productivity = segment_mean + float(row.get('prod_residual', 0))
+
     revenue_at_risk = calculate_revenue_at_risk(
-        fte_result['predicted_fte'], fte_result['actual_fte'], row['trzby'], is_above_avg
+        predicted_fte=fte_result['predicted_fte'],
+        actual_fte=fte_result['actual_fte'],
+        trzby=row['trzby'],
+        rx_ratio=row['podiel_rx'],
+        pharmacy_productivity=pharmacy_productivity,
+        segment_mean=segment_mean,
+        segment_type=row['typ']
     )
 
     return jsonify({

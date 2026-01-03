@@ -43,7 +43,7 @@ CHAT_TOOLS = {
     "function_declarations": [
         {
             "name": "search_pharmacies",
-            "description": "Vyhľadaj lekárne podľa filtrov. Použi pre otázky typu 'ktoré lekárne...', 'ukáž mi B lekárne s...', 'nájdi poddimenzované lekárne', 'existuje lekáreň v meste X'.",
+            "description": "Vyhľadaj lekárne podľa filtrov. Použi pre otázky typu 'ktoré lekárne...', 'ukáž mi B lekárne s...', 'lekárne s odporúčaním navýšenia FTE', 'existuje lekáreň v meste X'.",
             "parameters": {
                 "type": "object",
                 "properties": {

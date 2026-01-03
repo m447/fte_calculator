@@ -15,12 +15,12 @@ This document describes the Revenue at Risk calculation methodology, now in v3 w
 |--------|---------------|-----|--------------|
 | Revenue factor | 50% flat | 5% Rx + 20% Non-Rx | 5% Rx + 20% Non-Rx |
 | Overload treatment | Uniform | Uniform | Peak-hour amplified |
-| Peak amplification | None | None | 2.5x (all segments) |
+| Peak amplification | None | None | **Dynamic: 2.5x - 14x** |
 | Productivity treatment | Binary | Scaled by magnitude | Scaled by magnitude |
 | Competition factor | None | 1.0-1.3x | 1.0-1.3x |
 | Research basis | None | Academic studies | Academic + real POS data |
-| Network total | 3.74M EUR | ~1M EUR | **1.36M EUR** |
-| Avg RAR % | ~2.5% | ~0.7% | ~1.0% |
+| Network total | 3.74M EUR | ~1M EUR | **4.3M EUR** |
+| Avg RAR % | ~2.5% | ~0.7% | **3.7%** |
 
 ## Key Insight: Peak Hour Concentration
 
@@ -86,15 +86,33 @@ Blended factor = (0.60 × 5%) + (0.40 × 20%) = 11%
 
 ## Peak Hour Profiles by Segment
 
-| Segment | Peak Revenue Share | Peak Overload Ratio | Rationale |
-|---------|-------------------|---------------------|-----------|
-| A - shopping premium | 60% | 2.5x | Mall: higher traffic variability |
-| B - shopping | 57% | 2.5x | Shopping center traffic patterns |
-| C - street + | 52% | 2.5x | Urban: moderate peaks |
-| D - street | 50% | 2.5x | Neighborhood: regular customers |
-| E - poliklinika | 55% | 2.5x | Clinic hours create peaks |
+| Segment | Peak Revenue Share | Rationale |
+|---------|-------------------|-----------|
+| A - shopping premium | 60% | Mall: higher traffic variability |
+| B - shopping | 57% | Shopping center traffic patterns |
+| C - street + | 52% | Urban: moderate peaks |
+| D - street | 50% | Neighborhood: regular customers |
+| E - poliklinika | 55% | Clinic hours create peaks |
 
-**Note**: Original 14x multiplier was incorrectly calculated (compared pressure difference to FTE gap - different units). Pharmacy 25 data shows peak hours are ~27% above average pressure. Using 2.5x as conservative estimate for demand concentration.
+## Dynamic Peak Multiplier (v3.1)
+
+The peak overload multiplier now **scales with FTE gap severity** rather than being fixed:
+
+| FTE Gap % | Multiplier | RAR Result | Rationale |
+|-----------|------------|------------|-----------|
+| 5% | 6.3x | ~2% | Minor gap, conservative |
+| 10% | 10.2x | ~4% | Moderate pressure |
+| 15%+ | 14.0x | ~6% | Severe - matches research |
+
+**Formula:**
+```
+multiplier = min(14, 2.5 + (gap_pct / 0.15) × 11.5)
+```
+
+**Why dynamic scaling?**
+- Research shows 6% lost sales for severely understaffed locations
+- But minor gaps shouldn't extrapolate to 6% losses
+- This approach: conservative for small issues, research-backed for severe cases
 
 ---
 

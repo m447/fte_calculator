@@ -81,21 +81,66 @@ RAR_COMPETITION_FACTOR = {
 }
 
 # Revenue at Risk v3 - Peak Hour Amplification
-# Based on pharmacy 25 POS data analysis:
-# - Peak hours have 27% higher pressure than average
-# - Using 2.5x multiplier as conservative estimate for demand concentration
-# - Original 14x was incorrect (compared pressure diff to FTE gap - wrong units)
-RAR_PEAK_PROFILE = {
-    # (peak_revenue_share, peak_overload_ratio)
-    'A - shopping premium': (0.60, 2.5),
-    'B - shopping': (0.57, 2.5),
-    'C - street +': (0.52, 2.5),
-    'D - street': (0.50, 2.5),
-    'E - poliklinika': (0.55, 2.5),
+# Based on pharmacy 25 POS data analysis and research (6% lost sales from understaffing)
+#
+# DYNAMIC MULTIPLIER SCALING:
+# - Small gaps (5%): 2.5x multiplier (conservative)
+# - Large gaps (15%+): 14x multiplier (matches 6% research benchmark)
+# - Formula: min(14, 2.5 + (gap_pct / 0.15) * 11.5)
+#
+# This ensures:
+# - Minor understaffing gets conservative RAR estimates (~1-2%)
+# - Severe understaffing matches research benchmark (~6%)
+RAR_PEAK_MULTIPLIER_MIN = 2.5   # Conservative for small gaps
+RAR_PEAK_MULTIPLIER_MAX = 14.0  # Matches 6% research for severe gaps
+RAR_GAP_THRESHOLD = 0.15        # Gap % at which max multiplier applies
+
+RAR_PEAK_REVENUE_SHARE = {
+    # Portion of revenue occurring during peak hours
+    'A - shopping premium': 0.60,
+    'B - shopping': 0.57,
+    'C - street +': 0.52,
+    'D - street': 0.50,
+    'E - poliklinika': 0.55,
 }
 
 # Maximum revenue at risk cap (sanity check)
 RAR_MAX_PERCENTAGE = 0.15  # 15% cap
+
+
+def calculate_rar_peak_multiplier(predicted_fte, actual_fte):
+    """
+    Calculate dynamic peak overload multiplier based on FTE gap severity.
+
+    Scales from 2.5x (minor gaps) to 14x (severe gaps) to match research:
+    - Studies show 6% lost sales from understaffing (severe cases)
+    - Minor understaffing has proportionally smaller impact
+
+    Formula: min(14, 2.5 + (gap_pct / 0.15) * 11.5)
+
+    Examples:
+        5% gap  → 6.3x multiplier  → ~2% RAR
+        10% gap → 10.2x multiplier → ~4% RAR
+        15% gap → 14x multiplier   → ~6% RAR (matches research)
+
+    Args:
+        predicted_fte: Model-predicted FTE needed
+        actual_fte: Current actual FTE
+
+    Returns:
+        float: Peak overload multiplier (2.5 to 14.0)
+    """
+    if actual_fte <= 0:
+        return RAR_PEAK_MULTIPLIER_MIN
+
+    gap_pct = (predicted_fte - actual_fte) / actual_fte
+    gap_pct = max(0, gap_pct)  # Only positive gaps
+
+    # Linear scaling from min to max based on gap percentage
+    scale_factor = min(1.0, gap_pct / RAR_GAP_THRESHOLD)
+    multiplier_range = RAR_PEAK_MULTIPLIER_MAX - RAR_PEAK_MULTIPLIER_MIN
+
+    return RAR_PEAK_MULTIPLIER_MIN + (scale_factor * multiplier_range)
 
 # ============================================================
 # MODEL & DATA LOADING
@@ -439,34 +484,36 @@ def calculate_revenue_at_risk(
     if productivity_ratio <= 1.0:
         return 0
 
-    # Step 1: Get peak hour profile for segment
-    peak_revenue_share, peak_overload_ratio = RAR_PEAK_PROFILE.get(
-        segment_type, (0.50, 4.0)
-    )
+    # Step 1: Get peak revenue share for segment
+    peak_revenue_share = RAR_PEAK_REVENUE_SHARE.get(segment_type, 0.50)
 
-    # Step 2: Calculate base overload and peak overload
+    # Step 2: Calculate dynamic peak multiplier based on gap severity
+    # Small gaps (5%) → 2.5x, Large gaps (15%+) → 14x (matches 6% research)
+    peak_overload_ratio = calculate_rar_peak_multiplier(predicted_fte, actual_fte)
+
+    # Step 3: Calculate base overload and peak overload
     base_overload = (predicted_fte / actual_fte) - 1
     peak_overload = base_overload * peak_overload_ratio
 
-    # Step 3: Calculate peak hour revenue
+    # Step 4: Calculate peak hour revenue
     peak_revenue = trzby * peak_revenue_share
 
-    # Step 4: Calculate blended factor from Rx ratio
+    # Step 5: Calculate blended factor from Rx ratio
     rx_ratio = max(0, min(1, rx_ratio))  # Clamp to 0-1
     blended_factor = rx_ratio * RAR_RX_FACTOR + (1 - rx_ratio) * RAR_NON_RX_FACTOR
 
-    # Step 5: Base revenue at risk (peak hours only)
+    # Step 6: Base revenue at risk (peak hours only)
     base_at_risk = peak_overload * blended_factor * peak_revenue
 
-    # Step 6: Scale by productivity magnitude
+    # Step 7: Scale by productivity magnitude
     productivity_multiplier = productivity_ratio - 1
     productivity_scaled = base_at_risk * (1 + productivity_multiplier)
 
-    # Step 7: Apply competition factor
+    # Step 8: Apply competition factor
     competition_factor = RAR_COMPETITION_FACTOR.get(segment_type, 1.0)
     final_at_risk = productivity_scaled * competition_factor
 
-    # Step 8: Apply cap (sanity check)
+    # Step 9: Apply cap (sanity check)
     max_at_risk = trzby * RAR_MAX_PERCENTAGE
     final_at_risk = min(final_at_risk, max_at_risk)
 

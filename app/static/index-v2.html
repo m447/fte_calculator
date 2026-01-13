@@ -10,6 +10,16 @@
 <title>Inteligentný FTE Manažment | Dr.Max</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  // Prevent flash of wrong theme - runs before CSS loads
+  (function() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.documentElement.classList.add('dark-mode');
+    }
+  })();
+</script>
 <style>
 /* ============================================
    DR.MAX FTE CALCULATOR - CORPORATE STYLING
@@ -40,62 +50,67 @@
   --accent-warm-light: rgba(245, 158, 11, 0.1);
 }
 
-/* Dark Mode - respects system preference */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --brand-green: #8ed12e;
-    --brand-green-dark: #78be20;
-    --btn-green: #9ee03e;
-    --btn-green-dark: #8ed12e;
-    --brand-green-light: rgba(142, 209, 46, 0.15);
-    --brand-green-glow: rgba(142, 209, 46, 0.3);
-    --text-primary: #f3f4f6;
-    --text-secondary: #d1d5db;
-    --text-muted: #9ca3af;
-    --bg-page: #111827;
-    --bg-card: #1f2937;
-    --bg-subtle: #374151;
-    --border-light: #374151;
-    --border-medium: #4b5563;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
-    --shadow-brand: 0 4px 14px rgba(142, 209, 46, 0.25);
-    --accent-warm: #fbbf24;
-    --accent-warm-light: rgba(251, 191, 36, 0.15);
-  }
+/* Dark Mode - toggle via class or system preference */
+html.dark-mode {
+  --brand-green: #8ed12e;
+  --brand-green-dark: #78be20;
+  --btn-green: #9ee03e;
+  --btn-green-dark: #8ed12e;
+  --brand-green-light: rgba(142, 209, 46, 0.15);
+  --brand-green-glow: rgba(142, 209, 46, 0.3);
+  --text-primary: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --bg-page: #111827;
+  --bg-card: #1f2937;
+  --bg-subtle: #374151;
+  --border-light: #374151;
+  --border-medium: #4b5563;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --shadow-brand: 0 4px 14px rgba(142, 209, 46, 0.25);
+  --accent-warm: #fbbf24;
+  --accent-warm-light: rgba(251, 191, 36, 0.15);
+}
 
-  /* Dark mode specific overrides */
-  .intro-overlay {
-    background: linear-gradient(135deg, #111827 0%, #1a2e1a 50%, #1f2937 100%);
-  }
+/* Dark mode specific overrides */
+html.dark-mode .intro-overlay {
+  background: linear-gradient(135deg, #111827 0%, #1a2e1a 50%, #1f2937 100%);
+}
 
-  .result-main {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  }
+html.dark-mode .result-main {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
 
-  input, select {
-    background: var(--bg-subtle);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-  }
+html.dark-mode input,
+html.dark-mode select {
+  background: var(--bg-subtle);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+}
 
-  .toast {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  }
+html.dark-mode .toast {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
 
-  /* Breakdown items in dark mode */
-  .breakdown-zastup {
-    border-color: rgba(96, 165, 250, 0.3);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, var(--bg-card) 100%);
-  }
+/* Breakdown items in dark mode */
+html.dark-mode .breakdown-zastup {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, var(--bg-card) 100%);
+}
 
-  .breakdown-zastup .breakdown-val {
-    color: #60a5fa;
-  }
+html.dark-mode .breakdown-zastup .breakdown-val {
+  color: #60a5fa;
+}
 
-  .breakdown-zastup .breakdown-lbl {
-    color: #93c5fd;
-  }
+html.dark-mode .breakdown-zastup .breakdown-lbl {
+  color: #93c5fd;
+}
+
+/* About modal dark mode */
+html.dark-mode #about-modal > div {
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
 /* Page load animations */
@@ -6669,22 +6684,53 @@ a:focus-visible,
     <h1><img src="/static/images/drmax-logo.svg" alt="Dr.Max" class="header-logo"> Inteligentný FTE Manažment</h1>
     <p class="subtitle">Overte obsadenie lekárne — kde strácate tržby a brzdíte rast</p>
     <p class="data-period-note">Dáta: 2019-2021 | Retrospektívna validácia</p>
-    <button onclick="document.getElementById('about-modal').style.display='flex'" style="
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: transparent;
-      border: 1px solid var(--border-light);
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      cursor: pointer;
-      color: var(--text-muted);
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    " title="About">ⓘ</button>
+    <!-- Header buttons container -->
+    <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 8px;">
+      <!-- Dark mode toggle -->
+      <button id="dark-mode-toggle" onclick="toggleDarkMode()" style="
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      " title="Tmavý režim">
+        <svg id="dark-mode-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="dark-mode-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <!-- About button -->
+      <button onclick="document.getElementById('about-modal').style.display='flex'" style="
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      " title="About">ⓘ</button>
+    </div>
   </div>
 
   <!-- About Modal -->
@@ -8210,6 +8256,38 @@ a:focus-visible,
 </div>
 
 <script>
+// ============================================
+// DARK MODE TOGGLE
+// ============================================
+function initDarkMode() {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // Apply saved preference or system preference
+  if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+    document.documentElement.classList.add('dark-mode');
+    updateDarkModeIcon(true);
+  }
+}
+
+function toggleDarkMode() {
+  const isDark = document.documentElement.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  updateDarkModeIcon(isDark);
+}
+
+function updateDarkModeIcon(isDark) {
+  const sunIcon = document.getElementById('dark-mode-icon-sun');
+  const moonIcon = document.getElementById('dark-mode-icon-moon');
+  if (sunIcon && moonIcon) {
+    sunIcon.style.display = isDark ? 'block' : 'none';
+    moonIcon.style.display = isDark ? 'none' : 'block';
+  }
+}
+
+// Initialize dark mode immediately
+initDarkMode();
+
 // Toast notification helper
 function showToast(message, type = 'error', duration = 4000) {
   const container = document.getElementById('toast-container');

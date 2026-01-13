@@ -40,6 +40,64 @@
   --accent-warm-light: rgba(245, 158, 11, 0.1);
 }
 
+/* Dark Mode - respects system preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-green: #8ed12e;
+    --brand-green-dark: #78be20;
+    --btn-green: #9ee03e;
+    --btn-green-dark: #8ed12e;
+    --brand-green-light: rgba(142, 209, 46, 0.15);
+    --brand-green-glow: rgba(142, 209, 46, 0.3);
+    --text-primary: #f3f4f6;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --bg-page: #111827;
+    --bg-card: #1f2937;
+    --bg-subtle: #374151;
+    --border-light: #374151;
+    --border-medium: #4b5563;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    --shadow-brand: 0 4px 14px rgba(142, 209, 46, 0.25);
+    --accent-warm: #fbbf24;
+    --accent-warm-light: rgba(251, 191, 36, 0.15);
+  }
+
+  /* Dark mode specific overrides */
+  .intro-overlay {
+    background: linear-gradient(135deg, #111827 0%, #1a2e1a 50%, #1f2937 100%);
+  }
+
+  .result-main {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  input, select {
+    background: var(--bg-subtle);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+  }
+
+  .toast {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+
+  /* Breakdown items in dark mode */
+  .breakdown-zastup {
+    border-color: rgba(96, 165, 250, 0.3);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, var(--bg-card) 100%);
+  }
+
+  .breakdown-zastup .breakdown-val {
+    color: #60a5fa;
+  }
+
+  .breakdown-zastup .breakdown-lbl {
+    color: #93c5fd;
+  }
+}
+
 /* Page load animations */
 @keyframes fadeInUp {
   from {
@@ -130,7 +188,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: questionPhase 4.5s ease-out forwards;
+  animation: questionPhase 2.5s ease-out forwards;
 }
 
 .intro-question-text {
@@ -144,15 +202,15 @@ body {
 }
 
 @keyframes questionPhase {
-  0%, 75% { opacity: 1; transform: scale(1); }
-  90% { opacity: 0; transform: scale(0.98); }
+  0%, 70% { opacity: 1; transform: scale(1); }
+  85% { opacity: 0; transform: scale(0.98); }
   100% { opacity: 0; transform: scale(0.98); pointer-events: none; }
 }
 
 /* PHASE 2: The Solution */
 .intro-solution {
   opacity: 0;
-  animation: solutionReveal 0.8s ease-out 3.8s forwards;
+  animation: solutionReveal 0.8s ease-out 2.1s forwards;
 }
 
 @keyframes solutionReveal {
@@ -168,7 +226,7 @@ body {
   margin: 0 0 32px;
   letter-spacing: -0.02em;
   opacity: 0;
-  animation: fadeInUp 0.5s ease-out 3.9s forwards;
+  animation: fadeInUp 0.5s ease-out 2.2s forwards;
 }
 
 .intro-headline strong {
@@ -192,9 +250,9 @@ body {
   opacity: 0;
 }
 
-.intro-feature:nth-child(1) { animation: fadeInUp 0.4s ease-out 4.1s forwards; }
-.intro-feature:nth-child(2) { animation: fadeInUp 0.4s ease-out 4.25s forwards; }
-.intro-feature:nth-child(3) { animation: fadeInUp 0.4s ease-out 4.4s forwards; }
+.intro-feature:nth-child(1) { animation: fadeInUp 0.4s ease-out 2.3s forwards; }
+.intro-feature:nth-child(2) { animation: fadeInUp 0.4s ease-out 2.45s forwards; }
+.intro-feature:nth-child(3) { animation: fadeInUp 0.4s ease-out 2.6s forwards; }
 
 .intro-feature-icon {
   width: 40px;
@@ -229,7 +287,7 @@ body {
   box-shadow: 0 4px 20px rgba(120, 190, 32, 0.35);
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   opacity: 0;
-  animation: fadeInUp 0.5s ease-out 4.6s forwards;
+  animation: fadeInUp 0.5s ease-out 2.75s forwards;
 }
 
 .intro-cta:hover {
@@ -252,7 +310,7 @@ body {
   font-size: 0.75rem;
   color: var(--text-muted);
   opacity: 0;
-  animation: fadeInUp 0.4s ease-out 4.8s forwards;
+  animation: fadeInUp 0.4s ease-out 2.9s forwards;
 }
 
 .intro-skip {
@@ -350,7 +408,7 @@ h1 {
 
 .card-title {
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   margin-bottom: 20px;
   font-weight: 700;
@@ -849,6 +907,39 @@ input:checked + .toggle-slider:before {
   transform: none;
 }
 
+/* ============================================
+   FOCUS-VISIBLE STYLES (Keyboard Navigation)
+   ============================================ */
+.btn:focus-visible,
+.intro-cta:focus-visible,
+.intro-skip:focus-visible {
+  outline: 3px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+.tab-btn:focus-visible {
+  outline: 3px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+.trust-link:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.toggle-switch input:focus-visible + .toggle-slider,
+.toggle-switch-sm input:focus-visible + .toggle-slider-sm {
+  outline: 3px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+.segment-option input:focus-visible + label {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
 .btn.loading {
   pointer-events: none;
   color: transparent;
@@ -1264,17 +1355,41 @@ input:checked + .toggle-slider:before {
   .result-main .val {
     font-size: 3.5rem;
   }
-  
+
   .breakdown {
     gap: 10px;
   }
-  
+
   .breakdown-item {
     padding: 14px 8px;
   }
 
   .breakdown-val {
     font-size: 1.3rem;
+  }
+}
+
+/* Extra small screens - stack breakdown cards */
+@media (max-width: 360px) {
+  .breakdown {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .breakdown.has-zastup {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .breakdown-item {
+    padding: 12px 8px;
+  }
+
+  .breakdown-val {
+    font-size: 1.2rem;
+  }
+
+  .breakdown-lbl {
+    font-size: 0.7rem;
   }
 }
 
@@ -5047,6 +5162,20 @@ input:checked + .toggle-slider:before {
   flex-direction: column;
   gap: 10px;
 }
+
+/* Mobile: move toasts to bottom to avoid header interference */
+@media (max-width: 600px) {
+  .toast-container {
+    top: auto;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+  }
+
+  .toast {
+    max-width: 100%;
+  }
+}
 .toast {
   background: #dc2626;
   color: white;
@@ -6271,8 +6400,32 @@ input:checked + .toggle-slider:before {
   color: var(--brand-green-dark);
 }
 
+/* Colorblind-friendly: add shape indicator before pharmacy A */
+.compare-p1 .compare-id::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--brand-green-dark);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 .compare-p2 .compare-id {
   color: #1565c0;
+}
+
+/* Colorblind-friendly: add shape indicator after pharmacy B (square) */
+.compare-p2 .compare-id::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #1565c0;
+  border-radius: 2px;
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 .compare-pharmacy .compare-name {
@@ -6389,6 +6542,14 @@ input:checked + .toggle-slider:before {
 
 .compare-bar.bar-right {
   background: #42a5f5;
+  /* Colorblind-friendly: subtle diagonal stripe pattern */
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 4px,
+    rgba(255,255,255,0.15) 4px,
+    rgba(255,255,255,0.15) 8px
+  );
 }
 
 .compare-bar.bar-winner {
@@ -10555,7 +10716,7 @@ async function loadPeers(pharmacyId) {
   const tableWrap = document.querySelector('.peers-table-wrap');
 
   try {
-    const response = await fetch(`/api/pharmacy/${pharmacyId}/peers?max_peers=5&trzby_tolerance=0.10`);
+    const response = await fetch(`/api/pharmacy/${pharmacyId}/peers?max_peers=8&trzby_tolerance=0.10`);
     if (!response.ok) {
       card.style.display = 'none';
       return;
@@ -10646,7 +10807,7 @@ async function loadPeers(pharmacyId) {
               <span class="peers-score-bar">
                 <span class="peers-score-fill" style="width: ${scoreWidth}%"></span>
               </span>
-              ${Math.round(score)}
+              ${Math.round(score)}%
             </span>
           </td>
         </tr>
@@ -10663,6 +10824,26 @@ async function loadPeers(pharmacyId) {
         }
       });
     });
+
+    // Update trust-box to show same peers (unified with peers card)
+    const peerIds = data.peers.map(p => p.id);
+    const trustBox = document.getElementById('trust-box');
+    const trustCount = document.getElementById('trust-count');
+    const trustIds = document.getElementById('trust-ids');
+    const trustExpand = document.getElementById('trust-expand');
+
+    if (peerIds.length > 0) {
+      trustCount.textContent = peerIds.length;
+      allIds = peerIds;
+      if (peerIds.length > 5) {
+        trustIds.textContent = peerIds.slice(0, 5).join(', ') + ', ...';
+        trustExpand.style.display = 'inline';
+      } else {
+        trustIds.textContent = peerIds.join(', ');
+        trustExpand.style.display = 'none';
+      }
+      trustBox.style.display = 'block';
+    }
 
   } catch (error) {
     console.error('Error loading peers:', error);
